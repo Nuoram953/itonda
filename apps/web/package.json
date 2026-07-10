@@ -7,7 +7,10 @@
         "dev": "vite",
         "build": "tsc -b && vite build",
         "preview": "vite preview",
-        "generate-api": "openapi-typescript http://localhost:3005/api-docs/openapi.json -o src/api/generated.d.ts"
+        "generate-api": "openapi-typescript http://localhost:3005/api-docs/openapi.json -o src/api/generated.d.ts",
+        "lint": "eslint .",
+        "typecheck": "tsc --noEmit",
+        "test": "vitest"
     },
     "dependencies": {
         "react": "^19.0.0"
