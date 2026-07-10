@@ -8,3 +8,6 @@ axum = "0.8"
 tokio = { version = "1", features = ["full"] }
 tower-http = { version = "0.6", features = ["cors"] }
 itonda-database = { path = "../../crates/database" }
+serde = { version = "1", features = ["derive"] }
+utoipa = { version = "5", features = ["axum_extras"] }
+utoipa-swagger-ui = { version = "9", features = ["axum"] }
