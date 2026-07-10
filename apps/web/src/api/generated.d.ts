@@ -20,13 +20,53 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/media/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["import_media"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        MediaResponse: {
-            message: string;
+        JobResponse: {
+            job_id: string;
+            status: components["schemas"]["JobStatus"];
         };
+        /** @enum {string} */
+        JobStatus: "queued" | "running" | "completed" | "failed";
+        Media: {
+            id: string;
+            media_type: string;
+            title: string;
+            /** Format: int64 */
+            year?: number | null;
+        };
+        MediaImportItem: {
+            media_type: components["schemas"]["MediaType"];
+            title: string;
+            /** Format: int64 */
+            year?: number | null;
+        };
+        MediaImportPayload: {
+            items: components["schemas"]["MediaImportItem"][];
+        };
+        MediaResponse: {
+            items: components["schemas"]["Media"][];
+        };
+        /** @enum {string} */
+        MediaType: "game" | "movie" | "tv_show";
     };
     responses: never;
     parameters: never;
@@ -45,13 +85,35 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Returns media information */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["MediaResponse"];
+                };
+            };
+        };
+    };
+    import_media: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MediaImportPayload"];
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobResponse"];
                 };
             };
         };

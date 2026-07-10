@@ -2,5 +2,8 @@ packages:
   - apps/*
   - packages/*
 
+minimumReleaseAge: 60
+
 allowBuilds:
   esbuild: true
+  lefthook: true

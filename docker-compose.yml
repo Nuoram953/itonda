@@ -1,12 +1,19 @@
+name: itonda
+
 services:
   server:
     build:
       context: .
-      dockerfile: apps/server/Dockerfile
+      dockerfile: apps/server/Dockerfile.dev
     ports:
       - "3005:3005"
     volumes:
-      - ./data:/app/data
+      - .:/app
+      - server_target:/app/target
+      - cargo_registry:/usr/local/cargo/registry
+    environment:
+      RUST_LOG: debug
+    restart: unless-stopped
 
   web:
     build:
@@ -16,4 +23,12 @@ services:
       - "5173:5173"
     volumes:
       - ./apps/web:/app/apps/web
-      - /app/node_modules
+      - web_node_modules:/app/node_modules
+    environment:
+      NODE_ENV: development
+    restart: unless-stopped
+
+volumes:
+  web_node_modules:
+  server_target:
+  cargo_registry:

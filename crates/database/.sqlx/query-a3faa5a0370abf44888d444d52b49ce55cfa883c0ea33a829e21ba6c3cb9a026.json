@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "\n    SELECT\n        id,\n        title,\n        media_type,\n        year\n    FROM media\n    ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "title",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "media_type",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "year",
+        "ordinal": 3,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "a3faa5a0370abf44888d444d52b49ce55cfa883c0ea33a829e21ba6c3cb9a026"
+}
