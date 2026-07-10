@@ -9,12 +9,12 @@ async fn main() {
         .route("/", get(|| async { "Hello from itonda" }));
 
     let listener = tokio::net::TcpListener::bind(
-        "0.0.0.0:3000"
+        "0.0.0.0:3005"
     )
     .await
     .unwrap();
 
-    println!("Server running on http://localhost:3000");
+    println!("Server running on http://localhost:3005");
 
     axum::serve(listener, app)
         .await
