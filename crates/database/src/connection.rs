@@ -6,7 +6,7 @@ pub async fn connect(
 
     SqlitePoolOptions::new()
         .max_connections(5)
-        .connect(&format!("sqlite://itonda.db?mode=rwc"))
+        .connect(&format!("sqlite:///app/data/itonda.db?mode=rwc"))
         .await
         .unwrap()
 }

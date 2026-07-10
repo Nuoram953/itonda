@@ -8,3 +8,4 @@ name = "itonda"
 path = "src/main.rs"
 
 [dependencies]
+itonda-database = { path = "../../crates/database" }
