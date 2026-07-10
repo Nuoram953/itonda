@@ -1,9 +1,10 @@
 [package]
-name = "server"
+name = "itonda-server"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 axum = "0.8"
 tokio = { version = "1", features = ["full"] }
 tower-http = { version = "0.6", features = ["cors"] }
+itonda-database = { path = "../../crates/database" }

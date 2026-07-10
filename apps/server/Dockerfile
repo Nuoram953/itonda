@@ -1,9 +1,17 @@
-FROM rust:latest
+FROM rust:latest AS builder
 
 WORKDIR /app
 
-COPY . .
+COPY Cargo.toml Cargo.lock ./
+COPY apps/server ./apps/server
+COPY apps/cli ./apps/cli
+COPY crates ./crates
 
-RUN cargo build --release
+RUN cargo build --release -p itonda-server
 
-CMD ["./target/release/server"]
+
+FROM debian:bookworm-slim
+
+COPY --from=builder /app/target/release/itonda-server /usr/local/bin/itonda-server
+
+CMD ["itonda-server"]

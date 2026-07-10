@@ -1,5 +1,7 @@
 [workspace]
 members = [
     "apps/cli",
+    "apps/server",
+    "crates/database",
 ]
 resolver = "2"

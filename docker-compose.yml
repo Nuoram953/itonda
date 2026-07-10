@@ -1,9 +1,12 @@
 services:
   server:
     build:
-      context: ./apps/server
+      context: .
+      dockerfile: apps/server/Dockerfile
     ports:
       - "3005:3005"
+    volumes:
+      - ./data:/app/data
 
   web:
     image: nginx:alpine

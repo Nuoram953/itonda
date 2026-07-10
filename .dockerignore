@@ -1,0 +1,27 @@
+# Rust
+target/
+**/target/
+
+# Node
+node_modules/
+**/node_modules/
+
+# Frontend builds
+dist/
+**/dist/
+build/
+**/build/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+
+# Logs
+*.log
