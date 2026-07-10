@@ -9,8 +9,11 @@ services:
       - ./data:/app/data
 
   web:
-    image: nginx:alpine
-    volumes:
-      - ./apps/web:/usr/share/nginx/html:ro
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
     ports:
-      - "8080:80"
+      - "5173:5173"
+    volumes:
+      - ./apps/web:/app/apps/web
+      - /app/node_modules
