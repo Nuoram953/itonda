@@ -1,0 +1,13 @@
+services:
+  server:
+    build:
+      context: ./apps/server
+    ports:
+      - "3005:3005"
+
+  web:
+    image: nginx:alpine
+    volumes:
+      - ./apps/web:/usr/share/nginx/html:ro
+    ports:
+      - "8080:80"

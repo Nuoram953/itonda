@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  # push:
+  #   branches: [main]
+  workflow_dispatch:
+
+jobs:
+  release:
+    name: Semantic Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_TOKEN }}
+
+      - name: Cache cargo-edit
+        id: cache-cargo-edit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-set-version
+          key: cargo-edit-${{ runner.os }}
+
+      - name: Install cargo-edit
+        if: steps.cache-cargo-edit.outputs.cache-hit != 'true'
+        run: cargo install cargo-edit --locked
+
+      - name: Fetch tags
+        run: git fetch --force --tags
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+          cache: true
+
+      - run: pnpm install
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: npx semantic-release
