@@ -26,3 +26,4 @@ target
 /target
 /node_modules
 /data/
+/apps/web/node_modules/
