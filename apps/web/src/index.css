@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+:root {
+  /* Surfaces */
+  --background: #0b0d10;
+  --surface: #141820;
+  --surface-hover: #1c2230;
+  --surface-raised: #202735;
+
+  /* Text */
+  --foreground: #f5f7fa;
+  --text-muted: #9ca3af;
+  --text-disabled: #6b7280;
+
+  /* Borders */
+  --border: #2a3242;
+  --border-strong: #3b4558;
+
+  /* Brand */
+  --primary: #6366f1;
+  --primary-hover: #818cf8;
+  --primary-foreground: #ffffff;
+
+  /* Status */
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+
+  /* Shape */
+  --radius: 0.5rem;
+}
+
+@theme {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-raised: var(--surface-raised);
+
+  --color-foreground: var(--foreground);
+  --color-text-muted: var(--text-muted);
+  --color-text-disabled: var(--text-disabled);
+
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --radius-md: var(--radius);
+}
