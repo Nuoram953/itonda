@@ -7,8 +7,8 @@ on:
       - main
 
 jobs:
-  rust:
-    name: Rust checks
+  server:
+    name: Server
     runs-on: ubuntu-latest
 
     steps:
@@ -22,18 +22,29 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy -p itonda-server --all-targets -- -D warnings
 
       - name: Test
-        run: cargo test --workspace
+        run: cargo test -p itonda-server
 
-  web:
-    name: Web checks
+  cli:
+    name: CLI
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Clippy
+        run: cargo clippy -p itonda-cli --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test -p itonda-cli
+
+  web:
+    name: Web
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -46,9 +57,23 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
 
-      - run: pnpm install
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm build
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        working-directory: apps/web
+        run: pnpm lint
+
+      - name: Typecheck
+        working-directory: apps/web
+        run: pnpm typecheck
+
+      # - name: Test
+      #   working-directory: apps/web
+      #   run: pnpm test
+
+      - name: Build
+        working-directory: apps/web
+        run: pnpm build

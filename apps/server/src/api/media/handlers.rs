@@ -1,6 +1,17 @@
-use axum::Json;
+use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
+use itonda_domain::media::service::get_all_media;
+use tracing::instrument;
+use uuid::Uuid;
 
-use super::schemas::MediaResponse;
+use crate::{
+    api::{
+        error::ApiError,
+        media::schemas::{MediaImportPayload, MediaResponse},
+        response::{JobResponse, JobStatus},
+    },
+    state::AppState,
+    workers::jobs::{ImportItem, ImportJob, Job},
+};
 
 #[utoipa::path(
     get,
@@ -8,13 +19,61 @@ use super::schemas::MediaResponse;
     responses(
         (
             status = 200,
-            description = "Returns media information",
             body = MediaResponse
         )
     )
 )]
-pub async fn get_media() -> Json<MediaResponse> {
-    Json(MediaResponse {
-        message: "Hello from media endpoint".to_string(),
-    })
+#[instrument(skip(state))]
+pub async fn get_media(State(state): State<AppState>) -> Result<Json<MediaResponse>, ApiError> {
+    let media = get_all_media(&state.db).await;
+
+    Ok(Json(MediaResponse {
+        items: media.unwrap(),
+    }))
+}
+
+#[utoipa::path(
+    post,
+    path = "/media/import",
+    request_body = MediaImportPayload,
+    responses(
+        (
+            status = 202,
+            body = JobResponse
+        )
+    )
+)]
+#[instrument(skip(state, request))]
+pub async fn import_media(
+    State(state): State<AppState>,
+    Json(request): Json<MediaImportPayload>,
+) -> Result<impl IntoResponse, ApiError> {
+    let job_id = Uuid::new_v4();
+
+    let items = request
+        .items
+        .into_iter()
+        .map(|item| ImportItem {
+            title: item.title,
+            media_type: item.media_type,
+            year: item.year,
+        })
+        .collect();
+
+    state
+        .jobs
+        .send(Job::Import(ImportJob { id: job_id, items }))
+        .await
+        .map_err(|err| {
+            tracing::error!(?err, "Failed to queue import job");
+            ApiError::WorkerUnavailable
+        })?;
+
+    Ok((
+        StatusCode::ACCEPTED,
+        Json(JobResponse {
+            job_id: job_id.to_string(),
+            status: JobStatus::Queued,
+        }),
+    ))
 }

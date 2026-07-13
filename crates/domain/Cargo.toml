@@ -1,0 +1,23 @@
+[package]
+name = "itonda-domain"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+itonda-database = { path = "../database" }
+
+serde = { workspace = true, features = ["derive"] }
+thiserror = { workspace = true }
+uuid = { workspace = true, features = ["v4", "serde"] }
+chrono = { workspace = true, features = ["serde"] }
+utoipa = { version = "5", features = ["axum_extras"] }
+
+tracing = {workspace=true}
+
+sqlx = { version = "0.8", features = [
+    "runtime-tokio",
+    "sqlite"
+] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt"] }
