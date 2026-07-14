@@ -6,6 +6,7 @@ use uuid::Uuid;
 use crate::{
     api::{
         error::ApiError,
+        extractor::AppJson,
         media::schemas::{MediaImportPayload, MediaResponse},
         response::{JobResponse, JobStatus},
     },
@@ -46,7 +47,7 @@ pub async fn get_media(State(state): State<AppState>) -> Result<Json<MediaRespon
 #[instrument(skip(state, request))]
 pub async fn import_media(
     State(state): State<AppState>,
-    Json(request): Json<MediaImportPayload>,
+    AppJson(request): AppJson<MediaImportPayload>,
 ) -> Result<impl IntoResponse, ApiError> {
     let job_id = Uuid::new_v4();
 

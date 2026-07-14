@@ -10,9 +10,3 @@ where
 
     serde_json::from_slice(&body).unwrap()
 }
-
-pub async fn text(response: Response) -> String {
-    let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
-
-    String::from_utf8_lossy(&body).into_owned()
-}
