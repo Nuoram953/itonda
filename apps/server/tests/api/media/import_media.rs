@@ -1,7 +1,10 @@
-use crate::common::{app::test_app, response::text};
+use crate::common::{app::test_app, response::json};
 use axum::{body::Body, http};
 use http::{Request, StatusCode};
-use itonda_server::workers::jobs::Job;
+use itonda_server::{
+    api::error::{ApiError, ErrorResponse},
+    workers::jobs::Job,
+};
 use tower::ServiceExt;
 
 #[tokio::test]
@@ -69,12 +72,13 @@ async fn import_media_returns_422_when_required_field_is_missing() {
         .await
         .unwrap();
 
-    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
-    let message = text(response).await;
+    let error: ErrorResponse = json(response).await;
 
-    assert_eq!(
-        message,
-        "Failed to deserialize the JSON body into the target type: items[0]: missing field `title` at line 1 column 43"
-    );
+    let expected = ApiError::InvalidPayload.response();
+
+    assert_eq!(error.code, expected.code);
+
+    assert_eq!(error.message, expected.message);
 }

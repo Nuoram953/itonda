@@ -1,4 +1,5 @@
 pub mod error;
+pub mod extractor;
 pub mod media;
 pub mod openapi;
 pub mod response;

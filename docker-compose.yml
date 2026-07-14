@@ -26,6 +26,7 @@ services:
       - web_node_modules:/app/node_modules
     environment:
       NODE_ENV: development
+      VITE_SERVER_URL: http://localhost:3005/api/v1
     restart: unless-stopped
 
 volumes:

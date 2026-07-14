@@ -22,9 +22,11 @@
   --primary-foreground: #ffffff;
 
   /* Status */
+  --info: #3b82f6;
   --success: #22c55e;
   --warning: #f59e0b;
   --danger: #ef4444;
+  --loading: #94a3b8;
 
   /* Shape */
   --radius: 0.5rem;
@@ -46,6 +48,12 @@
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
+
+  --color-info: var(--info);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-loading: var(--loading);
 
   --radius-md: var(--radius);
 }
