@@ -2,27 +2,27 @@ import {
   createRootRoute,
   createRouter,
   createRoute,
-  Link,
   Outlet,
 } from "@tanstack/react-router";
 import NotFoundRoute from "./routes/not-found";
 import { Home } from "@/home";
+import { Header } from "@/components/ui/header/Header";
+import { Sidebar } from "@/components/ui/sidebar/Siderbar";
 
 const rootRoute = createRootRoute({
   component: () => (
-    <>
-      <nav>
-        <Link to="/">Home</Link>
-        <Link to="/library">Library</Link>
-      </nav>
-
-      <Outlet />
-    </>
+    <div className="flex h-screen w-full flex-col bg-background text-foreground">
+      <Header />
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar />
+        <main className="flex-1 overflow-y-auto p-6">
+          <Outlet />
+        </main>
+      </div>
+    </div>
   ),
-
   notFoundComponent: () => NotFoundRoute(),
 });
-
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
