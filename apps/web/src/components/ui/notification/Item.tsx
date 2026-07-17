@@ -9,10 +9,11 @@ import {
   SlInfo,
   SlOptions,
 } from "react-icons/sl";
+import type { IconType } from "react-icons";
 
 const notificationVariants = cva(
   [
-    "text-foreground bg-background rounded-none border shadow-lg p-4 relative border-l-32",
+    "text-foreground bg-surface-raised rounded-none shadow-lg p-4 relative border-l-32",
   ],
   {
     variants: {
@@ -38,7 +39,7 @@ export function NotificationItem({ notification }: Props) {
   const { notify } = useNotification();
 
   const getIconForSeverity = (severity: Notification["severity"]) => {
-    let Icon;
+    let Icon: IconType;
     switch (severity) {
       case "success":
         Icon = SlCheck;
