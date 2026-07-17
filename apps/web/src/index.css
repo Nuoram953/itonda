@@ -17,9 +17,10 @@
   --border-strong: #3b4558;
 
   /* Brand */
-  --primary: #6366f1;
-  --primary-hover: #818cf8;
-  --primary-foreground: #ffffff;
+  --primary: #f59e0b;
+  --primary-hover: #fbbf24;
+  --primary-foreground: #0b0d10; /* Dark text for contrast */
+  --primary-active: #d97706;
 
   /* Status */
   --info: #3b82f6;
@@ -47,6 +48,7 @@
 
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
   --color-primary-foreground: var(--primary-foreground);
 
   --color-info: var(--info);

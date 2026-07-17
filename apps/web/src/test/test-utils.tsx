@@ -1,5 +1,6 @@
 import { type ReactElement, type ReactNode } from "react";
 import {
+  render,
   render as rtlRender,
   type RenderOptions,
 } from "@testing-library/react";
@@ -11,6 +12,12 @@ import { NotificationViewport } from "@/components/ui/notification/Viewport";
 import { AxiosInterceptor } from "@/lib/AxiosInterceptor";
 import { RootErrorFallback } from "@/app/routes/error";
 import { Toast } from "radix-ui";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRouter,
+  RouterProvider,
+} from "@tanstack/react-router";
 
 function renderWithProviders(
   ui: ReactElement,
@@ -42,6 +49,19 @@ function renderWithProviders(
 
   return rtlRender(ui, { wrapper: Wrapper, ...options });
 }
+
+export const renderWithRouter = (component: React.ReactNode) => {
+  const rootRoute = createRootRoute({
+    component: () => component,
+  });
+
+  const router = createRouter({
+    routeTree: rootRoute,
+    history: createMemoryHistory(),
+  });
+
+  return render(<RouterProvider router={router} />);
+};
 
 /* eslint-disable react-refresh/only-export-components */
 export * from "@testing-library/react";
