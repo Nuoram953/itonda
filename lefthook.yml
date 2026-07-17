@@ -3,3 +3,7 @@ pre-commit:
     fmt:
       run: cargo fmt --all
       stage_fixed: true
+
+    lint:
+      run: pnpm -r lint
+
