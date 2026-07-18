@@ -28,6 +28,12 @@ use crate::{
 pub async fn get_media(State(state): State<AppState>) -> Result<Json<MediaResponse>, ApiError> {
     let media = get_all_media(&state.db).await;
 
+    // state
+    //     .agent_manager
+    //     .send("test uuid", AgentMessage::Ping)
+    //     .await
+    //     .unwrap();
+
     Ok(Json(MediaResponse {
         items: media.unwrap(),
     }))

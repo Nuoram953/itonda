@@ -1,6 +1,5 @@
+use itonda_domain::store::toml::TomlStore;
 use serde::{Deserialize, Serialize};
-
-use crate::config::store::TomlStore;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]

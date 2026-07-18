@@ -2,6 +2,7 @@
 members = [
     "apps/cli",
     "apps/server",
+    "apps/agent",
     "crates/database",
     "crates/domain",
 ]
