@@ -1,6 +1,7 @@
 use crate::{
     config::{app::AppConfigManager, settings::SettingsManager},
     events::EventBus,
+    websocket::AgentManager,
     workers::jobs::Job,
 };
 use sqlx::SqlitePool;
@@ -13,4 +14,5 @@ pub struct AppState {
     pub events: EventBus,
     pub settings: SettingsManager,
     pub config: AppConfigManager,
+    pub agent_manager: AgentManager,
 }

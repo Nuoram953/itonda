@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO agent_connections (\n            id,\n            agent_id,\n            ip_address\n        )\n        VALUES (?, ?, ?)\n        RETURNING\n            id,\n            agent_id,\n            connected_at,\n            disconnected_at,\n            ip_address\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "agent_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "connected_at",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "disconnected_at",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "ip_address",
+        "ordinal": 4,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "1732ad9b456aad559dc467498d7a4a31d00330ddf4c3514c0808f66a775c7afd"
+}

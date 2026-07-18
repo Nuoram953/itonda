@@ -5,6 +5,7 @@ use itonda_server::{
     config::{app::AppConfigManager, settings::SettingsManager},
     events::EventBus,
     state::AppState,
+    websocket::AgentManager,
     workers::jobs::Job,
 };
 use sqlx::SqlitePool;
@@ -34,6 +35,7 @@ pub async fn test_app() -> TestApp {
         events: EventBus::new(),
         settings,
         config,
+        agent_manager: AgentManager::new(),
     };
 
     TestApp {

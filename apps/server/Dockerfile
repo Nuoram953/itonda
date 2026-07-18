@@ -5,6 +5,7 @@ WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
 COPY apps/server ./apps/server
 COPY apps/cli ./apps/cli
+COPY apps/agent ./apps/agent
 COPY crates ./crates
 
 RUN cargo build --release -p itonda-server

@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO agents (\n            id,\n            name,\n            hostname,\n            platform,\n            agent_version\n        )\n        VALUES (?, ?, ?, ?, ?)\n        ON CONFLICT(id) DO UPDATE SET\n            name = excluded.name,\n            hostname = excluded.hostname,\n            platform = excluded.platform,\n            agent_version = excluded.agent_version,\n            last_seen_at = unixepoch()\n        RETURNING\n            id,\n            name,\n            hostname,\n            platform,\n            agent_version,\n            last_seen_at,\n            created_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "hostname",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "platform",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "agent_version",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_seen_at",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 6,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "2ec19b84aca583db3b61b9c1cd9639abad5db1c0a986a4295a7297ff980090ac"
+}

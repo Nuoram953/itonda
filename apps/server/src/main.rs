@@ -9,7 +9,7 @@ use itonda_server::{
     events::EventBus,
     state::{self, AppState},
     storage::path::AppPaths,
-    websocket,
+    websocket::{self, AgentManager},
     workers::{handlers::import::ImportHandler, jobs::Job, worker::Worker},
 };
 
@@ -37,6 +37,7 @@ async fn main() -> anyhow::Result<()> {
         events,
         settings,
         config,
+        agent_manager: AgentManager::new(),
     };
 
     init_server(state).await?;

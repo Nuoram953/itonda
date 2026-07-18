@@ -6,12 +6,13 @@ edition = "2024"
 [dependencies]
 itonda-database = { path = "../database" }
 
+toml = "1.1.2"
 serde = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 uuid = { workspace = true, features = ["v4", "serde"] }
 chrono = { workspace = true, features = ["serde"] }
 utoipa = { version = "5", features = ["axum_extras"] }
-
+tokio = { workspace = true, features = ["macros", "rt"] }
 tracing = {workspace=true}
 
 sqlx = { version = "0.8", features = [
@@ -20,4 +21,4 @@ sqlx = { version = "0.8", features = [
 ] }
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["macros", "rt"] }
+tempfile = "3"
