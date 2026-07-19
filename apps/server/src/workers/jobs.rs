@@ -13,5 +13,4 @@ pub struct ImportJob {
 pub struct ImportItem {
     pub title: String,
     pub media_type: MediaType,
-    pub year: Option<i64>,
 }

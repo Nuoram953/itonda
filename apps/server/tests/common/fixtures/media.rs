@@ -4,7 +4,6 @@ use sqlx::SqlitePool;
 pub struct MediaFixture {
     pub title: String,
     pub media_type: String,
-    pub year: Option<i64>,
 }
 
 impl Default for MediaFixture {
@@ -12,7 +11,6 @@ impl Default for MediaFixture {
         Self {
             title: "Test Game".into(),
             media_type: "game".into(),
-            year: Some(2025),
         }
     }
 }
@@ -24,7 +22,6 @@ impl MediaFixture {
             MediaInsert {
                 title: self.title,
                 media_type: self.media_type,
-                year: self.year,
             },
         )
         .await

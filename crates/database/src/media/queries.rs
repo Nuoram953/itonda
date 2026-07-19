@@ -12,8 +12,7 @@ pub async fn find_all(pool: &SqlitePool) -> Result<Vec<MediaRow>, DatabaseError>
     SELECT
         id,
         title,
-        media_type,
-        year
+        media_type
     FROM media
     "#
     )
@@ -34,20 +33,17 @@ pub async fn insert_media(
         INSERT INTO media (
             id,
             title,
-            media_type,
-            year
+            media_type
         )
-        VALUES (?, ?, ?, ?)
+        VALUES (?, ?, ?)
         RETURNING
             id,
             title,
-            media_type,
-            year
+            media_type
         "#,
         id,
         media.title,
         media.media_type,
-        media.year
     )
     .fetch_one(pool)
     .await

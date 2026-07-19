@@ -10,7 +10,6 @@ pub struct Media {
     pub id: String,
     pub title: String,
     pub media_type: String,
-    pub year: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -42,8 +41,6 @@ impl TryFrom<MediaRow> for Media {
                 .media_type
                 .parse()
                 .map_err(|_| MediaError::InvalidMediaType)?,
-
-            year: row.year,
         })
     }
 }
