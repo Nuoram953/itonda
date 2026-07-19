@@ -72,7 +72,9 @@ async fn init_config() -> anyhow::Result<(SettingsManager, AppConfigManager)> {
 async fn init_db() -> anyhow::Result<SqlitePool> {
     let pool = connection::connect("sqlite://itonda.db").await;
 
-    connection::migrate(&pool).await?;
+    if std::env::var("RUN_MIGRATIONS").is_ok() {
+        connection::migrate(&pool).await?;
+    }
 
     tracing::info!("Database initialized");
 

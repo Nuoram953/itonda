@@ -63,7 +63,6 @@ pub async fn import_media(
         .map(|item| ImportItem {
             title: item.title,
             media_type: item.media_type,
-            year: item.year,
         })
         .collect();
 

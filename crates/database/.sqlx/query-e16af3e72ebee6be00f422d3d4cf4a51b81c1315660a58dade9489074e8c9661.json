@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "\n    SELECT\n        id,\n        title,\n        media_type\n    FROM media\n    ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "title",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "media_type",
+        "ordinal": 2,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e16af3e72ebee6be00f422d3d4cf4a51b81c1315660a58dade9489074e8c9661"
+}

@@ -27,7 +27,6 @@ impl ImportHandler {
                 MediaImport {
                     title: item.title.clone(),
                     media_type: item.media_type,
-                    year: item.year,
                 },
             )
             .await;

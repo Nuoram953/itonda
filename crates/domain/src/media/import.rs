@@ -12,7 +12,6 @@ use sqlx::SqlitePool;
 pub struct MediaImport {
     pub title: String,
     pub media_type: MediaType,
-    pub year: Option<i64>,
 }
 
 #[instrument(skip(pool))]
@@ -26,7 +25,6 @@ pub async fn import(pool: &SqlitePool, input: MediaImport) -> Result<Media, Medi
         MediaInsert {
             title: input.title,
             media_type: input.media_type.as_str().to_string(),
-            year: input.year,
         },
     )
     .await?;

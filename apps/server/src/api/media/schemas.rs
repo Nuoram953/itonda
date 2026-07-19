@@ -16,7 +16,6 @@ pub struct MediaImportPayload {
 pub struct MediaImportItem {
     pub title: String,
     pub media_type: MediaType,
-    pub year: Option<i64>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
