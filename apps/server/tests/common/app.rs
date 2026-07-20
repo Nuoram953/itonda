@@ -1,8 +1,9 @@
 use axum::Router;
 use itonda_database::test_utils::setup_db;
+use itonda_domain::store::toml::TomlCodec;
 use itonda_server::{
     api,
-    config::{app::AppConfigManager, settings::SettingsManager},
+    config::{app::AppConfigManager, secrets::SecretsManager, settings::SettingsManager},
     events::EventBus,
     state::AppState,
     websocket::AgentManager,
@@ -23,9 +24,11 @@ pub async fn test_app() -> TestApp {
 
     let temp = tempdir().unwrap();
 
-    let settings = SettingsManager::load(temp.path().join("settings.toml")).unwrap();
+    let settings = SettingsManager::load(temp.path().join("settings.toml"), TomlCodec).unwrap();
 
-    let config = AppConfigManager::load(temp.path().join("config.toml")).unwrap();
+    let config = AppConfigManager::load(temp.path().join("config.toml"), TomlCodec).unwrap();
+
+    let secrets = SecretsManager::load(temp.path().join("secrets.toml"), TomlCodec).unwrap();
 
     let (jobs, receiver) = tokio::sync::mpsc::channel(100);
 
@@ -35,6 +38,7 @@ pub async fn test_app() -> TestApp {
         events: EventBus::new(),
         settings,
         config,
+        secrets,
         agent_manager: AgentManager::new(),
     };
 

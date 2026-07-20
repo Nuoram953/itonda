@@ -1,5 +1,5 @@
 use crate::{
-    config::{app::AppConfigManager, settings::SettingsManager},
+    config::{app::AppConfigManager, secrets::SecretsManager, settings::SettingsManager},
     events::EventBus,
     websocket::AgentManager,
     workers::jobs::Job,
@@ -14,5 +14,6 @@ pub struct AppState {
     pub events: EventBus,
     pub settings: SettingsManager,
     pub config: AppConfigManager,
+    pub secrets: SecretsManager,
     pub agent_manager: AgentManager,
 }

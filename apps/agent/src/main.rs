@@ -1,5 +1,6 @@
-use itonda_domain::protocol::{
-    agent::AgentRegistration, message::AgentMessage, server::ServerMessage,
+use itonda_domain::{
+    protocol::{agent::AgentRegistration, message::AgentMessage, server::ServerMessage},
+    store::toml::TomlCodec,
 };
 
 use crate::{config::AgentConfigStore, connection::AgentConnection};
@@ -12,7 +13,7 @@ pub mod identity;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let path = dirs::config_dir().unwrap().join("Itonda");
-    let agent_config_store = AgentConfigStore::load(path.join("agent.toml"))?;
+    let agent_config_store = AgentConfigStore::load(path.join("agent.toml"), TomlCodec)?;
 
     let config = agent_config_store.get().await;
 

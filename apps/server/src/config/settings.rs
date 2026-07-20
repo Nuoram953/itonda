@@ -1,4 +1,4 @@
-use itonda_domain::store::toml::TomlStore;
+use itonda_domain::store::{Store, toml::TomlCodec};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,4 +33,4 @@ pub struct SteamSettings {
     pub fetch_playtime: bool,
 }
 
-pub type SettingsManager = TomlStore<Settings>;
+pub type SettingsManager = Store<Settings, TomlCodec>;

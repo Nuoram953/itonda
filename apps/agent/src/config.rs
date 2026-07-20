@@ -1,4 +1,4 @@
-use itonda_domain::store::toml::TomlStore;
+use itonda_domain::store::{Store, toml::TomlCodec};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -20,4 +20,4 @@ impl Default for AgentConfig {
     }
 }
 
-pub type AgentConfigStore = TomlStore<AgentConfig>;
+pub type AgentConfigStore = Store<AgentConfig, TomlCodec>;
