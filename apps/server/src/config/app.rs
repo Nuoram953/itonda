@@ -1,4 +1,4 @@
-use itonda_domain::store::toml::TomlStore;
+use itonda_domain::store::{Store, toml::TomlCodec};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -24,4 +24,4 @@ pub struct ServerConfig {
     pub port: usize,
 }
 
-pub type AppConfigManager = TomlStore<AppConfig>;
+pub type AppConfigManager = Store<AppConfig, TomlCodec>;

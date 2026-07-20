@@ -1,11 +1,12 @@
 use axum::Router;
+use itonda_domain::store::toml::TomlCodec;
 use sqlx::SqlitePool;
 use tokio::sync::mpsc::Sender;
 use utoipa_swagger_ui::SwaggerUi;
 
 use itonda_server::{
     api,
-    config::{app::AppConfigManager, settings::SettingsManager},
+    config::{app::AppConfigManager, secrets::SecretsManager, settings::SettingsManager},
     events::EventBus,
     state::{self, AppState},
     storage::path::AppPaths,
@@ -27,7 +28,7 @@ async fn main() -> anyhow::Result<()> {
 
     let pool = init_db().await?;
 
-    let (settings, config) = init_config().await?;
+    let (settings, config, secrets) = init_config().await?;
 
     let (jobs, events) = init_worker(&pool).await?;
 
@@ -37,6 +38,7 @@ async fn main() -> anyhow::Result<()> {
         events,
         settings,
         config,
+        secrets,
         agent_manager: AgentManager::new(),
     };
 
@@ -57,16 +59,18 @@ fn init_logging() {
     tracing::info!("Logging initialized");
 }
 
-async fn init_config() -> anyhow::Result<(SettingsManager, AppConfigManager)> {
+async fn init_config() -> anyhow::Result<(SettingsManager, AppConfigManager, SecretsManager)> {
     let paths = AppPaths::new();
 
-    let settings = SettingsManager::load(paths.config_dir.join("settings.toml"))?;
+    let settings = SettingsManager::load(paths.config_dir.join("settings.toml"), TomlCodec)?;
 
-    let config = AppConfigManager::load(paths.config_dir.join("config.toml"))?;
+    let config = AppConfigManager::load(paths.config_dir.join("config.toml"), TomlCodec)?;
+
+    let secrets = SecretsManager::load(paths.config_dir.join("secrets.toml"), TomlCodec)?;
 
     tracing::info!("Config initialized");
 
-    Ok((settings, config))
+    Ok((settings, config, secrets))
 }
 
 async fn init_db() -> anyhow::Result<SqlitePool> {

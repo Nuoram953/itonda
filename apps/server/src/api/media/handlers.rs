@@ -28,11 +28,21 @@ use crate::{
 pub async fn get_media(State(state): State<AppState>) -> Result<Json<MediaResponse>, ApiError> {
     let media = get_all_media(&state.db).await;
 
-    // state
-    //     .agent_manager
-    //     .send("test uuid", AgentMessage::Ping)
-    //     .await
-    //     .unwrap();
+    // // state
+    // //     .agent_manager
+    // //     .send("test uuid", AgentMessage::Ping)
+    // //     .await
+    // //     .unwrap();
+    // //
+    // let secrets = state.secrets.get().await;
+    // let steam = SteamStorefront::new(
+    //     secrets.storefronts.steam.api_key,
+    //     secrets.storefronts.steam.steam_id,
+    // );
+    //
+    // let games = steam.owned_games().await.unwrap();
+    //
+    // println!("steam call {:?}", games);
 
     Ok(Json(MediaResponse {
         items: media.unwrap(),

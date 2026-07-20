@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 itonda-database = { path = "../../crates/database" }
 itonda-domain = { path = "../../crates/domain" }
+itonda-storefronts = { path = "../../crates/storefronts" }
 
 anyhow = "1"
 toml = "1.1.2"
