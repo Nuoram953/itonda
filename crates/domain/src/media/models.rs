@@ -20,6 +20,12 @@ pub enum MediaType {
     TvShow,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum MediaSource {
+    Steam,
+}
+
 impl MediaType {
     pub fn as_str(&self) -> &'static str {
         match self {
