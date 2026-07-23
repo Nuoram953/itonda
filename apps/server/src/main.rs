@@ -11,7 +11,11 @@ use itonda_server::{
     state::{self, AppState},
     storage::path::AppPaths,
     websocket::{self, AgentManager},
-    workers::{handlers::import::ImportHandler, jobs::Job, worker::Worker},
+    workers::{
+        handlers::{import::ImportHandler, sync::SyncHandler},
+        jobs::Job,
+        worker::Worker,
+    },
 };
 
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -90,7 +94,11 @@ async fn init_worker(pool: &SqlitePool) -> anyhow::Result<(Sender<Job>, EventBus
 
     let (sender, receiver) = tokio::sync::mpsc::channel(100);
 
-    let worker = Worker::new(receiver, ImportHandler::new(pool.clone(), events.clone()));
+    let worker = Worker::new(
+        receiver,
+        ImportHandler::new(pool.clone(), events.clone()),
+        SyncHandler::new(pool.clone(), events.clone()),
+    );
 
     tokio::spawn(async move {
         worker.run().await;
