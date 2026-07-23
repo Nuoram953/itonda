@@ -1,8 +1,3 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StorefrontId {
-    Steam,
-}
-
 #[derive(Debug, Clone)]
 pub struct OwnedGame {
     pub storefront: StorefrontId,

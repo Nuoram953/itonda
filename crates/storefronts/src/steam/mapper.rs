@@ -1,7 +1,6 @@
-use crate::{
-    models::{OwnedGame, StorefrontId},
-    steam::models::SteamApp,
-};
+use itonda_domain::storefront::models::StorefrontId;
+
+use crate::{models::OwnedGame, steam::models::SteamApp};
 
 pub fn map_owned_game(app: SteamApp) -> OwnedGame {
     OwnedGame {
