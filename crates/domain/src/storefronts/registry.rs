@@ -1,0 +1,38 @@
+use std::{collections::HashMap, sync::Arc};
+
+use crate::storefronts::{models::StorefrontId, traits::GameLibraryProvider};
+
+#[derive(Clone)]
+pub struct StorefrontRegistry {
+    providers: HashMap<StorefrontId, Arc<dyn GameLibraryProvider>>,
+}
+
+impl Default for StorefrontRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl StorefrontRegistry {
+    pub fn new() -> Self {
+        Self {
+            providers: HashMap::new(),
+        }
+    }
+
+    pub fn register(&mut self, provider: Arc<dyn GameLibraryProvider>) {
+        self.providers.insert(provider.id(), provider);
+    }
+
+    pub fn get(&self, id: StorefrontId) -> Option<Arc<dyn GameLibraryProvider>> {
+        self.providers.get(&id).cloned()
+    }
+
+    pub fn get_all(&self) -> HashMap<StorefrontId, Arc<dyn GameLibraryProvider>> {
+        self.providers.clone()
+    }
+
+    pub fn available(&self) -> Vec<StorefrontId> {
+        self.providers.keys().copied().collect()
+    }
+}

@@ -1,9 +1,9 @@
-use crate::{
-    events::{EventBus, ImportEvent, ImportStep},
-    workers::jobs::ImportJob,
-};
+use crate::workers::jobs::ImportJob;
 
-use itonda_domain::media::import::{MediaImport, import};
+use itonda_domain::{
+    events::{EventBus, ImportEvent, JobEventType, JobType},
+    media::import::{MediaImport, import},
+};
 use sqlx::SqlitePool;
 
 pub struct ImportHandler {
@@ -17,7 +17,11 @@ impl ImportHandler {
     }
 
     pub async fn handle(&self, job: ImportJob) {
-        self.events.publish(ImportEvent::Started { job_id: job.id });
+        self.events.publish_job(
+            job.id,
+            JobType::Import,
+            JobEventType::Import(ImportEvent::Started),
+        );
 
         let total = job.items.len();
 
@@ -31,15 +35,20 @@ impl ImportHandler {
             )
             .await;
 
-            self.events.publish(ImportEvent::Progress {
-                job_id: job.id,
-                message: format!("Importing {} ({}/{})", item.title.clone(), index + 1, total),
-                progress: ((index + 1) * 100 / total) as u8,
-                step: ImportStep::Scanning,
-            });
+            self.events.publish_job(
+                job.id,
+                JobType::Import,
+                JobEventType::Import(ImportEvent::Progress {
+                    message: format!("Importing {} ({}/{})", item.title.clone(), index + 1, total),
+                    progress: ((index + 1) * 100 / total) as u8,
+                }),
+            );
         }
 
-        self.events
-            .publish(ImportEvent::Completed { job_id: job.id });
+        self.events.publish_job(
+            job.id,
+            JobType::Import,
+            JobEventType::Import(ImportEvent::Completed),
+        );
     }
 }

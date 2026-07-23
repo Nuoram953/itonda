@@ -1,8 +1,9 @@
-use itonda_domain::media::models::MediaType;
+use itonda_domain::{media::models::MediaType, storefronts::models::StorefrontId};
 use uuid::Uuid;
 
 pub enum Job {
     Import(ImportJob),
+    Sync(SyncJob),
 }
 
 pub struct ImportJob {
@@ -13,4 +14,9 @@ pub struct ImportJob {
 pub struct ImportItem {
     pub title: String,
     pub media_type: MediaType,
+}
+
+pub struct SyncJob {
+    pub id: Uuid,
+    pub storefront: Option<StorefrontId>,
 }

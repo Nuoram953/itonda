@@ -5,7 +5,6 @@ members = [
     "apps/agent",
     "crates/database",
     "crates/domain",
-    "crates/storefronts",
 ]
 resolver = "2"
 

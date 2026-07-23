@@ -1201,6 +1201,7 @@ dependencies = [
  "reqwest-middleware",
  "reqwest-tracing",
  "serde",
+ "serde_json",
  "sqlx",
  "tempfile",
  "thiserror 2.0.18",
@@ -1220,7 +1221,6 @@ dependencies = [
  "dirs",
  "itonda-database",
  "itonda-domain",
- "itonda-storefronts",
  "serde",
  "serde_json",
  "sqlx",
@@ -1234,24 +1234,6 @@ dependencies = [
  "tracing-subscriber",
  "utoipa",
  "utoipa-swagger-ui",
- "uuid",
-]
-
-[[package]]
-name = "itonda-storefronts"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "chrono",
- "itonda-domain",
- "reqwest",
- "reqwest-middleware",
- "reqwest-tracing",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
  "uuid",
 ]
 

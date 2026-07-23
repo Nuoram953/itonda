@@ -11,8 +11,9 @@ services:
       - .:/app
       - server_target:/app/target
       - cargo_registry:/usr/local/cargo/registry
+      - ~/.config/itonda-server:/root/.config/itonda-server
     environment:
-      RUST_LOG: debug
+      RUST_LOG: info
     restart: unless-stopped
 
   web:

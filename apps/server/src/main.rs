@@ -1,5 +1,11 @@
+use std::sync::Arc;
+
 use axum::Router;
-use itonda_domain::store::toml::TomlCodec;
+use itonda_domain::{
+    events::EventBus,
+    store::toml::TomlCodec,
+    storefronts::{registry::StorefrontRegistry, steam::SteamStorefront},
+};
 use sqlx::SqlitePool;
 use tokio::sync::mpsc::Sender;
 use utoipa_swagger_ui::SwaggerUi;
@@ -7,11 +13,14 @@ use utoipa_swagger_ui::SwaggerUi;
 use itonda_server::{
     api,
     config::{app::AppConfigManager, secrets::SecretsManager, settings::SettingsManager},
-    events::EventBus,
     state::{self, AppState},
     storage::path::AppPaths,
     websocket::{self, AgentManager},
-    workers::{handlers::import::ImportHandler, jobs::Job, worker::Worker},
+    workers::{
+        handlers::{import::ImportHandler, sync::SyncHandler},
+        jobs::Job,
+        worker::Worker,
+    },
 };
 
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -30,7 +39,9 @@ async fn main() -> anyhow::Result<()> {
 
     let (settings, config, secrets) = init_config().await?;
 
-    let (jobs, events) = init_worker(&pool).await?;
+    let storefronts = init_storefronts(&secrets).await?;
+
+    let (jobs, events) = init_worker(&pool, &storefronts).await?;
 
     let state = state::AppState {
         db: pool,
@@ -39,6 +50,7 @@ async fn main() -> anyhow::Result<()> {
         settings,
         config,
         secrets,
+        storefronts,
         agent_manager: AgentManager::new(),
     };
 
@@ -85,12 +97,19 @@ async fn init_db() -> anyhow::Result<SqlitePool> {
     Ok(pool)
 }
 
-async fn init_worker(pool: &SqlitePool) -> anyhow::Result<(Sender<Job>, EventBus)> {
+async fn init_worker(
+    pool: &SqlitePool,
+    storefronts: &StorefrontRegistry,
+) -> anyhow::Result<(Sender<Job>, EventBus)> {
     let events = EventBus::new();
 
     let (sender, receiver) = tokio::sync::mpsc::channel(100);
 
-    let worker = Worker::new(receiver, ImportHandler::new(pool.clone(), events.clone()));
+    let worker = Worker::new(
+        receiver,
+        ImportHandler::new(pool.clone(), events.clone()),
+        SyncHandler::new(pool.clone(), events.clone(), storefronts.clone()),
+    );
 
     tokio::spawn(async move {
         worker.run().await;
@@ -121,4 +140,17 @@ async fn init_server(state: AppState) -> anyhow::Result<()> {
     axum::serve(listener, app).await?;
 
     Ok(())
+}
+
+async fn init_storefronts(secrets: &SecretsManager) -> anyhow::Result<StorefrontRegistry> {
+    let secrets = secrets.get().await;
+
+    let mut registry = StorefrontRegistry::new();
+
+    registry.register(Arc::new(SteamStorefront::new(
+        secrets.storefronts.steam.api_key,
+        secrets.storefronts.steam.steam_id,
+    )));
+
+    Ok(registry)
 }
