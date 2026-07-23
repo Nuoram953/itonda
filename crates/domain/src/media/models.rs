@@ -3,7 +3,21 @@ use serde::{Deserialize, Serialize};
 
 use utoipa::ToSchema;
 
-use crate::media::errors::MediaError;
+use crate::{media::errors::MediaError, storefronts::models::StorefrontId};
+
+#[derive(Clone)]
+pub struct DiscoveredMedia {
+    pub storefront: StorefrontId,
+    pub external_id: String,
+    pub media_type: MediaType,
+    pub title: String,
+    pub metadata: DiscoveredMediaMetadata,
+}
+
+#[derive(Clone)]
+pub struct DiscoveredMediaMetadata {
+    pub total_playtime: Option<u64>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct Media {
@@ -18,6 +32,12 @@ pub enum MediaType {
     Game,
     Movie,
     TvShow,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum MediaSource {
+    Steam,
 }
 
 impl MediaType {

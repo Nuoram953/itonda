@@ -1,7 +1,9 @@
-use itonda_domain::http::create_http_client;
 use reqwest_middleware::ClientWithMiddleware;
 
-use crate::{error::StorefrontError, steam::models::GetOwnedGamesResponse};
+use crate::{
+    http::create_http_client,
+    storefronts::{error::StorefrontError, steam::models::GetOwnedGamesResponse},
+};
 
 pub struct SteamClient {
     client: ClientWithMiddleware,

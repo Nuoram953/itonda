@@ -11,7 +11,7 @@ use crate::{
         response::{JobResponse, JobStatus},
     },
     state::AppState,
-    workers::jobs::{ImportItem, ImportJob, Job},
+    workers::jobs::{ImportItem, ImportJob, Job, SyncJob},
 };
 
 #[utoipa::path(
@@ -34,15 +34,18 @@ pub async fn get_media(State(state): State<AppState>) -> Result<Json<MediaRespon
     // //     .await
     // //     .unwrap();
     // //
-    // let secrets = state.secrets.get().await;
-    // let steam = SteamStorefront::new(
-    //     secrets.storefronts.steam.api_key,
-    //     secrets.storefronts.steam.steam_id,
-    // );
-    //
-    // let games = steam.owned_games().await.unwrap();
-    //
-    // println!("steam call {:?}", games);
+    let job_id = Uuid::new_v4();
+    state
+        .jobs
+        .send(Job::Sync(SyncJob {
+            id: job_id,
+            storefront: None,
+        }))
+        .await
+        .map_err(|err| {
+            tracing::error!(?err, "Failed to queue sync job");
+            ApiError::WorkerUnavailable
+        })?;
 
     Ok(Json(MediaResponse {
         items: media.unwrap(),

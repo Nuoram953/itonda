@@ -1,10 +1,11 @@
 use axum::Router;
 use itonda_database::test_utils::setup_db;
-use itonda_domain::store::toml::TomlCodec;
+use itonda_domain::{
+    events::EventBus, store::toml::TomlCodec, storefronts::registry::StorefrontRegistry,
+};
 use itonda_server::{
     api,
     config::{app::AppConfigManager, secrets::SecretsManager, settings::SettingsManager},
-    events::EventBus,
     state::AppState,
     websocket::AgentManager,
     workers::jobs::Job,
@@ -39,6 +40,7 @@ pub async fn test_app() -> TestApp {
         settings,
         config,
         secrets,
+        storefronts: StorefrontRegistry::new(),
         agent_manager: AgentManager::new(),
     };
 

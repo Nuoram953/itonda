@@ -14,9 +14,9 @@ impl Default for AppPaths {
 impl AppPaths {
     pub fn new() -> Self {
         Self {
-            config_dir: dirs::config_dir().unwrap().join("Itonda"),
+            config_dir: dirs::config_dir().unwrap().join("itonda-server"),
 
-            data_dir: dirs::data_dir().unwrap().join("Itonda"),
+            data_dir: dirs::data_dir().unwrap().join("itonda-server"),
         }
     }
 }

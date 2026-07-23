@@ -1,6 +1,14 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Hash, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StorefrontId {
     Steam,
+}
+
+impl From<StorefrontId> for u32 {
+    fn from(value: StorefrontId) -> Self {
+        match value {
+            StorefrontId::Steam => 0,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

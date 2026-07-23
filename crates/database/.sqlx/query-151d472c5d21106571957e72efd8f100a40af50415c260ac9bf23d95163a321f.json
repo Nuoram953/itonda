@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO media_game_storefront (\n            media_id,\n            storefront_id,\n            internal_id\n        )\n        VALUES (?, ?, ?)\n        ON CONFLICT(media_id, storefront_id)\n        DO UPDATE SET\n            internal_id = excluded.internal_id\n        RETURNING\n            media_id,\n            storefront_id,\n            internal_id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "media_id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "storefront_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "internal_id",
+        "ordinal": 2,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "151d472c5d21106571957e72efd8f100a40af50415c260ac9bf23d95163a321f"
+}

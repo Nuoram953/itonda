@@ -1,18 +1,19 @@
 use async_trait::async_trait;
 
 use crate::{
-    error::StorefrontError,
-    models::{OwnedGame, StorefrontId},
+    media::models::DiscoveredMedia,
+    storefronts::{error::StorefrontError, models::StorefrontId},
 };
 
 #[async_trait]
 pub trait Storefront {
     fn id(&self) -> StorefrontId;
+    fn name(&self) -> &'static str;
 }
 
 #[async_trait]
-pub trait GameLibraryProvider {
-    async fn owned_games(&self) -> Result<Vec<OwnedGame>, StorefrontError>;
+pub trait GameLibraryProvider: Storefront + Send + Sync {
+    async fn owned_games(&self) -> Result<Vec<DiscoveredMedia>, StorefrontError>;
 }
 
 // #[async_trait]

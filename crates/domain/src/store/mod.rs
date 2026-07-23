@@ -2,6 +2,7 @@ use std::{fs, path::PathBuf, sync::Arc};
 
 use serde::{Serialize, de::DeserializeOwned};
 use tokio::sync::RwLock;
+use tracing::{debug, info};
 
 use crate::store::{codec::StoreCodec, error::StoreError};
 
@@ -22,11 +23,20 @@ where
     C: StoreCodec,
 {
     pub fn load(path: PathBuf, codec: C) -> Result<Self, StoreError> {
+        info!(
+            path = ?path,
+            "Loading configuration"
+        );
         let value = if path.exists() {
+            debug!("Configuration file found");
             let content = fs::read(&path)?;
 
             codec.decode(&content)?
         } else {
+            info!(
+                path = ?path,
+                "Configuration missing, creating default"
+            );
             let value = T::default();
 
             let content = codec.encode(&value)?;
@@ -70,6 +80,11 @@ where
         let content = self.codec.encode(&*value)?;
 
         fs::write(&self.path, content)?;
+
+        info!(
+            path = ?self.path,
+            "Configuration saved"
+        );
 
         Ok(())
     }
