@@ -9,6 +9,7 @@ use itonda_server::{
     websocket::AgentManager,
     workers::jobs::Job,
 };
+use itonda_storefronts::registry::StorefrontRegistry;
 use sqlx::SqlitePool;
 use tempfile::tempdir;
 use tokio::sync::mpsc::Receiver;
@@ -39,6 +40,7 @@ pub async fn test_app() -> TestApp {
         settings,
         config,
         secrets,
+        storefronts: StorefrontRegistry::new(),
         agent_manager: AgentManager::new(),
     };
 

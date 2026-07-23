@@ -1,9 +1,7 @@
 use async_trait::async_trait;
+use itonda_domain::storefront::models::StorefrontId;
 
-use crate::{
-    error::StorefrontError,
-    models::{OwnedGame, StorefrontId},
-};
+use crate::{error::StorefrontError, models::OwnedGame};
 
 #[async_trait]
 pub trait Storefront {
@@ -11,7 +9,7 @@ pub trait Storefront {
 }
 
 #[async_trait]
-pub trait GameLibraryProvider {
+pub trait GameLibraryProvider: Storefront + Send + Sync {
     async fn owned_games(&self) -> Result<Vec<OwnedGame>, StorefrontError>;
 }
 

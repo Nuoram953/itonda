@@ -2,9 +2,10 @@ use crate::{
     error::StorefrontError,
     models::OwnedGame,
     steam::{client::SteamClient, mapper::map_owned_game},
-    traits::GameLibraryProvider,
+    traits::{GameLibraryProvider, Storefront},
 };
 use async_trait::async_trait;
+use itonda_domain::storefront::models::StorefrontId;
 
 mod client;
 mod mapper;
@@ -24,6 +25,12 @@ impl SteamStorefront {
             client: SteamClient::new(api_key),
             steam_id,
         }
+    }
+}
+
+impl Storefront for SteamStorefront {
+    fn id(&self) -> StorefrontId {
+        StorefrontId::Steam
     }
 }
 

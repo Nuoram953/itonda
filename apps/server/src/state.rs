@@ -4,6 +4,7 @@ use crate::{
     websocket::AgentManager,
     workers::jobs::Job,
 };
+use itonda_storefronts::registry::StorefrontRegistry;
 use sqlx::SqlitePool;
 use tokio::sync::mpsc;
 
@@ -15,5 +16,6 @@ pub struct AppState {
     pub settings: SettingsManager,
     pub config: AppConfigManager,
     pub secrets: SecretsManager,
+    pub storefronts: StorefrontRegistry,
     pub agent_manager: AgentManager,
 }

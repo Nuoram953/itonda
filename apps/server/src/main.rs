@@ -1,5 +1,8 @@
+use std::sync::Arc;
+
 use axum::Router;
 use itonda_domain::store::toml::TomlCodec;
+use itonda_storefronts::{SteamStorefront, registry::StorefrontRegistry};
 use sqlx::SqlitePool;
 use tokio::sync::mpsc::Sender;
 use utoipa_swagger_ui::SwaggerUi;
@@ -36,6 +39,8 @@ async fn main() -> anyhow::Result<()> {
 
     let (jobs, events) = init_worker(&pool).await?;
 
+    let storefronts = init_storefronts(&secrets).await?;
+
     let state = state::AppState {
         db: pool,
         jobs,
@@ -43,6 +48,7 @@ async fn main() -> anyhow::Result<()> {
         settings,
         config,
         secrets,
+        storefronts,
         agent_manager: AgentManager::new(),
     };
 
@@ -129,4 +135,17 @@ async fn init_server(state: AppState) -> anyhow::Result<()> {
     axum::serve(listener, app).await?;
 
     Ok(())
+}
+
+async fn init_storefronts(secrets: &SecretsManager) -> anyhow::Result<StorefrontRegistry> {
+    let secrets = secrets.get().await;
+
+    let mut registry = StorefrontRegistry::new();
+
+    registry.register(Arc::new(SteamStorefront::new(
+        secrets.storefronts.steam.api_key,
+        secrets.storefronts.steam.steam_id,
+    )));
+
+    Ok(registry)
 }

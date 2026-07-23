@@ -1,3 +1,5 @@
+use itonda_domain::storefront::models::StorefrontId;
+
 #[derive(Debug, Clone)]
 pub struct OwnedGame {
     pub storefront: StorefrontId,
