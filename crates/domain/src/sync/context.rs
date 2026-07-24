@@ -1,13 +1,15 @@
-use crate::media::models::{Media, MediaSource, MediaType};
+use crate::media::models::{DiscoveredMedia, Media};
 
 pub struct SyncContext {
     pub discovered: DiscoveredMedia,
     pub media: Option<Media>,
 }
 
-pub struct DiscoveredMedia {
-    pub external_id: String,
-    pub source: MediaSource,
-    pub media_type: MediaType,
-    pub title: String,
+impl SyncContext {
+    pub fn new(discovered: DiscoveredMedia) -> Self {
+        Self {
+            discovered,
+            media: None,
+        }
+    }
 }

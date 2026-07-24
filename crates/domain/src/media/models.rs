@@ -3,7 +3,19 @@ use serde::{Deserialize, Serialize};
 
 use utoipa::ToSchema;
 
-use crate::media::errors::MediaError;
+use crate::{media::errors::MediaError, storefronts::models::StorefrontId};
+
+pub struct DiscoveredMedia {
+    pub storefront: StorefrontId,
+    pub external_id: String,
+    pub media_type: MediaType,
+    pub title: String,
+    pub metadata: DiscoveredMediaMetadata,
+}
+
+pub struct DiscoveredMediaMetadata {
+    pub total_playtime: Option<u64>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct Media {

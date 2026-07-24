@@ -2,7 +2,6 @@ use std::{collections::HashMap, sync::Arc};
 
 use crate::storefronts::{models::StorefrontId, traits::GameLibraryProvider};
 
-#[derive(Clone)]
 pub struct StorefrontRegistry {
     providers: HashMap<StorefrontId, Arc<dyn GameLibraryProvider>>,
 }
@@ -20,6 +19,10 @@ impl StorefrontRegistry {
 
     pub fn get(&self, id: StorefrontId) -> Option<Arc<dyn GameLibraryProvider>> {
         self.providers.get(&id).cloned()
+    }
+
+    pub fn get_all(&self) -> HashMap<StorefrontId, Arc<dyn GameLibraryProvider>> {
+        self.providers.clone()
     }
 
     pub fn available(&self) -> Vec<StorefrontId> {

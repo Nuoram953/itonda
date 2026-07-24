@@ -1,10 +1,13 @@
 use async_trait::async_trait;
 
-use crate::storefronts::{
-    error::StorefrontError,
-    models::{OwnedGame, StorefrontId},
-    steam::{client::SteamClient, mapper::map_owned_game},
-    traits::{GameLibraryProvider, Storefront},
+use crate::{
+    media::models::DiscoveredMedia,
+    storefronts::{
+        error::StorefrontError,
+        models::StorefrontId,
+        steam::{client::SteamClient, mapper::map_owned_game},
+        traits::{GameLibraryProvider, Storefront},
+    },
 };
 
 mod client;
@@ -36,7 +39,7 @@ impl Storefront for SteamStorefront {
 
 #[async_trait]
 impl GameLibraryProvider for SteamStorefront {
-    async fn owned_games(&self) -> Result<Vec<OwnedGame>, StorefrontError> {
+    async fn owned_games(&self) -> Result<Vec<DiscoveredMedia>, StorefrontError> {
         let response = self.client.get_owned_games(self.steam_id).await?;
 
         Ok(response
