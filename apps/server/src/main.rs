@@ -39,9 +39,9 @@ async fn main() -> anyhow::Result<()> {
 
     let (settings, config, secrets) = init_config().await?;
 
-    let (jobs, events) = init_worker(&pool).await?;
-
     let storefronts = init_storefronts(&secrets).await?;
+
+    let (jobs, events) = init_worker(&pool, &storefronts).await?;
 
     let state = state::AppState {
         db: pool,
@@ -97,7 +97,10 @@ async fn init_db() -> anyhow::Result<SqlitePool> {
     Ok(pool)
 }
 
-async fn init_worker(pool: &SqlitePool) -> anyhow::Result<(Sender<Job>, EventBus)> {
+async fn init_worker(
+    pool: &SqlitePool,
+    storefronts: &StorefrontRegistry,
+) -> anyhow::Result<(Sender<Job>, EventBus)> {
     let events = EventBus::new();
 
     let (sender, receiver) = tokio::sync::mpsc::channel(100);
@@ -105,7 +108,7 @@ async fn init_worker(pool: &SqlitePool) -> anyhow::Result<(Sender<Job>, EventBus
     let worker = Worker::new(
         receiver,
         ImportHandler::new(pool.clone(), events.clone()),
-        SyncHandler::new(pool.clone(), events.clone()),
+        SyncHandler::new(pool.clone(), events.clone(), storefronts.clone()),
     );
 
     tokio::spawn(async move {

@@ -10,6 +10,10 @@ pub struct LibrarySyncService {
 }
 
 impl LibrarySyncService {
+    pub fn new(storefronts: StorefrontRegistry) -> Self {
+        Self { storefronts }
+    }
+
     pub async fn sync_storefront(&self, _storefront: StorefrontId) {}
 
     pub async fn sync_all(&self) {}
