@@ -1,11 +1,11 @@
-use crate::{
+use async_trait::async_trait;
+
+use crate::storefronts::{
     error::StorefrontError,
-    models::OwnedGame,
+    models::{OwnedGame, StorefrontId},
     steam::{client::SteamClient, mapper::map_owned_game},
     traits::{GameLibraryProvider, Storefront},
 };
-use async_trait::async_trait;
-use itonda_domain::storefront::models::StorefrontId;
 
 mod client;
 mod mapper;

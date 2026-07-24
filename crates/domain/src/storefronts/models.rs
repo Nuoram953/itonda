@@ -1,4 +1,7 @@
-use itonda_domain::storefront::models::StorefrontId;
+#[derive(Hash, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StorefrontId {
+    Steam,
+}
 
 #[derive(Debug, Clone)]
 pub struct OwnedGame {

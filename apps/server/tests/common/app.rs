@@ -1,6 +1,6 @@
 use axum::Router;
 use itonda_database::test_utils::setup_db;
-use itonda_domain::store::toml::TomlCodec;
+use itonda_domain::{store::toml::TomlCodec, storefronts::registry::StorefrontRegistry};
 use itonda_server::{
     api,
     config::{app::AppConfigManager, secrets::SecretsManager, settings::SettingsManager},
@@ -9,7 +9,6 @@ use itonda_server::{
     websocket::AgentManager,
     workers::jobs::Job,
 };
-use itonda_storefronts::registry::StorefrontRegistry;
 use sqlx::SqlitePool;
 use tempfile::tempdir;
 use tokio::sync::mpsc::Receiver;

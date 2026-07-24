@@ -1,8 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use itonda_domain::storefront::models::StorefrontId;
-
-use crate::traits::GameLibraryProvider;
+use crate::storefronts::{models::StorefrontId, traits::GameLibraryProvider};
 
 #[derive(Clone)]
 pub struct StorefrontRegistry {

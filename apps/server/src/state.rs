@@ -4,7 +4,7 @@ use crate::{
     websocket::AgentManager,
     workers::jobs::Job,
 };
-use itonda_storefronts::registry::StorefrontRegistry;
+use itonda_domain::storefronts::registry::StorefrontRegistry;
 use sqlx::SqlitePool;
 use tokio::sync::mpsc;
 

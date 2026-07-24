@@ -1,7 +1,9 @@
 use async_trait::async_trait;
-use itonda_domain::storefront::models::StorefrontId;
 
-use crate::{error::StorefrontError, models::OwnedGame};
+use crate::storefronts::{
+    error::StorefrontError,
+    models::{OwnedGame, StorefrontId},
+};
 
 #[async_trait]
 pub trait Storefront {

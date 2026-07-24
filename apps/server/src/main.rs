@@ -1,8 +1,10 @@
 use std::sync::Arc;
 
 use axum::Router;
-use itonda_domain::store::toml::TomlCodec;
-use itonda_storefronts::{SteamStorefront, registry::StorefrontRegistry};
+use itonda_domain::{
+    store::toml::TomlCodec,
+    storefronts::{registry::StorefrontRegistry, steam::SteamStorefront},
+};
 use sqlx::SqlitePool;
 use tokio::sync::mpsc::Sender;
 use utoipa_swagger_ui::SwaggerUi;

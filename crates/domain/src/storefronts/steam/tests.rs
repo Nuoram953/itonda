@@ -1,4 +1,4 @@
-use crate::steam::{
+use crate::storefronts::steam::{
     mapper::map_owned_game,
     models::{GetOwnedGamesResponse, SteamApp},
 };
