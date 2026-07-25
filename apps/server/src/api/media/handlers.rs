@@ -11,7 +11,7 @@ use crate::{
         response::{JobResponse, JobStatus},
     },
     state::AppState,
-    workers::jobs::{ImportItem, ImportJob, Job, SyncJob},
+    workers::jobs::{ImportItem, ImportJob, Job},
 };
 
 #[utoipa::path(
@@ -27,25 +27,6 @@ use crate::{
 #[instrument(skip(state))]
 pub async fn get_media(State(state): State<AppState>) -> Result<Json<MediaResponse>, ApiError> {
     let media = get_all_media(&state.db).await;
-
-    // // state
-    // //     .agent_manager
-    // //     .send("test uuid", AgentMessage::Ping)
-    // //     .await
-    // //     .unwrap();
-    // //
-    let job_id = Uuid::new_v4();
-    state
-        .jobs
-        .send(Job::Sync(SyncJob {
-            id: job_id,
-            storefront: None,
-        }))
-        .await
-        .map_err(|err| {
-            tracing::error!(?err, "Failed to queue sync job");
-            ApiError::WorkerUnavailable
-        })?;
 
     Ok(Json(MediaResponse {
         items: media.unwrap(),
