@@ -11,12 +11,14 @@ pub struct JobEvent {
 }
 
 #[derive(Debug, Serialize, Clone, PartialEq)]
+#[serde(tag = "type", content = "payload")]
 pub enum JobType {
     Import,
     Sync,
 }
 
 #[derive(Debug, Serialize, Clone, PartialEq)]
+#[serde(tag = "type", content = "payload")]
 pub enum JobEventType {
     Started,
 

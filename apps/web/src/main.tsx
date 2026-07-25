@@ -10,6 +10,7 @@ import { ErrorBoundary } from "react-error-boundary";
 import { RootErrorFallback } from "./app/routes/error";
 import { AxiosInterceptor } from "./lib/AxiosInterceptor";
 import { router } from "./app/router";
+import { WebSocketProvider } from "./app/websocketProvider";
 
 const queryClient = new QueryClient();
 
@@ -21,10 +22,12 @@ createRoot(document.getElementById("root")!).render(
     >
       <QueryClientProvider client={queryClient}>
         <NotificationProvider>
-          <AxiosInterceptor>
-            <RouterProvider router={router} />
-          </AxiosInterceptor>
-          <NotificationViewport />
+          <WebSocketProvider>
+            <AxiosInterceptor>
+              <RouterProvider router={router} />
+            </AxiosInterceptor>
+            <NotificationViewport />
+          </WebSocketProvider>
         </NotificationProvider>
       </QueryClientProvider>
     </ErrorBoundary>

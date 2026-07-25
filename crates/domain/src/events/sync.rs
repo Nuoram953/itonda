@@ -1,6 +1,7 @@
 use serde::Serialize;
 
 #[derive(Debug, Serialize, Clone, PartialEq)]
+#[serde(tag = "type", content = "payload")]
 pub enum SyncEvent {
     Started,
 
