@@ -1,14 +1,7 @@
-import { useEffect } from "react";
 import { useNotification } from "./hooks/use-notification";
-
-import { api } from "@/lib/api-client";
 
 export const Home = () => {
   const { notify } = useNotification();
-
-  useEffect(() => {
-    api.post("/media/import");
-  }, []);
 
   const showpopu = () => {
     notify.success({
