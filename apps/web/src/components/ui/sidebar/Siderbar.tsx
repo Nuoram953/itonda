@@ -12,8 +12,8 @@ export const Sidebar = () => {
           <LinkItem label="Home" path={"/"} />
           <LinkItem label="Rankings" path={"/rankings"} />
           <LinkItem
-            label="Library"
-            path={"/library"}
+            label="Media"
+            path={"/media"}
             children={[
               { label: "Games", path: "/games" },
               { label: "Movies", path: "/movies" },

@@ -11,12 +11,13 @@ describe("Sidebar", () => {
     expect(screen.findByText("Library")).toBeDefined();
   });
 
-  it("toggles nested links when clicking the chevron icon", () => {
+  it("toggles nested links when clicking the chevron icon", async () => {
     renderWithRouter(<Sidebar />);
 
-    expect(screen.findByText("Games")).toBeDefined();
+    expect(await screen.findByText("Games")).toBeDefined();
 
     const toggleIcon = screen.getByLabelText("toggle");
+
     fireEvent.click(toggleIcon);
 
     expect(screen.queryByText("Games")).toBeNull();

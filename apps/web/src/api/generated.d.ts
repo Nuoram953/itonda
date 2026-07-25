@@ -50,14 +50,10 @@ export interface components {
             id: string;
             media_type: string;
             title: string;
-            /** Format: int64 */
-            year?: number | null;
         };
         MediaImportItem: {
             media_type: components["schemas"]["MediaType"];
             title: string;
-            /** Format: int64 */
-            year?: number | null;
         };
         MediaImportPayload: {
             items: components["schemas"]["MediaImportItem"][];

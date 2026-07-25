@@ -8,6 +8,7 @@ import NotFoundRoute from "./routes/not-found";
 import { Home } from "@/home";
 import { Header } from "@/components/ui/header/Header";
 import { Sidebar } from "@/components/ui/sidebar/Siderbar";
+import { Libary } from "@/features/library";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -15,7 +16,7 @@ const rootRoute = createRootRoute({
       <Header />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-hidden">
           <Outlet />
         </main>
       </div>
@@ -29,13 +30,13 @@ const indexRoute = createRoute({
   component: () => <Home />,
 });
 
-const libraryRoute = createRoute({
+const mediaRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "library",
-  component: () => <h1>Library</h1>,
+  path: "media",
+  component: () => <Libary />,
 });
 
-const routeTree = rootRoute.addChildren([indexRoute, libraryRoute]);
+const routeTree = rootRoute.addChildren([indexRoute, mediaRoute]);
 
 export const router = createRouter({
   routeTree,
