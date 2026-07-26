@@ -1,10 +1,18 @@
-use itonda_domain::media::models::{Media, MediaType};
+use itonda_domain::{
+    media::models::{Media, MediaType},
+    storefronts::models::StorefrontId,
+};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct MediaResponse {
     pub items: Vec<Media>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct MediaRefreshPayload {
+    pub storefront: Option<StorefrontId>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]

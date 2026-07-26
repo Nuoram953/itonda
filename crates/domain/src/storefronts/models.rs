@@ -1,4 +1,7 @@
-#[derive(Hash, Debug, Clone, Copy, PartialEq, Eq)]
+use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
+
+#[derive(Hash, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub enum StorefrontId {
     Steam,
 }

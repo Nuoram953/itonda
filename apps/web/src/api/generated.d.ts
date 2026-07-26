@@ -36,6 +36,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/media/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["refresh"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -58,11 +74,16 @@ export interface components {
         MediaImportPayload: {
             items: components["schemas"]["MediaImportItem"][];
         };
+        MediaRefreshPayload: {
+            storefront?: null | components["schemas"]["StorefrontId"];
+        };
         MediaResponse: {
             items: components["schemas"]["Media"][];
         };
         /** @enum {string} */
         MediaType: "game" | "movie" | "tv_show";
+        /** @enum {string} */
+        StorefrontId: "Steam";
     };
     responses: never;
     parameters: never;
@@ -101,6 +122,29 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["MediaImportPayload"];
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobResponse"];
+                };
+            };
+        };
+    };
+    refresh: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MediaRefreshPayload"];
             };
         };
         responses: {
