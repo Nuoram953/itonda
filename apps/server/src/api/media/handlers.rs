@@ -7,11 +7,11 @@ use crate::{
     api::{
         error::ApiError,
         extractor::AppJson,
-        media::schemas::{MediaImportPayload, MediaResponse},
+        media::schemas::{MediaImportPayload, MediaRefreshPayload, MediaResponse},
         response::{JobResponse, JobStatus},
     },
     state::AppState,
-    workers::jobs::{ImportItem, ImportJob, Job},
+    workers::jobs::{ImportItem, ImportJob, Job, SyncJob},
 };
 
 #[utoipa::path(
@@ -31,6 +31,45 @@ pub async fn get_media(State(state): State<AppState>) -> Result<Json<MediaRespon
     Ok(Json(MediaResponse {
         items: media.unwrap(),
     }))
+}
+
+#[utoipa::path(
+    post,
+    path = "/media/refresh",
+    request_body = MediaRefreshPayload,
+    responses(
+        (
+            status = 202,
+            body = JobResponse
+        )
+    )
+)]
+#[instrument(skip(state, request))]
+pub async fn refresh(
+    State(state): State<AppState>,
+    AppJson(request): AppJson<MediaRefreshPayload>,
+) -> Result<impl IntoResponse, ApiError> {
+    let job_id = Uuid::new_v4();
+
+    state
+        .jobs
+        .send(Job::Sync(SyncJob {
+            id: job_id,
+            storefront: request.storefront,
+        }))
+        .await
+        .map_err(|err| {
+            tracing::error!(?err, "Failed to queue sync job");
+            ApiError::WorkerUnavailable
+        })?;
+
+    Ok((
+        StatusCode::ACCEPTED,
+        Json(JobResponse {
+            job_id: job_id.to_string(),
+            status: JobStatus::Queued,
+        }),
+    ))
 }
 
 #[utoipa::path(

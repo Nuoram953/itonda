@@ -30,4 +30,10 @@ export type SyncEvent =
         media_id: string;
         error: string;
       };
+    }
+  | {
+      type: "Started";
+    }
+  | {
+      type: "Completed";
     };

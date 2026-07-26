@@ -29,15 +29,28 @@ function handleJobEvent(
 ) {
   const event = job.event;
 
+  if (event.type === "Sync" && event.payload.type === "Started") {
+    notify.loading({
+      sourceId: job.job_id,
+      title: "Syncing",
+      description: "Currently syncing",
+    });
+  }
+
   if (event.type === "Sync" && event.payload.type === "MediaSynced") {
     queryClient.invalidateQueries({
       queryKey: ["media"],
     });
 
-    notify.success({
-      title: "Game Synced",
-      description: "Import was completed successfully",
-      duration: 9000,
+    notify.updateBySourceId(job.job_id, {
+      sourceId: job.job_id,
+      description: event.payload.payload.media_id,
+    });
+  }
+
+  if (event.type === "Sync" && event.payload.type === "Completed") {
+    notify.updateBySourceId(job.job_id, {
+      duration: 8000,
     });
   }
 }

@@ -4,7 +4,8 @@ use utoipa::OpenApi;
 #[openapi(
     paths(
         crate::api::media::handlers::get_media,
-        crate::api::media::handlers::import_media
+        crate::api::media::handlers::import_media,
+        crate::api::media::handlers::refresh
     ),
     components(
         schemas(

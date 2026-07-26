@@ -1,5 +1,5 @@
 use sqlx::SqlitePool;
-use tracing::info;
+use tracing::{debug, info};
 use uuid::Uuid;
 
 use crate::{
@@ -57,11 +57,15 @@ impl LibrarySyncService {
         info!("Starting sync process for all");
 
         for (_, storefront) in self.storefronts.get_all() {
-            info!("Syncing from storefront: {}", storefront.name());
             let discovered_media = storefront.owned_games().await?;
 
+            info!(
+                "Found {} items for storefront {}",
+                discovered_media.len(),
+                storefront.name()
+            );
             for media in discovered_media {
-                info!("Syncing {}", media.title);
+                debug!("Syncing {}", media.title);
                 let mut context = SyncContext::new(media);
 
                 self.pipeline.execute(&mut context).await?;
@@ -75,6 +79,8 @@ impl LibrarySyncService {
                 )
             }
         }
+
+        info!("Sync completed");
 
         Ok(())
     }

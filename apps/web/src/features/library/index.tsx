@@ -1,6 +1,7 @@
 import { useMedia } from "./api/get-media";
 import { Workspace } from "@/components/workspace/Workspace";
 import { Card } from "./components/card";
+import { Refresh } from "./components/action/refresh";
 
 export const Libary = () => {
   const mediaQuery = useMedia({});
@@ -13,7 +14,11 @@ export const Libary = () => {
 
   return (
     <Workspace>
-      <Workspace.Header title="Media" subtitle={`${media.length} items`} />
+      <Workspace.Header title="Media" subtitle={`${media.length} items`}>
+        <Workspace.Actions>
+          <Refresh />
+        </Workspace.Actions>
+      </Workspace.Header>
 
       <Workspace.Content>
         <ul className="grid grid-cols-[repeat(auto-fill,15rem)] gap-6 justify-center">

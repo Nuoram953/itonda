@@ -62,23 +62,16 @@ type ActionProps = {
   className?: string;
 } & React.ButtonHTMLAttributes<HTMLButtonElement>;
 
-function Action({
-  icon: Icon,
-  children,
-  active,
-  className,
-  ...props
-}: ActionProps) {
+function Action({ icon: Icon, children, className, ...props }: ActionProps) {
   useContext(WorkspaceContext);
 
   return (
     <button
-      data-active={active}
       className={cn(
         "flex w-16 flex-col items-center gap-2 rounded-md p-2",
         "text-text-muted transition-colors",
         "hover:bg-surface-hover hover:text-primary-hover",
-        "data-[active=true]:text-primary-active",
+        "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-text-muted",
         className,
       )}
       {...props}
