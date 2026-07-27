@@ -26,3 +26,28 @@ pub struct MediaGameStorefrontUpsert {
     pub storefront_id: u32,
     pub internal_id: String,
 }
+
+#[derive(Debug, Clone, Serialize)]
+pub struct MediaLaunchRow {
+    pub id: String,
+    pub media_id: String,
+    pub name: String,
+    pub launch_type: String,
+    pub program: String,
+    pub arguments: String,
+    pub working_directory: Option<String>,
+    pub is_default: bool,
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct MediaLaunchUpsert {
+    pub media_id: String,
+    pub name: String,
+    pub launch_type: String,
+    pub program: String,
+    pub arguments: String,
+    pub working_directory: Option<String>,
+    pub is_default: bool,
+    pub enabled: bool,
+}

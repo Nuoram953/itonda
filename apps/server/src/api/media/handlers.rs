@@ -1,5 +1,13 @@
-use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
-use itonda_domain::media::service::get_all_media;
+use axum::{
+    Json,
+    extract::{Path, State},
+    http::StatusCode,
+    response::IntoResponse,
+};
+use itonda_domain::{
+    launch::service::get_launch_media_details, media::service::get_all_media,
+    protocol::message::AgentMessage,
+};
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -8,7 +16,7 @@ use crate::{
         error::ApiError,
         extractor::AppJson,
         media::schemas::{MediaImportPayload, MediaRefreshPayload, MediaResponse},
-        response::{JobResponse, JobStatus},
+        response::{CommandResponse, CommandStatus, JobResponse, JobStatus},
     },
     state::AppState,
     workers::jobs::{ImportItem, ImportJob, Job, SyncJob},
@@ -113,6 +121,43 @@ pub async fn import_media(
         Json(JobResponse {
             job_id: job_id.to_string(),
             status: JobStatus::Queued,
+        }),
+    ))
+}
+
+#[utoipa::path(
+    post,
+    path = "/media/launch/{launch_id}",
+    params(
+        ("launch_id" = String, Path, description = "Launch profile id")
+    ),
+    responses(
+        (
+            status = 202,
+            body = CommandResponse
+        )
+    )
+)]
+#[instrument(skip(state))]
+pub async fn launch_media(
+    State(state): State<AppState>,
+    Path(launch_id): Path<String>,
+) -> Result<impl IntoResponse, ApiError> {
+    let (command, agent_id) = get_launch_media_details(&state.db, launch_id).await?;
+
+    let command_id = Uuid::new_v4().to_string();
+
+    let _ = state
+        .agent_manager
+        .send(&agent_id, AgentMessage::Launch(command))
+        .await;
+
+    Ok((
+        StatusCode::ACCEPTED,
+        Json(CommandResponse {
+            id: command_id,
+            command: "launch".to_string(),
+            status: CommandStatus::Accepted,
         }),
     ))
 }

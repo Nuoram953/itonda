@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT\n            id,\n            agent_id,\n            connected_at,\n            disconnected_at,\n            ip_address\n        FROM agent_connections\n        WHERE disconnected_at IS NULL\n        LIMIT 1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "agent_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "connected_at",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "disconnected_at",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "ip_address",
+        "ordinal": 4,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "d0b0ca0fd501cf5ab9b144a423a7da51bdb4a033e54a47d7e74a15fb91449bd6"
+}

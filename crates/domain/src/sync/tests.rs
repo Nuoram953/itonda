@@ -49,6 +49,7 @@ pub fn discovered_game(title: &str) -> DiscoveredMedia {
         metadata: DiscoveredMediaMetadata {
             total_playtime: None,
         },
+        launch: None,
     }
 }
 

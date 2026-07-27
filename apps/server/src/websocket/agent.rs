@@ -141,12 +141,8 @@ async fn wait_for_registration(socket: &mut WebSocket) -> anyhow::Result<AgentRe
 
                 debug!("Parsed: {:?}", message);
 
-                match message {
-                    AgentMessage::Register(registration) => {
-                        return Ok(registration);
-                    }
-
-                    AgentMessage::Ping => {}
+                if let AgentMessage::Register(registration) = message {
+                    return Ok(registration);
                 }
             }
 

@@ -1,7 +1,7 @@
 use crate::{
     media::{
-        MediaGameStorefrontUpsert, MediaInsert, find_all, find_media_by_title,
-        find_media_game_storefront, insert_media, upsert_media_game_storefront,
+        MediaInsert, MediaLaunchUpsert, find_all, find_media_by_title, find_media_launch_by_id,
+        find_media_launch_by_media_id, insert_media, upsert_media_launch,
     },
     test_utils::setup_db,
 };
@@ -134,7 +134,7 @@ async fn find_media_by_title_returns_none_when_missing() {
 }
 
 #[tokio::test]
-async fn upsert_media_game_storefront_creates_relation() {
+async fn upsert_media_launch_creates_launch() {
     let pool = setup_db().await;
 
     let media = insert_media(
@@ -147,24 +147,34 @@ async fn upsert_media_game_storefront_creates_relation() {
     .await
     .unwrap();
 
-    let row = upsert_media_game_storefront(
+    let launch = upsert_media_launch(
         &pool,
-        MediaGameStorefrontUpsert {
+        MediaLaunchUpsert {
             media_id: media.id.clone(),
-            storefront_id: 1,
-            internal_id: "12345".to_string(),
+            name: "Default".to_string(),
+            launch_type: "steam".to_string(),
+            program: "steam".to_string(),
+            arguments: r#"["steam://run/9310"]"#.to_string(),
+            working_directory: None,
+            is_default: true,
+            enabled: true,
         },
     )
     .await
     .unwrap();
 
-    assert_eq!(row.media_id, media.id);
-    assert_eq!(row.storefront_id, 1.to_string());
-    assert_eq!(row.internal_id, "12345");
+    assert!(!launch.id.is_empty());
+    assert_eq!(launch.media_id, media.id);
+    assert_eq!(launch.name, "Default");
+    assert_eq!(launch.launch_type, "steam");
+    assert_eq!(launch.program, "steam");
+    assert_eq!(launch.arguments, r#"["steam://run/9310"]"#);
+    assert!(launch.is_default);
+    assert!(launch.enabled);
 }
 
 #[tokio::test]
-async fn find_media_game_storefront_returns_relation() {
+async fn find_media_launch_by_media_id_returns_launches() {
     let pool = setup_db().await;
 
     let media = insert_media(
@@ -177,41 +187,43 @@ async fn find_media_game_storefront_returns_relation() {
     .await
     .unwrap();
 
-    upsert_media_game_storefront(
+    upsert_media_launch(
         &pool,
-        MediaGameStorefrontUpsert {
+        MediaLaunchUpsert {
             media_id: media.id.clone(),
-            storefront_id: 1,
-            internal_id: "12345".to_string(),
+            name: "Default".to_string(),
+            launch_type: "steam".to_string(),
+            program: "steam".to_string(),
+            arguments: r#"["steam://run/9310"]"#.to_string(),
+            working_directory: None,
+            is_default: true,
+            enabled: true,
         },
     )
     .await
     .unwrap();
 
-    let row = find_media_game_storefront(&pool, media.id, 1)
+    let launches = find_media_launch_by_media_id(&pool, media.id)
         .await
         .unwrap();
 
-    assert!(row.is_some());
-
-    let row = row.unwrap();
-
-    assert_eq!(row.internal_id, "12345");
+    assert_eq!(launches.len(), 1);
+    assert_eq!(launches[0].name, "Default");
 }
 
 #[tokio::test]
-async fn find_media_game_storefront_returns_none_when_missing() {
+async fn find_media_launch_by_media_id_returns_empty_when_missing() {
     let pool = setup_db().await;
 
-    let row = find_media_game_storefront(&pool, "missing-id".to_string(), 1)
+    let launches = find_media_launch_by_media_id(&pool, "unknown".to_string())
         .await
         .unwrap();
 
-    assert!(row.is_none());
+    assert!(launches.is_empty());
 }
 
 #[tokio::test]
-async fn upsert_media_game_storefront_updates_existing_relation() {
+async fn find_media_launch_by_id_returns_launch() {
     let pool = setup_db().await;
 
     let media = insert_media(
@@ -224,34 +236,75 @@ async fn upsert_media_game_storefront_updates_existing_relation() {
     .await
     .unwrap();
 
-    upsert_media_game_storefront(
+    let created = upsert_media_launch(
         &pool,
-        MediaGameStorefrontUpsert {
-            media_id: media.id.clone(),
-            storefront_id: 1,
-            internal_id: "old-id".to_string(),
+        MediaLaunchUpsert {
+            media_id: media.id,
+            name: "Default".to_string(),
+            launch_type: "steam".to_string(),
+            program: "steam".to_string(),
+            arguments: "[]".to_string(),
+            working_directory: None,
+            is_default: false,
+            enabled: true,
         },
     )
     .await
     .unwrap();
 
-    let row = upsert_media_game_storefront(
+    let launch = find_media_launch_by_id(&pool, created.id).await.unwrap();
+
+    assert_eq!(launch.name, "Default");
+}
+
+#[tokio::test]
+async fn upsert_media_launch_updates_existing_launch() {
+    let pool = setup_db().await;
+
+    let media = insert_media(
         &pool,
-        MediaGameStorefrontUpsert {
-            media_id: media.id.clone(),
-            storefront_id: 1,
-            internal_id: "new-id".to_string(),
+        MediaInsert {
+            title: "Halo".to_string(),
+            media_type: "game".to_string(),
         },
     )
     .await
     .unwrap();
 
-    assert_eq!(row.internal_id, "new-id");
+    let first = upsert_media_launch(
+        &pool,
+        MediaLaunchUpsert {
+            media_id: media.id.clone(),
+            name: "Default".to_string(),
+            launch_type: "steam".to_string(),
+            program: "steam".to_string(),
+            arguments: r#"["old"]"#.to_string(),
+            working_directory: None,
+            is_default: false,
+            enabled: true,
+        },
+    )
+    .await
+    .unwrap();
 
-    let stored = find_media_game_storefront(&pool, media.id, 1)
-        .await
-        .unwrap()
-        .unwrap();
+    let second = upsert_media_launch(
+        &pool,
+        MediaLaunchUpsert {
+            media_id: media.id,
+            name: "Default".to_string(),
+            launch_type: "steam".to_string(),
+            program: "steam".to_string(),
+            arguments: r#"["new"]"#.to_string(),
+            working_directory: None,
+            is_default: true,
+            enabled: false,
+        },
+    )
+    .await
+    .unwrap();
 
-    assert_eq!(stored.internal_id, "new-id");
+    assert_eq!(first.id, second.id);
+    assert_eq!(second.arguments, r#"["new"]"#);
+    assert!(second.is_default);
+    assert!(!second.enabled);
 }

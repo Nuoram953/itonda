@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO media_launches (\n            id,\n            media_id,\n            name,\n            launch_type,\n            program,\n            arguments,\n            working_directory,\n            is_default,\n            enabled\n        )\n        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)\n        ON CONFLICT(media_id, name, launch_type)\n        DO UPDATE SET\n            program = excluded.program,\n            arguments = excluded.arguments,\n            working_directory = excluded.working_directory,\n            is_default = excluded.is_default,\n            enabled = excluded.enabled,\n            updated_at = CURRENT_TIMESTAMP\n        RETURNING\n            id,\n            media_id,\n            name,\n            launch_type,\n            program,\n            arguments,\n            working_directory,\n            is_default AS \"is_default: bool\",\n            enabled AS \"enabled: bool\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "media_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "name",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "launch_type",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "program",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "arguments",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "working_directory",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "is_default: bool",
+        "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "enabled: bool",
+        "ordinal": 8,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 9
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "5ee84b96195f3d70d61e735b22c72f3facd5d136896338fdcda0e752e7e14867"
+}

@@ -76,7 +76,7 @@ async fn import_media_returns_422_when_required_field_is_missing() {
 
     let error: ErrorResponse = json(response).await;
 
-    let expected = ApiError::InvalidPayload.response();
+    let expected = ApiError::InvalidPayload.error_body();
 
     assert_eq!(error.code, expected.code);
 

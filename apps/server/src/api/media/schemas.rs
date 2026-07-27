@@ -16,6 +16,11 @@ pub struct MediaRefreshPayload {
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct MediaLaunchPayload {
+    pub launch_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct MediaImportPayload {
     pub items: Vec<MediaImportItem>,
 }
