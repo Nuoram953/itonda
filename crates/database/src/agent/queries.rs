@@ -81,7 +81,9 @@ pub async fn disconnect_agent_connection(
 ) -> Result<SqliteQueryResult, DatabaseError> {
     sqlx::query!(
         r#"
-        UPDATE agent_connections SET disconnected_at=unixepoch() WHERE agent_id=?;
+        UPDATE agent_connections 
+            SET disconnected_at=unixepoch() 
+        WHERE agent_id=? and disconnected_at IS NULL;
         "#,
         agent_id
     )
