@@ -12,6 +12,16 @@ pub struct DiscoveredMedia {
     pub media_type: MediaType,
     pub title: String,
     pub metadata: DiscoveredMediaMetadata,
+    pub launch: Option<DiscoveredLaunch>,
+}
+
+#[derive(Clone)]
+pub struct DiscoveredLaunch {
+    pub name: String,
+    pub launch_type: MediaLaunchType,
+    pub program: String,
+    pub arguments: Vec<String>,
+    pub working_directory: Option<String>,
 }
 
 #[derive(Clone)]
@@ -34,12 +44,6 @@ pub enum MediaType {
     TvShow,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum MediaSource {
-    Steam,
-}
-
 impl MediaType {
     pub fn as_str(&self) -> &'static str {
         match self {
@@ -48,6 +52,30 @@ impl MediaType {
             MediaType::TvShow => "tv_show",
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MediaLaunchType {
+    Storefront,
+    Emulator,
+    Custom,
+}
+
+impl MediaLaunchType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            MediaLaunchType::Storefront => "storefront",
+            MediaLaunchType::Emulator => "emulator",
+            MediaLaunchType::Custom => "custom",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum MediaSource {
+    Steam,
 }
 
 impl TryFrom<MediaRow> for Media {

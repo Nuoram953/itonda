@@ -5,7 +5,7 @@ use uuid::Uuid;
 use super::models::MediaRow;
 use crate::{
     error::DatabaseError,
-    media::{MediaGameStorefrontRow, MediaGameStorefrontUpsert, MediaInsert},
+    media::{MediaInsert, MediaLaunchRow, MediaLaunchUpsert},
 };
 
 pub async fn find_all(pool: &SqlitePool) -> Result<Vec<MediaRow>, DatabaseError> {
@@ -74,55 +74,110 @@ pub async fn insert_media(
     .map_err(DatabaseError::from)
 }
 
-pub async fn upsert_media_game_storefront(
+pub async fn find_media_launch_by_media_id(
     pool: &SqlitePool,
-    media_game_storefront: MediaGameStorefrontUpsert,
-) -> Result<MediaGameStorefrontRow, DatabaseError> {
+    media_id: String,
+) -> Result<Vec<MediaLaunchRow>, DatabaseError> {
     sqlx::query_as!(
-        MediaGameStorefrontRow,
+        MediaLaunchRow,
         r#"
-        INSERT INTO media_game_storefront (
+        SELECT
+            id,
             media_id,
-            storefront_id,
-            internal_id
-        )
-        VALUES (?, ?, ?)
-        ON CONFLICT(media_id, storefront_id)
-        DO UPDATE SET
-            internal_id = excluded.internal_id
-        RETURNING
-            media_id,
-            storefront_id,
-            internal_id
+            name,
+            launch_type,
+            program,
+            arguments,
+            working_directory,
+            is_default AS "is_default: bool",
+            enabled AS "enabled: bool"
+        from media_launches
+        where media_id=?
         "#,
-        media_game_storefront.media_id,
-        media_game_storefront.storefront_id,
-        media_game_storefront.internal_id,
+        media_id,
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(DatabaseError::from)
+}
+
+pub async fn find_media_launch_by_id(
+    pool: &SqlitePool,
+    launch_id: String,
+) -> Result<MediaLaunchRow, DatabaseError> {
+    sqlx::query_as!(
+        MediaLaunchRow,
+        r#"
+        SELECT
+            id,
+            media_id,
+            name,
+            launch_type,
+            program,
+            arguments,
+            working_directory,
+            is_default AS "is_default: bool",
+            enabled AS "enabled: bool"
+        from media_launches
+        where id=?
+        "#,
+        launch_id,
     )
     .fetch_one(pool)
     .await
     .map_err(DatabaseError::from)
 }
 
-pub async fn find_media_game_storefront(
+pub async fn upsert_media_launch(
     pool: &SqlitePool,
-    media_id: String,
-    storefront_id: u32,
-) -> Result<Option<MediaGameStorefrontRow>, DatabaseError> {
+    media_launch: MediaLaunchUpsert,
+) -> Result<MediaLaunchRow, DatabaseError> {
+    let id = Uuid::new_v4().to_string();
     sqlx::query_as!(
-        MediaGameStorefrontRow,
+        MediaLaunchRow,
         r#"
-        SELECT
+        INSERT INTO media_launches (
+            id,
             media_id,
-            storefront_id,
-            internal_id
-        FROM media_game_storefront
-        WHERE media_id=? and storefront_id=?
+            name,
+            launch_type,
+            program,
+            arguments,
+            working_directory,
+            is_default,
+            enabled
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(media_id, name, launch_type)
+        DO UPDATE SET
+            program = excluded.program,
+            arguments = excluded.arguments,
+            working_directory = excluded.working_directory,
+            is_default = excluded.is_default,
+            enabled = excluded.enabled,
+            updated_at = CURRENT_TIMESTAMP
+        RETURNING
+            id,
+            media_id,
+            name,
+            launch_type,
+            program,
+            arguments,
+            working_directory,
+            is_default AS "is_default: bool",
+            enabled AS "enabled: bool"
         "#,
-        media_id,
-        storefront_id
+        id,
+        media_launch.media_id,
+        media_launch.name,
+        media_launch.launch_type,
+        media_launch.program,
+        media_launch.arguments,
+        media_launch.working_directory,
+        media_launch.is_default,
+        media_launch.enabled,
     )
-    .fetch_optional(pool)
+    .fetch_one(pool)
     .await
     .map_err(DatabaseError::from)
 }

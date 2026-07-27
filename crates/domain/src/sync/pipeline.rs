@@ -35,13 +35,12 @@ mod tests {
     use std::sync::{Arc, Mutex};
 
     use crate::{
-        media::models::{DiscoveredMedia, DiscoveredMediaMetadata, MediaType},
-        storefronts::models::StorefrontId,
         sync::{
             context::SyncContext,
             errors::SyncError,
             pipeline::{MediaSyncPipeline, SyncStep},
         },
+        tests::fixtures::context::sync_context,
     };
 
     struct TestStep {
@@ -107,18 +106,6 @@ mod tests {
         }
     }
 
-    fn test_context() -> SyncContext {
-        SyncContext::new(DiscoveredMedia {
-            title: "Test Game".into(),
-            media_type: MediaType::Game,
-            storefront: StorefrontId::Steam,
-            external_id: "123".into(),
-            metadata: DiscoveredMediaMetadata {
-                total_playtime: None,
-            },
-        })
-    }
-
     #[tokio::test]
     async fn executes_steps_in_order() {
         let executed = Arc::new(Mutex::new(Vec::new()));
@@ -128,7 +115,7 @@ mod tests {
             Box::new(TestStep::new("persist", executed.clone())),
         ]);
 
-        let mut context = test_context();
+        let mut context = sync_context();
 
         pipeline.execute(&mut context).await.unwrap();
 
@@ -140,7 +127,7 @@ mod tests {
         let pipeline =
             MediaSyncPipeline::new(vec![Box::new(SetTitleStep), Box::new(AssertTitleStep)]);
 
-        let mut context = test_context();
+        let mut context = sync_context();
 
         pipeline.execute(&mut context).await.unwrap();
     }
@@ -155,7 +142,7 @@ mod tests {
             Box::new(TestStep::new("persist", executed.clone())),
         ]);
 
-        let mut context = test_context();
+        let mut context = sync_context();
 
         let result = pipeline.execute(&mut context).await;
 
@@ -168,7 +155,7 @@ mod tests {
     async fn executes_empty_pipeline() {
         let pipeline = MediaSyncPipeline::new(vec![]);
 
-        let mut context = test_context();
+        let mut context = sync_context();
 
         let result = pipeline.execute(&mut context).await;
 

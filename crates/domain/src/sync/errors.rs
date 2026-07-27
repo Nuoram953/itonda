@@ -17,6 +17,9 @@ pub enum SyncError {
     #[error("missing discovered media")]
     MissingDiscoveredMedia,
 
+    #[error("serialization error: {0}")]
+    Serialization(#[from] serde_json::Error),
+
     #[error("sync step failed: {step}: {source}")]
     Step {
         step: String,

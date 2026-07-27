@@ -36,6 +36,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/media/launch/{launch_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["launch_media"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/media/refresh": {
         parameters: {
             query?: never;
@@ -124,6 +140,28 @@ export interface operations {
                 "application/json": components["schemas"]["MediaImportPayload"];
             };
         };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobResponse"];
+                };
+            };
+        };
+    };
+    launch_media: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Launch profile id */
+                launch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             202: {
                 headers: {

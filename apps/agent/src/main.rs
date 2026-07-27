@@ -1,4 +1,5 @@
 use itonda_domain::{
+    launch::service::launch_program_with_command,
     protocol::{agent::AgentRegistration, message::AgentMessage, server::ServerMessage},
     store::toml::TomlCodec,
 };
@@ -53,8 +54,9 @@ impl Agent {
             let command = self.connection.receive().await?;
 
             match command {
-                ServerMessage::Ping => {
-                    println!("test ping server -> agent");
+                ServerMessage::Ping => println!("test ping server -> agent"),
+                ServerMessage::Launch(command) => {
+                    let _ = launch_program_with_command(&command);
                 }
             }
         }

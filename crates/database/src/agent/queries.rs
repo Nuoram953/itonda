@@ -91,3 +91,25 @@ pub async fn disconnect_agent_connection(
     .await
     .map_err(DatabaseError::from)
 }
+
+pub async fn find_available_agent(
+    pool: &SqlitePool,
+) -> Result<Option<AgentConnectionsRow>, DatabaseError> {
+    sqlx::query_as!(
+        AgentConnectionsRow,
+        r#"
+        SELECT
+            id,
+            agent_id,
+            connected_at,
+            disconnected_at,
+            ip_address
+        FROM agent_connections
+        WHERE disconnected_at IS NULL
+        LIMIT 1
+        "#
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(DatabaseError::from)
+}

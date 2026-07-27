@@ -1,5 +1,7 @@
 use crate::{
-    media::models::{DiscoveredMedia, DiscoveredMediaMetadata, MediaType},
+    media::models::{
+        DiscoveredLaunch, DiscoveredMedia, DiscoveredMediaMetadata, MediaLaunchType, MediaType,
+    },
     storefronts::{models::StorefrontId, steam::models::SteamApp},
 };
 
@@ -12,5 +14,12 @@ pub fn map_owned_game(app: SteamApp) -> DiscoveredMedia {
             total_playtime: Some(app.playtime_forever.unwrap_or(0)),
         },
         media_type: MediaType::Game,
+        launch: Some(DiscoveredLaunch {
+            name: "Steam".into(),
+            launch_type: MediaLaunchType::Storefront,
+            program: "steam".into(),
+            arguments: vec![format!("steam://run/{}", app.appid)],
+            working_directory: None,
+        }),
     }
 }

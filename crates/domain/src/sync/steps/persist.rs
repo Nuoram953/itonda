@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 use itonda_database::media::{
-    MediaGameStorefrontUpsert, MediaInsert, find_media_by_title, insert_media,
-    upsert_media_game_storefront,
+    MediaInsert, MediaLaunchUpsert, find_media_by_title, insert_media, upsert_media_launch,
 };
 use sqlx::SqlitePool;
 
@@ -42,19 +41,24 @@ impl SyncStep for PersistStep {
         };
 
         let media = Media::try_from(row).unwrap();
-
-        if let MediaType::Game = context.discovered.media_type {
-            upsert_media_game_storefront(
+        if let MediaType::Game = context.discovered.media_type
+            && let Some(launch) = &context.discovered.launch
+        {
+            upsert_media_launch(
                 &self.pool,
-                MediaGameStorefrontUpsert {
+                MediaLaunchUpsert {
                     media_id: media.id.clone(),
-                    storefront_id: context.discovered.storefront.into(),
-                    internal_id: context.discovered.external_id.clone(),
+                    name: launch.name.clone(),
+                    launch_type: launch.launch_type.as_str().into(),
+                    program: launch.program.clone(),
+                    arguments: serde_json::to_string(&launch.arguments)?,
+                    working_directory: launch.working_directory.clone(),
+                    is_default: false,
+                    enabled: true,
                 },
             )
             .await?;
         }
-
         context.media = Some(media);
 
         Ok(())
@@ -63,11 +67,11 @@ impl SyncStep for PersistStep {
 
 #[cfg(test)]
 mod tests {
-    use itonda_database::{media::find_media_game_storefront, test_utils::setup_db};
+    use itonda_database::{media::find_media_launch_by_media_id, test_utils::setup_db};
 
-    use crate::{
-        media::models::{DiscoveredMedia, DiscoveredMediaMetadata},
-        storefronts::models::StorefrontId,
+    use crate::tests::fixtures::{
+        context::sync_context_with_media,
+        media::{DiscoveredLaunchBuilder, DiscoveredMediaBuilder},
     };
 
     use super::*;
@@ -78,18 +82,9 @@ mod tests {
 
         let step = PersistStep::new(pool.clone());
 
-        let mut context = SyncContext {
-            discovered: DiscoveredMedia {
-                title: "Portal 2".into(),
-                media_type: MediaType::Game,
-                storefront: StorefrontId::Steam,
-                external_id: "620".into(),
-                metadata: DiscoveredMediaMetadata {
-                    total_playtime: None,
-                },
-            },
-            media: None,
-        };
+        let media = DiscoveredMediaBuilder::new().title("Test 1").build();
+
+        let mut context = sync_context_with_media(media);
 
         step.execute(&mut context).await.unwrap();
 
@@ -97,7 +92,7 @@ mod tests {
 
         let media = context.media.unwrap();
 
-        assert_eq!(media.title, "Portal 2");
+        assert_eq!(media.title, "Test 1");
     }
 
     #[tokio::test]
@@ -116,23 +111,14 @@ mod tests {
 
         let step = PersistStep::new(pool.clone());
 
-        let mut context = SyncContext {
-            discovered: DiscoveredMedia {
-                title: "Portal 2".into(),
-                media_type: MediaType::Game,
-                storefront: StorefrontId::Steam,
-                external_id: "620".into(),
-                metadata: DiscoveredMediaMetadata {
-                    total_playtime: None,
-                },
-            },
-            media: None,
-        };
+        let media = DiscoveredMediaBuilder::new().title("Test 1").build();
+
+        let mut context = sync_context_with_media(media);
 
         step.execute(&mut context).await.unwrap();
 
         assert!(context.media.is_some());
-        assert_eq!(context.media.unwrap().title, "Portal 2");
+        assert_eq!(context.media.unwrap().title, "Test 1");
     }
 
     #[tokio::test]
@@ -141,27 +127,24 @@ mod tests {
 
         let step = PersistStep::new(pool.clone());
 
-        let mut context = SyncContext {
-            discovered: DiscoveredMedia {
-                title: "Portal 2".into(),
-                media_type: MediaType::Game,
-                storefront: StorefrontId::Steam,
-                external_id: "620".into(),
-                metadata: DiscoveredMediaMetadata {
-                    total_playtime: None,
-                },
-            },
-            media: None,
-        };
+        let media = DiscoveredMediaBuilder::new()
+            .launch(
+                DiscoveredLaunchBuilder::new()
+                    .name("Test storefront")
+                    .build(),
+            )
+            .build();
+
+        let mut context = sync_context_with_media(media);
 
         step.execute(&mut context).await.unwrap();
 
         let media = context.media.unwrap();
 
-        let storefront = find_media_game_storefront(&pool, media.id, StorefrontId::Steam.into())
+        let storefront = find_media_launch_by_media_id(&pool, media.id)
             .await
             .unwrap();
 
-        assert_eq!(storefront.unwrap().internal_id, "620");
+        assert_eq!(storefront[0].name, "Test storefront");
     }
 }
