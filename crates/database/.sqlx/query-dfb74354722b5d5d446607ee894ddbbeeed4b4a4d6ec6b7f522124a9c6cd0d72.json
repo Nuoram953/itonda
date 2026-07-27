@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        UPDATE agent_connections \n            SET disconnected_at=unixepoch() \n        WHERE agent_id=? and disconnected_at IS NULL;\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "dfb74354722b5d5d446607ee894ddbbeeed4b4a4d6ec6b7f522124a9c6cd0d72"
+}
