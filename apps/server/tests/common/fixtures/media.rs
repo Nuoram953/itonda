@@ -1,6 +1,7 @@
 use itonda_database::media::{
     MediaInsert, MediaLaunchRow, MediaLaunchUpsert, MediaRow, insert_media, upsert_media_launch,
 };
+use itonda_domain::media::models::MediaStatus;
 use sqlx::SqlitePool;
 
 pub struct MediaFixture {
@@ -56,6 +57,7 @@ impl MediaFixture {
             MediaInsert {
                 title: self.title,
                 media_type: self.media_type,
+                status_id: MediaStatus::NotStarted.id(),
             },
         )
         .await

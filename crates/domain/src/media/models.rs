@@ -92,3 +92,19 @@ impl TryFrom<MediaRow> for Media {
         })
     }
 }
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, ToSchema)]
+#[repr(i64)]
+pub enum MediaStatus {
+    NotStarted = 1,
+    InProgress = 2,
+    Completed = 3,
+    Abandoned = 4,
+    Paused = 5,
+}
+
+impl MediaStatus {
+    pub fn id(&self) -> i64 {
+        *self as i64
+    }
+}

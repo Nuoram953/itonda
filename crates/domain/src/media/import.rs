@@ -1,6 +1,6 @@
 use crate::media::{
     errors::MediaError,
-    models::{Media, MediaType},
+    models::{Media, MediaStatus, MediaType},
 };
 
 use tracing::instrument;
@@ -25,6 +25,7 @@ pub async fn import(pool: &SqlitePool, input: MediaImport) -> Result<Media, Medi
         MediaInsert {
             title: input.title,
             media_type: input.media_type.as_str().to_string(),
+            status_id: MediaStatus::NotStarted.id(),
         },
     )
     .await?;

@@ -1,10 +1,5 @@
 DROP TABLE media;
 
-CREATE TABLE media (
-    id TEXT PRIMARY KEY NOT NULL,
-    title TEXT NOT NULL,
-    media_type TEXT NOT NULL
-);
 
 CREATE TABLE peoples (
     id TEXT PRIMARY KEY NOT NULL,
@@ -41,23 +36,28 @@ CREATE TABLE statuses (
     name TEXT NOT NULL
 );
 
+INSERT INTO statuses (id, name)
+VALUES
+    (1, 'not_started'),
+    (2, 'in_progress'),
+    (3, 'completed'),
+    (4, 'abandoned'),
+    (5, 'paused');
+
+
+CREATE TABLE media (
+    id TEXT PRIMARY KEY NOT NULL,
+    title TEXT NOT NULL,
+    media_type TEXT NOT NULL,
+    status_id INTEGER NOT NULL DEFAULT 1 REFERENCES statuses(id)
+);
+
 CREATE TABLE media_variants (
     id TEXT PRIMARY KEY NOT NULL,
     media_id TEXT NOT NULL,
     title TEXT,
     FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE CASCADE
 );
-
-CREATE TABLE media_statuses (
-    id TEXT PRIMARY KEY NOT NULL,
-    media_id TEXT NOT NULL,
-    variant_id TEXT,
-    status_id TEXT NOT NULL,
-    FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE CASCADE,
-    FOREIGN KEY (variant_id) REFERENCES media_variants(id) ON DELETE CASCADE,
-    FOREIGN KEY (status_id) REFERENCES statuses(id)
-);
-
 
 CREATE TABLE media_game_details (
     media_id TEXT PRIMARY KEY NOT NULL,
@@ -116,3 +116,20 @@ CREATE TABLE media_tags (
     FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE CASCADE,
     FOREIGN KEY (tags_id) REFERENCES tags(id) ON DELETE CASCADE
 );
+
+
+CREATE TABLE media_status_history (
+    id TEXT PRIMARY KEY NOT NULL,
+    media_id TEXT NOT NULL,
+    status_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (media_id) REFERENCES media(id),
+    FOREIGN KEY (status_id) REFERENCES statuses(id)
+);
+
+CREATE INDEX idx_media_status_history_media_id
+ON media_status_history(media_id);
+
+CREATE INDEX idx_media_status_history_media_created
+ON media_status_history(media_id, created_at DESC);

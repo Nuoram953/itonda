@@ -5,6 +5,15 @@ pub struct MediaRow {
     pub id: String,
     pub title: String,
     pub media_type: String,
+    pub status_id: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct MediaStatusHistoryRow {
+    pub id: String,
+    pub media_id: String,
+    pub status_id: i64,
+    pub created_at: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -18,6 +27,7 @@ pub struct MediaGameStorefrontRow {
 pub struct MediaInsert {
     pub title: String,
     pub media_type: String,
+    pub status_id: i64,
 }
 
 #[derive(Debug)]

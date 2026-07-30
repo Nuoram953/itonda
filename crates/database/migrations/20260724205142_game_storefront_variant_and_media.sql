@@ -1,7 +1,6 @@
 -- Add migration script here
 DROP TABLE media_game_installations;
 DROP TABLE media_game_storefront;
-DROP TABLE media_statuses;
 DROP TABLE media_variants;
 
 CREATE TABLE media_game_storefront (

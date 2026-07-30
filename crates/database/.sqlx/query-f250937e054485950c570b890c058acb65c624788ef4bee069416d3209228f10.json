@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n    SELECT\n        id,\n        title,\n        media_type\n    FROM media\n    WHERE title=?\n    ",
+  "query": "\n    SELECT\n        id,\n        title,\n        media_type,\n        status_id\n    FROM media\n    WHERE title=?\n    ",
   "describe": {
     "columns": [
       {
@@ -17,6 +17,11 @@
         "name": "media_type",
         "ordinal": 2,
         "type_info": "Text"
+      },
+      {
+        "name": "status_id",
+        "ordinal": 3,
+        "type_info": "Integer"
       }
     ],
     "parameters": {
@@ -25,8 +30,9 @@
     "nullable": [
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "3c0ca5e038cb3d8d5e2f1d4fefdf6e1abb1f897730bc8f9dd0dfcf0ea891bce8"
+  "hash": "f250937e054485950c570b890c058acb65c624788ef4bee069416d3209228f10"
 }

@@ -5,7 +5,7 @@ use uuid::Uuid;
 use super::models::MediaRow;
 use crate::{
     error::DatabaseError,
-    media::{MediaInsert, MediaLaunchRow, MediaLaunchUpsert},
+    media::{MediaInsert, MediaLaunchRow, MediaLaunchUpsert, MediaStatusHistoryRow},
 };
 
 pub async fn find_all(pool: &SqlitePool) -> Result<Vec<MediaRow>, DatabaseError> {
@@ -15,7 +15,8 @@ pub async fn find_all(pool: &SqlitePool) -> Result<Vec<MediaRow>, DatabaseError>
     SELECT
         id,
         title,
-        media_type
+        media_type,
+        status_id
     FROM media
     "#
     )
@@ -34,7 +35,8 @@ pub async fn find_media_by_title(
     SELECT
         id,
         title,
-        media_type
+        media_type,
+        status_id
     FROM media
     WHERE title=?
     "#,
@@ -57,17 +59,20 @@ pub async fn insert_media(
         INSERT INTO media (
             id,
             title,
-            media_type
+            media_type,
+            status_id
         )
-        VALUES (?, ?, ?)
+        VALUES (?, ?, ?, ?)
         RETURNING
             id,
             title,
-            media_type
+            media_type,
+            status_id
         "#,
         id,
         media.title,
         media.media_type,
+        media.status_id
     )
     .fetch_one(pool)
     .await
@@ -178,6 +183,72 @@ pub async fn upsert_media_launch(
         media_launch.enabled,
     )
     .fetch_one(pool)
+    .await
+    .map_err(DatabaseError::from)
+}
+
+pub async fn update_media_status(
+    pool: &SqlitePool,
+    media_id: &str,
+    status_id: i64,
+) -> Result<(), DatabaseError> {
+    let mut tx = pool.begin().await.map_err(DatabaseError::from)?;
+    let id = Uuid::new_v4().to_string();
+
+    sqlx::query!(
+        r#"
+        UPDATE media
+        SET status_id = ?
+        WHERE id = ?
+        "#,
+        status_id,
+        media_id,
+    )
+    .execute(&mut *tx)
+    .await
+    .map_err(DatabaseError::from)?;
+
+    sqlx::query!(
+        r#"
+        INSERT INTO media_status_history (
+            id,
+            media_id,
+            status_id
+        )
+        VALUES (?, ?, ?)
+        "#,
+        id,
+        media_id,
+        status_id,
+    )
+    .execute(&mut *tx)
+    .await
+    .map_err(DatabaseError::from)?;
+
+    tx.commit().await.map_err(DatabaseError::from)?;
+
+    Ok(())
+}
+
+pub async fn find_media_status_history(
+    pool: &SqlitePool,
+    media_id: &str,
+) -> Result<Vec<MediaStatusHistoryRow>, DatabaseError> {
+    sqlx::query_as!(
+        MediaStatusHistoryRow,
+        r#"
+        SELECT
+            id,
+            media_id,
+            status_id,
+            created_at
+        FROM media_status_history
+        WHERE media_id = ?
+        ORDER BY created_at
+        "#,
+        media_id
+    )
+    .fetch_all(pool)
     .await
     .map_err(DatabaseError::from)
 }

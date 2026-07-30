@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT\n            id,\n            media_id,\n            status_id,\n            created_at\n        FROM media_status_history\n        WHERE media_id = ?\n        ORDER BY created_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "media_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "status_id",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 3,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "b99f17aafa28a584d68ddc983f0cb7ba790c7d57065d92c2b7a4ac127509a4eb"
+}

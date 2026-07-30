@@ -5,7 +5,7 @@ use itonda_database::media::{
 use sqlx::SqlitePool;
 
 use crate::{
-    media::models::{Media, MediaType},
+    media::models::{Media, MediaStatus, MediaType},
     sync::{context::SyncContext, errors::SyncError, pipeline::SyncStep},
 };
 
@@ -34,6 +34,7 @@ impl SyncStep for PersistStep {
                     MediaInsert {
                         title: context.discovered.title.clone(),
                         media_type: context.discovered.media_type.as_str().into(),
+                        status_id: MediaStatus::NotStarted.id(),
                     },
                 )
                 .await?
@@ -104,6 +105,7 @@ mod tests {
             MediaInsert {
                 title: "Portal 2".into(),
                 media_type: "game".into(),
+                status_id: MediaStatus::NotStarted.id(),
             },
         )
         .await
