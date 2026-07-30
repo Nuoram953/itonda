@@ -1,12 +1,19 @@
 use async_trait::async_trait;
-use itonda_database::media::{
-    MediaInsert, MediaLaunchUpsert, find_media_by_title, insert_media, upsert_media_launch,
+use itonda_database::{
+    media::{
+        MediaInsert, MediaLaunchUpsert, find_media_by_title, insert_media, upsert_media_launch,
+    },
+    models::UpsertAction,
 };
 use sqlx::SqlitePool;
 
 use crate::{
     media::models::{Media, MediaStatus, MediaType},
-    sync::{context::SyncContext, errors::SyncError, pipeline::SyncStep},
+    sync::{
+        context::{SyncAction, SyncContext},
+        errors::SyncError,
+        pipeline::SyncStep,
+    },
 };
 
 pub struct PersistStep {
@@ -29,6 +36,7 @@ impl SyncStep for PersistStep {
         let row = match find_media_by_title(&self.pool, context.discovered.title.clone()).await? {
             Some(row) => row,
             None => {
+                context.action = SyncAction::Created;
                 insert_media(
                     &self.pool,
                     MediaInsert {
@@ -45,7 +53,7 @@ impl SyncStep for PersistStep {
         if let MediaType::Game = context.discovered.media_type
             && let Some(launch) = &context.discovered.launch
         {
-            upsert_media_launch(
+            let result = upsert_media_launch(
                 &self.pool,
                 MediaLaunchUpsert {
                     media_id: media.id.clone(),
@@ -59,6 +67,10 @@ impl SyncStep for PersistStep {
                 },
             )
             .await?;
+
+            if result.action != UpsertAction::Unchanged {
+                context.action = SyncAction::Updated;
+            }
         }
         context.media = Some(media);
 

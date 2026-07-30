@@ -6,6 +6,7 @@ use super::models::MediaRow;
 use crate::{
     error::DatabaseError,
     media::{MediaInsert, MediaLaunchRow, MediaLaunchUpsert, MediaStatusHistoryRow},
+    models::{UpsertAction, UpsertResult},
 };
 
 pub async fn find_all(pool: &SqlitePool) -> Result<Vec<MediaRow>, DatabaseError> {
@@ -136,8 +137,101 @@ pub async fn find_media_launch_by_id(
 pub async fn upsert_media_launch(
     pool: &SqlitePool,
     media_launch: MediaLaunchUpsert,
+) -> Result<UpsertResult<MediaLaunchRow>, DatabaseError> {
+    let existing = sqlx::query_as!(
+        MediaLaunchRow,
+        r#"
+        SELECT
+            id,
+            media_id,
+            name,
+            launch_type,
+            program,
+            arguments,
+            working_directory,
+            is_default AS "is_default: bool",
+            enabled AS "enabled: bool"
+        FROM media_launches
+        WHERE media_id = ?
+          AND name = ?
+          AND launch_type = ?
+        "#,
+        media_launch.media_id,
+        media_launch.name,
+        media_launch.launch_type,
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(DatabaseError::from)?;
+
+    let Some(existing) = existing else {
+        let row = insert_media_launch(pool, media_launch).await?;
+
+        return Ok(UpsertResult {
+            value: row,
+            action: UpsertAction::Created,
+        });
+    };
+
+    let changed = existing.program != media_launch.program
+        || existing.arguments != media_launch.arguments
+        || existing.working_directory != media_launch.working_directory
+        || existing.is_default != media_launch.is_default
+        || existing.enabled != media_launch.enabled;
+
+    if !changed {
+        return Ok(UpsertResult {
+            value: existing,
+            action: UpsertAction::Unchanged,
+        });
+    }
+
+    let row = sqlx::query_as!(
+        MediaLaunchRow,
+        r#"
+        UPDATE media_launches
+        SET
+            program = ?,
+            arguments = ?,
+            working_directory = ?,
+            is_default = ?,
+            enabled = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        RETURNING
+            id,
+            media_id,
+            name,
+            launch_type,
+            program,
+            arguments,
+            working_directory,
+            is_default AS "is_default: bool",
+            enabled AS "enabled: bool"
+        "#,
+        media_launch.program,
+        media_launch.arguments,
+        media_launch.working_directory,
+        media_launch.is_default,
+        media_launch.enabled,
+        existing.id,
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(DatabaseError::from)?;
+
+    Ok(UpsertResult {
+        value: row,
+        action: UpsertAction::Updated,
+    })
+}
+
+async fn insert_media_launch(
+    pool: &SqlitePool,
+    media_launch: MediaLaunchUpsert,
 ) -> Result<MediaLaunchRow, DatabaseError> {
     let id = Uuid::new_v4().to_string();
+
     sqlx::query_as!(
         MediaLaunchRow,
         r#"
@@ -153,14 +247,6 @@ pub async fn upsert_media_launch(
             enabled
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(media_id, name, launch_type)
-        DO UPDATE SET
-            program = excluded.program,
-            arguments = excluded.arguments,
-            working_directory = excluded.working_directory,
-            is_default = excluded.is_default,
-            enabled = excluded.enabled,
-            updated_at = CURRENT_TIMESTAMP
         RETURNING
             id,
             media_id,

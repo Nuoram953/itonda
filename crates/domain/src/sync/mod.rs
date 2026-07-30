@@ -6,7 +6,7 @@ use crate::{
     events::{EventBus, JobEventType, JobType, SyncEvent},
     storefronts::{models::StorefrontId, registry::StorefrontRegistry},
     sync::{
-        context::SyncContext,
+        context::{SyncAction, SyncContext},
         errors::SyncError,
         pipeline::{MediaSyncPipeline, SyncStep},
         steps::{identify::IdentifyStep, persist::PersistStep},
@@ -70,13 +70,15 @@ impl LibrarySyncService {
 
                 self.pipeline.execute(&mut context).await?;
 
-                self.events.publish_job(
-                    self.job_id,
-                    JobType::Sync,
-                    JobEventType::Sync(SyncEvent::MediaSynced {
-                        media_id: context.media.unwrap().id,
-                    }),
-                )
+                if context.action != SyncAction::Unchanged {
+                    self.events.publish_job(
+                        self.job_id,
+                        JobType::Sync,
+                        JobEventType::Sync(SyncEvent::MediaSynced {
+                            media_id: context.media.unwrap().id,
+                        }),
+                    )
+                }
             }
         }
 

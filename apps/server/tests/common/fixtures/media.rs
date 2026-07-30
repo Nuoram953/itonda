@@ -84,6 +84,9 @@ impl MediaFixture {
             None => None,
         };
 
-        MediaFixtureResult { media, launch }
+        MediaFixtureResult {
+            media,
+            launch: Some(launch.unwrap().value),
+        }
     }
 }

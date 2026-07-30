@@ -1,4 +1,5 @@
 use crate::media as MediaQueries;
+use crate::models::UpsertAction;
 use crate::test_utils::setup_db;
 
 #[tokio::test]
@@ -165,6 +166,8 @@ async fn upsert_media_launch_creates_launch() {
     .await
     .unwrap();
 
+    let launch = launch.value;
+
     assert!(!launch.id.is_empty());
     assert_eq!(launch.media_id, media.id);
     assert_eq!(launch.name, "Default");
@@ -240,7 +243,7 @@ async fn find_media_launch_by_id_returns_launch() {
     .await
     .unwrap();
 
-    let created = MediaQueries::upsert_media_launch(
+    let launch = MediaQueries::upsert_media_launch(
         &pool,
         MediaQueries::MediaLaunchUpsert {
             media_id: media.id,
@@ -256,64 +259,11 @@ async fn find_media_launch_by_id_returns_launch() {
     .await
     .unwrap();
 
-    let launch = MediaQueries::find_media_launch_by_id(&pool, created.id)
+    let launch = MediaQueries::find_media_launch_by_id(&pool, launch.value.id)
         .await
         .unwrap();
 
     assert_eq!(launch.name, "Default");
-}
-
-#[tokio::test]
-async fn upsert_media_launch_updates_existing_launch() {
-    let pool = setup_db().await;
-
-    let media = MediaQueries::insert_media(
-        &pool,
-        MediaQueries::MediaInsert {
-            title: "Halo".to_string(),
-            media_type: "game".to_string(),
-            status_id: 1,
-        },
-    )
-    .await
-    .unwrap();
-
-    let first = MediaQueries::upsert_media_launch(
-        &pool,
-        MediaQueries::MediaLaunchUpsert {
-            media_id: media.id.clone(),
-            name: "Default".to_string(),
-            launch_type: "steam".to_string(),
-            program: "steam".to_string(),
-            arguments: r#"["old"]"#.to_string(),
-            working_directory: None,
-            is_default: false,
-            enabled: true,
-        },
-    )
-    .await
-    .unwrap();
-
-    let second = MediaQueries::upsert_media_launch(
-        &pool,
-        MediaQueries::MediaLaunchUpsert {
-            media_id: media.id,
-            name: "Default".to_string(),
-            launch_type: "steam".to_string(),
-            program: "steam".to_string(),
-            arguments: r#"["new"]"#.to_string(),
-            working_directory: None,
-            is_default: true,
-            enabled: false,
-        },
-    )
-    .await
-    .unwrap();
-
-    assert_eq!(first.id, second.id);
-    assert_eq!(second.arguments, r#"["new"]"#);
-    assert!(second.is_default);
-    assert!(!second.enabled);
 }
 
 #[tokio::test]
@@ -349,4 +299,100 @@ async fn update_media_status_updates_media_and_creates_history() {
     assert_eq!(history.len(), 1);
     assert_eq!(history[0].media_id, media.id);
     assert_eq!(history[0].status_id, 2);
+}
+
+#[tokio::test]
+async fn upsert_media_launch_returns_unchanged_when_nothing_changed() {
+    let pool = setup_db().await;
+
+    let media = MediaQueries::insert_media(
+        &pool,
+        MediaQueries::MediaInsert {
+            title: "Halo".to_string(),
+            media_type: "game".to_string(),
+            status_id: 1,
+        },
+    )
+    .await
+    .unwrap();
+
+    let launch = MediaQueries::MediaLaunchUpsert {
+        media_id: media.id,
+        name: "Default".to_string(),
+        launch_type: "steam".to_string(),
+        program: "steam".to_string(),
+        arguments: r#"["steam://run/9310"]"#.to_string(),
+        working_directory: None,
+        is_default: true,
+        enabled: true,
+    };
+
+    let first = MediaQueries::upsert_media_launch(&pool, launch.clone())
+        .await
+        .unwrap();
+
+    assert_eq!(first.action, UpsertAction::Created);
+
+    let second = MediaQueries::upsert_media_launch(&pool, launch)
+        .await
+        .unwrap();
+
+    assert_eq!(second.action, UpsertAction::Unchanged);
+    assert_eq!(first.value.id, second.value.id);
+}
+
+#[tokio::test]
+async fn upsert_media_launch_updates_existing_launch() {
+    let pool = setup_db().await;
+
+    let media = MediaQueries::insert_media(
+        &pool,
+        MediaQueries::MediaInsert {
+            title: "Halo".to_string(),
+            media_type: "game".to_string(),
+            status_id: 1,
+        },
+    )
+    .await
+    .unwrap();
+
+    let first = MediaQueries::upsert_media_launch(
+        &pool,
+        MediaQueries::MediaLaunchUpsert {
+            media_id: media.id.clone(),
+            name: "Default".to_string(),
+            launch_type: "steam".to_string(),
+            program: "steam".to_string(),
+            arguments: r#"["old"]"#.to_string(),
+            working_directory: None,
+            is_default: false,
+            enabled: true,
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(first.action, UpsertAction::Created);
+
+    let second = MediaQueries::upsert_media_launch(
+        &pool,
+        MediaQueries::MediaLaunchUpsert {
+            media_id: media.id,
+            name: "Default".to_string(),
+            launch_type: "steam".to_string(),
+            program: "steam".to_string(),
+            arguments: r#"["new"]"#.to_string(),
+            working_directory: None,
+            is_default: true,
+            enabled: false,
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(second.action, UpsertAction::Updated);
+    assert_eq!(first.value.id, second.value.id);
+    assert_eq!(second.value.arguments, r#"["new"]"#);
+    assert!(second.value.is_default);
+    assert!(!second.value.enabled);
 }
