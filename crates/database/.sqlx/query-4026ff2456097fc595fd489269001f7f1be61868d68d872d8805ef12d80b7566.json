@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO media_status_history (\n            id,\n            media_id,\n            status_id\n        )\n        VALUES (?, ?, ?)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "4026ff2456097fc595fd489269001f7f1be61868d68d872d8805ef12d80b7566"
+}

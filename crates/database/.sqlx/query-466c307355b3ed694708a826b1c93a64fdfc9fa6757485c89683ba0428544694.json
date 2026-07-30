@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO media (\n            id,\n            title,\n            media_type,\n            status_id\n        )\n        VALUES (?, ?, ?, ?)\n        RETURNING\n            id,\n            title,\n            media_type,\n            status_id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "title",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "media_type",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "status_id",
+        "ordinal": 3,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "466c307355b3ed694708a826b1c93a64fdfc9fa6757485c89683ba0428544694"
+}

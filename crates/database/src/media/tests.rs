@@ -1,20 +1,16 @@
-use crate::{
-    media::{
-        MediaInsert, MediaLaunchUpsert, find_all, find_media_by_title, find_media_launch_by_id,
-        find_media_launch_by_media_id, insert_media, upsert_media_launch,
-    },
-    test_utils::setup_db,
-};
+use crate::media as MediaQueries;
+use crate::test_utils::setup_db;
 
 #[tokio::test]
 async fn insert_media_creates_media() {
     let pool = setup_db().await;
 
-    let row = insert_media(
+    let row = MediaQueries::insert_media(
         &pool,
-        MediaInsert {
+        MediaQueries::MediaInsert {
             title: "Halo".to_string(),
             media_type: "game".to_string(),
+            status_id: 1,
         },
     )
     .await
@@ -29,21 +25,23 @@ async fn insert_media_creates_media() {
 async fn insert_media_generates_unique_id() {
     let pool = setup_db().await;
 
-    let first = insert_media(
+    let first = MediaQueries::insert_media(
         &pool,
-        MediaInsert {
+        MediaQueries::MediaInsert {
             title: "Halo".to_string(),
             media_type: "game".to_string(),
+            status_id: 1,
         },
     )
     .await
     .unwrap();
 
-    let second = insert_media(
+    let second = MediaQueries::insert_media(
         &pool,
-        MediaInsert {
+        MediaQueries::MediaInsert {
             title: "Halo".to_string(),
             media_type: "game".to_string(),
+            status_id: 1,
         },
     )
     .await
@@ -56,27 +54,29 @@ async fn insert_media_generates_unique_id() {
 async fn find_all_returns_all_media() {
     let pool = setup_db().await;
 
-    insert_media(
+    MediaQueries::insert_media(
         &pool,
-        MediaInsert {
+        MediaQueries::MediaInsert {
             title: "Halo".to_string(),
             media_type: "game".to_string(),
+            status_id: 1,
         },
     )
     .await
     .unwrap();
 
-    insert_media(
+    MediaQueries::insert_media(
         &pool,
-        MediaInsert {
+        MediaQueries::MediaInsert {
             title: "The Matrix".to_string(),
             media_type: "movie".to_string(),
+            status_id: 1,
         },
     )
     .await
     .unwrap();
 
-    let media = find_all(&pool).await.unwrap();
+    let media = MediaQueries::find_all(&pool).await.unwrap();
 
     assert_eq!(media.len(), 2);
 
@@ -91,7 +91,7 @@ async fn find_all_returns_all_media() {
 async fn find_all_returns_empty_when_no_media_exists() {
     let pool = setup_db().await;
 
-    let media = find_all(&pool).await.unwrap();
+    let media = MediaQueries::find_all(&pool).await.unwrap();
 
     assert_eq!(media.len(), 0);
 }
@@ -100,17 +100,18 @@ async fn find_all_returns_empty_when_no_media_exists() {
 async fn find_media_by_title_returns_media_when_exists() {
     let pool = setup_db().await;
 
-    insert_media(
+    MediaQueries::insert_media(
         &pool,
-        MediaInsert {
+        MediaQueries::MediaInsert {
             title: "Halo".to_string(),
             media_type: "game".to_string(),
+            status_id: 1,
         },
     )
     .await
     .unwrap();
 
-    let media = find_media_by_title(&pool, "Halo".to_string())
+    let media = MediaQueries::find_media_by_title(&pool, "Halo".to_string())
         .await
         .unwrap();
 
@@ -126,7 +127,7 @@ async fn find_media_by_title_returns_media_when_exists() {
 async fn find_media_by_title_returns_none_when_missing() {
     let pool = setup_db().await;
 
-    let media = find_media_by_title(&pool, "Unknown".to_string())
+    let media = MediaQueries::find_media_by_title(&pool, "Unknown".to_string())
         .await
         .unwrap();
 
@@ -137,19 +138,20 @@ async fn find_media_by_title_returns_none_when_missing() {
 async fn upsert_media_launch_creates_launch() {
     let pool = setup_db().await;
 
-    let media = insert_media(
+    let media = MediaQueries::insert_media(
         &pool,
-        MediaInsert {
+        MediaQueries::MediaInsert {
             title: "Halo".to_string(),
             media_type: "game".to_string(),
+            status_id: 1,
         },
     )
     .await
     .unwrap();
 
-    let launch = upsert_media_launch(
+    let launch = MediaQueries::upsert_media_launch(
         &pool,
-        MediaLaunchUpsert {
+        MediaQueries::MediaLaunchUpsert {
             media_id: media.id.clone(),
             name: "Default".to_string(),
             launch_type: "steam".to_string(),
@@ -177,19 +179,20 @@ async fn upsert_media_launch_creates_launch() {
 async fn find_media_launch_by_media_id_returns_launches() {
     let pool = setup_db().await;
 
-    let media = insert_media(
+    let media = MediaQueries::insert_media(
         &pool,
-        MediaInsert {
+        MediaQueries::MediaInsert {
             title: "Halo".to_string(),
             media_type: "game".to_string(),
+            status_id: 1,
         },
     )
     .await
     .unwrap();
 
-    upsert_media_launch(
+    MediaQueries::upsert_media_launch(
         &pool,
-        MediaLaunchUpsert {
+        MediaQueries::MediaLaunchUpsert {
             media_id: media.id.clone(),
             name: "Default".to_string(),
             launch_type: "steam".to_string(),
@@ -203,7 +206,7 @@ async fn find_media_launch_by_media_id_returns_launches() {
     .await
     .unwrap();
 
-    let launches = find_media_launch_by_media_id(&pool, media.id)
+    let launches = MediaQueries::find_media_launch_by_media_id(&pool, media.id)
         .await
         .unwrap();
 
@@ -215,7 +218,7 @@ async fn find_media_launch_by_media_id_returns_launches() {
 async fn find_media_launch_by_media_id_returns_empty_when_missing() {
     let pool = setup_db().await;
 
-    let launches = find_media_launch_by_media_id(&pool, "unknown".to_string())
+    let launches = MediaQueries::find_media_launch_by_media_id(&pool, "unknown".to_string())
         .await
         .unwrap();
 
@@ -226,19 +229,20 @@ async fn find_media_launch_by_media_id_returns_empty_when_missing() {
 async fn find_media_launch_by_id_returns_launch() {
     let pool = setup_db().await;
 
-    let media = insert_media(
+    let media = MediaQueries::insert_media(
         &pool,
-        MediaInsert {
+        MediaQueries::MediaInsert {
             title: "Halo".to_string(),
             media_type: "game".to_string(),
+            status_id: 1,
         },
     )
     .await
     .unwrap();
 
-    let created = upsert_media_launch(
+    let created = MediaQueries::upsert_media_launch(
         &pool,
-        MediaLaunchUpsert {
+        MediaQueries::MediaLaunchUpsert {
             media_id: media.id,
             name: "Default".to_string(),
             launch_type: "steam".to_string(),
@@ -252,7 +256,9 @@ async fn find_media_launch_by_id_returns_launch() {
     .await
     .unwrap();
 
-    let launch = find_media_launch_by_id(&pool, created.id).await.unwrap();
+    let launch = MediaQueries::find_media_launch_by_id(&pool, created.id)
+        .await
+        .unwrap();
 
     assert_eq!(launch.name, "Default");
 }
@@ -261,19 +267,20 @@ async fn find_media_launch_by_id_returns_launch() {
 async fn upsert_media_launch_updates_existing_launch() {
     let pool = setup_db().await;
 
-    let media = insert_media(
+    let media = MediaQueries::insert_media(
         &pool,
-        MediaInsert {
+        MediaQueries::MediaInsert {
             title: "Halo".to_string(),
             media_type: "game".to_string(),
+            status_id: 1,
         },
     )
     .await
     .unwrap();
 
-    let first = upsert_media_launch(
+    let first = MediaQueries::upsert_media_launch(
         &pool,
-        MediaLaunchUpsert {
+        MediaQueries::MediaLaunchUpsert {
             media_id: media.id.clone(),
             name: "Default".to_string(),
             launch_type: "steam".to_string(),
@@ -287,9 +294,9 @@ async fn upsert_media_launch_updates_existing_launch() {
     .await
     .unwrap();
 
-    let second = upsert_media_launch(
+    let second = MediaQueries::upsert_media_launch(
         &pool,
-        MediaLaunchUpsert {
+        MediaQueries::MediaLaunchUpsert {
             media_id: media.id,
             name: "Default".to_string(),
             launch_type: "steam".to_string(),
@@ -307,4 +314,39 @@ async fn upsert_media_launch_updates_existing_launch() {
     assert_eq!(second.arguments, r#"["new"]"#);
     assert!(second.is_default);
     assert!(!second.enabled);
+}
+
+#[tokio::test]
+async fn update_media_status_updates_media_and_creates_history() {
+    let pool = setup_db().await;
+
+    let media = MediaQueries::insert_media(
+        &pool,
+        MediaQueries::MediaInsert {
+            title: "Halo".to_string(),
+            media_type: "game".to_string(),
+            status_id: 1,
+        },
+    )
+    .await
+    .unwrap();
+
+    MediaQueries::update_media_status(&pool, &media.id, 2)
+        .await
+        .unwrap();
+
+    let media = MediaQueries::find_media_by_title(&pool, media.title)
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(media.status_id, 2);
+
+    let history = MediaQueries::find_media_status_history(&pool, &media.id)
+        .await
+        .unwrap();
+
+    assert_eq!(history.len(), 1);
+    assert_eq!(history[0].media_id, media.id);
+    assert_eq!(history[0].status_id, 2);
 }

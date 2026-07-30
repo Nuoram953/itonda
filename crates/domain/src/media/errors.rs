@@ -14,4 +14,16 @@ pub enum MediaError {
 
     #[error("database error: {0}")]
     Database(#[from] itonda_database::error::DatabaseError),
+
+    #[error("database error: {0}")]
+    Sqlx(sqlx::Error),
+}
+
+impl From<sqlx::Error> for MediaError {
+    fn from(err: sqlx::Error) -> Self {
+        match err {
+            sqlx::Error::RowNotFound => MediaError::NotFound,
+            err => MediaError::Sqlx(err),
+        }
+    }
 }
