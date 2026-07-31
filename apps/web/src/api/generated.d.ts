@@ -72,6 +72,19 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        Asset: {
+            asset_type: components["schemas"]["AssetType"];
+            url: string;
+        };
+        /** @enum {string} */
+        AssetType: "poster" | "backdrop" | "logo" | "banner" | "thumbnail" | "icon" | "trailer" | "screenshot";
+        CommandResponse: {
+            command: string;
+            id: string;
+            status: components["schemas"]["CommandStatus"];
+        };
+        /** @enum {string} */
+        CommandStatus: "accepted" | "sent";
         JobResponse: {
             job_id: string;
             status: components["schemas"]["JobStatus"];
@@ -79,6 +92,7 @@ export interface components {
         /** @enum {string} */
         JobStatus: "queued" | "running" | "completed" | "failed";
         Media: {
+            assets: components["schemas"]["Asset"][];
             id: string;
             media_type: string;
             title: string;
@@ -168,7 +182,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["JobResponse"];
+                    "application/json": components["schemas"]["CommandResponse"];
                 };
             };
         };

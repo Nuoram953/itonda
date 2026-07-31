@@ -1,4 +1,4 @@
-use crate::media as MediaQueries;
+use crate::media::{self as MediaQueries, MediaAssetInsert, insert_media_asset};
 use crate::models::UpsertAction;
 use crate::test_utils::setup_db;
 
@@ -395,4 +395,37 @@ async fn upsert_media_launch_updates_existing_launch() {
     assert_eq!(second.value.arguments, r#"["new"]"#);
     assert!(second.value.is_default);
     assert!(!second.value.enabled);
+}
+
+#[tokio::test]
+async fn find_assets_by_media_ids_returns_assets() {
+    let pool = setup_db().await;
+
+    let media = MediaQueries::insert_media(
+        &pool,
+        MediaQueries::MediaInsert {
+            title: "Halo".into(),
+            media_type: "game".into(),
+            status_id: 1,
+        },
+    )
+    .await
+    .unwrap();
+
+    let _ = insert_media_asset(
+        &pool,
+        MediaAssetInsert {
+            media_id: media.id.clone(),
+            asset_id: 1,
+            path: "path".into(),
+        },
+    )
+    .await
+    .unwrap();
+
+    let assets = MediaQueries::find_assets_by_media_ids(&pool, &[media.id])
+        .await
+        .unwrap();
+
+    assert_eq!(assets.len(), 1);
 }

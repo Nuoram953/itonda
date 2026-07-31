@@ -1,4 +1,5 @@
 use serde::Serialize;
+use sqlx::prelude::FromRow;
 
 #[derive(Debug, Serialize)]
 pub struct MediaRow {
@@ -6,6 +7,14 @@ pub struct MediaRow {
     pub title: String,
     pub media_type: String,
     pub status_id: i64,
+}
+
+#[derive(Debug, Clone, Serialize, FromRow)]
+pub struct MediaAssetRow {
+    pub id: String,
+    pub media_id: String,
+    pub asset_id: i64,
+    pub path: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -28,6 +37,13 @@ pub struct MediaInsert {
     pub title: String,
     pub media_type: String,
     pub status_id: i64,
+}
+
+#[derive(Debug, Clone)]
+pub struct MediaAssetInsert {
+    pub media_id: String,
+    pub asset_id: i64,
+    pub path: String,
 }
 
 #[derive(Debug)]
