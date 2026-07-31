@@ -1,13 +1,38 @@
-use sqlx::SqlitePool;
+use sqlx::{QueryBuilder, Sqlite, SqlitePool};
 
 use uuid::Uuid;
 
 use super::models::MediaRow;
 use crate::{
     error::DatabaseError,
-    media::{MediaInsert, MediaLaunchRow, MediaLaunchUpsert, MediaStatusHistoryRow},
+    media::{
+        MediaAssetInsert, MediaAssetRow, MediaInsert, MediaLaunchRow, MediaLaunchUpsert,
+        MediaStatusHistoryRow,
+    },
     models::{UpsertAction, UpsertResult},
 };
+
+pub async fn find_assets_by_media_ids(
+    pool: &SqlitePool,
+    ids: &[String],
+) -> Result<Vec<MediaAssetRow>, DatabaseError> {
+    let mut qb = QueryBuilder::<Sqlite>::new(
+        "SELECT id, media_id, asset_id, path FROM media_assets WHERE media_id IN (",
+    );
+
+    let mut separated = qb.separated(", ");
+
+    for id in ids {
+        separated.push_bind(id);
+    }
+
+    separated.push_unseparated(")");
+
+    qb.build_query_as::<MediaAssetRow>()
+        .fetch_all(pool)
+        .await
+        .map_err(DatabaseError::from)
+}
 
 pub async fn find_all(pool: &SqlitePool) -> Result<Vec<MediaRow>, DatabaseError> {
     sqlx::query_as!(
@@ -314,6 +339,38 @@ pub async fn update_media_status(
     tx.commit().await.map_err(DatabaseError::from)?;
 
     Ok(())
+}
+
+pub async fn insert_media_asset(
+    pool: &SqlitePool,
+    asset: MediaAssetInsert,
+) -> Result<MediaAssetRow, DatabaseError> {
+    let id = Uuid::new_v4().to_string();
+
+    sqlx::query_as!(
+        MediaAssetRow,
+        r#"
+        INSERT INTO media_assets (
+            id,
+            media_id,
+            asset_id,
+            path
+        )
+        VALUES (?, ?, ?, ?)
+        RETURNING
+            id,
+            media_id,
+            asset_id,
+            path
+        "#,
+        id,
+        asset.media_id,
+        asset.asset_id,
+        asset.path,
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(DatabaseError::from)
 }
 
 pub async fn find_media_status_history(

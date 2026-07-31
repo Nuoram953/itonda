@@ -17,6 +17,9 @@ pub enum MediaError {
 
     #[error("database error: {0}")]
     Sqlx(sqlx::Error),
+
+    #[error("invalid asset type")]
+    InvalidAssetType,
 }
 
 impl From<sqlx::Error> for MediaError {

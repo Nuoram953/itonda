@@ -1,4 +1,4 @@
-use itonda_database::media::MediaRow;
+use itonda_database::media::{MediaAssetRow, MediaRow};
 use serde::{Deserialize, Serialize};
 
 use utoipa::ToSchema;
@@ -34,6 +34,24 @@ pub struct Media {
     pub id: String,
     pub title: String,
     pub media_type: String,
+    pub assets: Vec<Asset>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct Asset {
+    pub url: String,
+    pub asset_type: AssetType,
+}
+
+impl TryFrom<MediaAssetRow> for Asset {
+    type Error = MediaError;
+
+    fn try_from(row: MediaAssetRow) -> Result<Self, Self::Error> {
+        Ok(Self {
+            asset_type: AssetType::try_from(row.asset_id)?,
+            url: row.path,
+        })
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -89,6 +107,7 @@ impl TryFrom<MediaRow> for Media {
                 .media_type
                 .parse()
                 .map_err(|_| MediaError::InvalidMediaType)?,
+            assets: Vec::new(),
         })
     }
 }
@@ -106,5 +125,43 @@ pub enum MediaStatus {
 impl MediaStatus {
     pub fn id(&self) -> i64 {
         *self as i64
+    }
+}
+
+#[repr(i64)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum AssetType {
+    Poster = 1,
+    Backdrop = 2,
+    Logo = 3,
+    Banner = 4,
+    Thumbnail = 5,
+    Icon = 6,
+    Trailer = 7,
+    Screenshot = 8,
+}
+
+impl AssetType {
+    pub fn id(self) -> i64 {
+        self as i64
+    }
+}
+
+impl TryFrom<i64> for AssetType {
+    type Error = MediaError;
+
+    fn try_from(value: i64) -> Result<Self, Self::Error> {
+        match value {
+            1 => Ok(AssetType::Poster),
+            2 => Ok(AssetType::Backdrop),
+            3 => Ok(AssetType::Logo),
+            4 => Ok(AssetType::Banner),
+            5 => Ok(AssetType::Thumbnail),
+            6 => Ok(AssetType::Icon),
+            7 => Ok(AssetType::Trailer),
+            8 => Ok(AssetType::Screenshot),
+            _ => Err(MediaError::InvalidAssetType),
+        }
     }
 }
