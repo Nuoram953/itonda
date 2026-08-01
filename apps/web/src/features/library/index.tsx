@@ -2,6 +2,7 @@ import { useMedia } from "./api/get-media";
 import { Workspace } from "@/components/workspace/Workspace";
 import { Card } from "./components/card";
 import { Refresh } from "./components/action/refresh";
+import { Link } from "@tanstack/react-router";
 
 export const Libary = () => {
   const mediaQuery = useMedia({});
@@ -23,9 +24,15 @@ export const Libary = () => {
       <Workspace.Content>
         <ul className="grid grid-cols-[repeat(auto-fill,15rem)] gap-6 justify-center">
           {media.map((item) => (
-            <li key={item.id}>
-              <Card name={item.title} />
-            </li>
+            <Link
+              key={item.id}
+              to="/media/$mediaId"
+              params={{ mediaId: item.id }}
+            >
+              <li>
+                <Card media={item} />
+              </li>
+            </Link>
           ))}
         </ul>
       </Workspace.Content>

@@ -1,21 +1,36 @@
+/* eslint-disable react-refresh/only-export-components */
 import {
   createRootRoute,
   createRouter,
   createRoute,
   Outlet,
 } from "@tanstack/react-router";
+
 import NotFoundRoute from "./routes/not-found";
 import { Home } from "@/home";
 import { Header } from "@/components/ui/header/Header";
 import { Sidebar } from "@/components/ui/sidebar/Siderbar";
 import { Libary } from "@/features/library";
+import { MediaDetails } from "@/features/details";
+
+function MediaLayout() {
+  return (
+    <div className="relative h-full overflow-hidden">
+      <Libary />
+
+      <Outlet />
+    </div>
+  );
+}
 
 const rootRoute = createRootRoute({
   component: () => (
     <div className="flex h-screen w-full flex-col bg-background text-foreground">
       <Header />
+
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
+
         <main className="flex-1 overflow-hidden">
           <Outlet />
         </main>
@@ -24,6 +39,7 @@ const rootRoute = createRootRoute({
   ),
   notFoundComponent: () => NotFoundRoute(),
 });
+
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
@@ -33,10 +49,29 @@ const indexRoute = createRoute({
 const mediaRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "media",
-  component: () => <Libary />,
+  component: () => <MediaLayout />,
 });
 
-const routeTree = rootRoute.addChildren([indexRoute, mediaRoute]);
+const mediaIndexRoute = createRoute({
+  getParentRoute: () => mediaRoute,
+  path: "/",
+  component: () => null,
+});
+
+const mediaDetailsRoute = createRoute({
+  getParentRoute: () => mediaRoute,
+  path: "$mediaId",
+  component: () => (
+    <div className="absolute inset-0 z-10 bg-background">
+      <MediaDetails />
+    </div>
+  ),
+});
+
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  mediaRoute.addChildren([mediaIndexRoute, mediaDetailsRoute]),
+]);
 
 export const router = createRouter({
   routeTree,
@@ -49,7 +84,9 @@ export const router = createRouter({
       <h3 className="mb-2 text-lg font-semibold text-danger">
         Failed to load page
       </h3>
+
       <p className="mb-4 text-sm text-text-muted">{error.message}</p>
+
       <button
         onClick={() => reset()}
         className="rounded border border-border-strong bg-surface px-3 py-1.5 text-sm hover:bg-surface-hover"
