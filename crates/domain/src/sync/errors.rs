@@ -1,7 +1,7 @@
 use itonda_database::error::DatabaseError;
 use thiserror::Error;
 
-use crate::storefronts::error::StorefrontError;
+use crate::{assets::error::AssetError, storefronts::error::StorefrontError};
 
 #[derive(Debug, Error)]
 pub enum SyncError {
@@ -10,6 +10,9 @@ pub enum SyncError {
 
     #[error("storefront error: {0}")]
     Storefront(#[from] StorefrontError),
+
+    #[error("Asset error: {0}")]
+    Asset(#[from] AssetError),
 
     #[error("missing media in sync context")]
     MissingMedia,

@@ -3,10 +3,11 @@ use async_trait::async_trait;
 use crate::{
     assets::{
         error::AssetError,
+        models::{AssetStoreId, PosterSearchOptions},
         steam_grid_db::{client::SteamGridDbClient, models::GridSearchOptions},
         traits::{AssetFetcher, PosterFetcher},
     },
-    media::models::{AssetType, DiscoveredAsset},
+    media::models::{AssetType, DiscoveredAsset, MediaType},
     storefronts::models::StorefrontId,
 };
 
@@ -29,28 +30,30 @@ impl SteamGridDb {
 }
 
 impl AssetFetcher for SteamGridDb {
+    fn id(&self) -> AssetStoreId {
+        AssetStoreId::SteamGridDb
+    }
+
     fn asset_type(&self) -> AssetType {
-        todo!()
+        AssetType::Poster
+    }
+
+    fn supports_media_type(&self, media_type: MediaType) -> bool {
+        matches!(media_type, MediaType::Game)
     }
 }
 
 #[async_trait]
 impl PosterFetcher for SteamGridDb {
-    type SearchOptions = GridSearchOptions;
-
     async fn discover_poster(
         &self,
         storefront: StorefrontId,
         external_id: Option<&str>,
         title: &str,
     ) -> Result<Option<DiscoveredAsset>, AssetError> {
+        let opts = PosterSearchOptions::SteamGridDb(GridSearchOptions::poster(1, 1));
         Ok(self
-            .search_poster(
-                storefront,
-                external_id,
-                title,
-                GridSearchOptions::poster(1, 1),
-            )
+            .search_poster(storefront, external_id, title, &opts)
             .await?
             .into_iter()
             .next())
@@ -61,8 +64,13 @@ impl PosterFetcher for SteamGridDb {
         storefront: StorefrontId,
         external_id: Option<&str>,
         title: &str,
-        options: GridSearchOptions,
+        options: &PosterSearchOptions,
     ) -> Result<Vec<DiscoveredAsset>, AssetError> {
+        let grid_options = match options {
+            PosterSearchOptions::SteamGridDb(opts) => opts.clone(),
+            _ => GridSearchOptions::poster(1, 10),
+        };
+
         let Some(game_id) = self
             .client
             .find_game_id(storefront, external_id, title)
@@ -71,7 +79,7 @@ impl PosterFetcher for SteamGridDb {
             return Ok(Vec::new());
         };
 
-        let response = self.client.grids(game_id, options).await?;
+        let response = self.client.grids(game_id, grid_options).await?;
 
         Ok(response.into_assets(AssetType::Poster))
     }

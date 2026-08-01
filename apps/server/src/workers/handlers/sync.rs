@@ -1,4 +1,5 @@
 use itonda_domain::{
+    assets::registry::AssetRegistry,
     events::{EventBus, JobEventType, JobType, SyncEvent},
     storefronts::registry::StorefrontRegistry,
     sync::LibrarySyncService,
@@ -11,14 +12,21 @@ pub struct SyncHandler {
     db: SqlitePool,
     events: EventBus,
     storefronts: StorefrontRegistry,
+    assets: AssetRegistry,
 }
 
 impl SyncHandler {
-    pub fn new(db: SqlitePool, events: EventBus, storefronts: StorefrontRegistry) -> Self {
+    pub fn new(
+        db: SqlitePool,
+        events: EventBus,
+        storefronts: StorefrontRegistry,
+        assets: AssetRegistry,
+    ) -> Self {
         Self {
             db,
             events,
             storefronts,
+            assets,
         }
     }
 
@@ -34,6 +42,7 @@ impl SyncHandler {
             self.db.clone(),
             self.events.clone(),
             self.storefronts.clone(),
+            self.assets.clone(),
         );
 
         let _ = sync.sync_all().await;
