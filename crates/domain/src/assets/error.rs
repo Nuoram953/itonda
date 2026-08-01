@@ -5,6 +5,9 @@ pub enum AssetError {
     #[error("middleware http error: {0}")]
     Middleware(#[from] reqwest_middleware::Error),
 
+    #[error("io error: {0}")]
+    Io(#[from] std::io::Error),
+
     #[error("http request failed")]
     Http(#[from] reqwest::Error),
 

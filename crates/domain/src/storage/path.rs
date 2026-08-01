@@ -1,5 +1,8 @@
 use std::path::PathBuf;
 
+use uuid::Uuid;
+
+#[derive(Clone)]
 pub struct AppPaths {
     pub config_dir: PathBuf,
     pub data_dir: PathBuf,
@@ -18,5 +21,9 @@ impl AppPaths {
 
             data_dir: dirs::data_dir().unwrap().join("itonda-server"),
         }
+    }
+
+    pub fn media_dir(&self, media_id: Uuid) -> PathBuf {
+        self.data_dir.join("media").join(media_id.to_string())
     }
 }

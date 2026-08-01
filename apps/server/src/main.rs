@@ -3,6 +3,7 @@ use std::sync::Arc;
 use axum::Router;
 use itonda_domain::{
     events::EventBus,
+    storage::path::AppPaths,
     store::toml::TomlCodec,
     storefronts::{registry::StorefrontRegistry, steam::SteamStorefront},
 };

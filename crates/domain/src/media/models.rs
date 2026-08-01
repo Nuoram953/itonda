@@ -152,6 +152,19 @@ impl AssetType {
     pub fn id(self) -> i64 {
         self as i64
     }
+
+    pub fn folder(&self) -> &'static str {
+        match self {
+            AssetType::Poster => "poster",
+            AssetType::Backdrop => "backdrop",
+            AssetType::Logo => "logo",
+            AssetType::Banner => "banner",
+            AssetType::Thumbnail => "thumbnail",
+            AssetType::Icon => "icon",
+            AssetType::Trailer => "trailer",
+            AssetType::Screenshot => "screenshot",
+        }
+    }
 }
 
 impl TryFrom<i64> for AssetType {
