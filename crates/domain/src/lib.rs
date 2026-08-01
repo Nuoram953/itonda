@@ -1,3 +1,4 @@
+pub mod assets;
 pub mod events;
 pub mod http;
 pub mod launch;

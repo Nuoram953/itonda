@@ -29,6 +29,12 @@ pub struct DiscoveredMediaMetadata {
     pub total_playtime: Option<u64>,
 }
 
+#[derive(Clone, Debug)]
+pub struct DiscoveredAsset {
+    pub asset_type: AssetType,
+    pub url: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct Media {
     pub id: String,
