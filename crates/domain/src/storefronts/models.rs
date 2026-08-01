@@ -14,6 +14,14 @@ impl From<StorefrontId> for u32 {
     }
 }
 
+impl StorefrontId {
+    pub fn as_steam_grid_db_platform(&self) -> &'static str {
+        match self {
+            StorefrontId::Steam => "steam",
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct OwnedGame {
     pub storefront: StorefrontId,
