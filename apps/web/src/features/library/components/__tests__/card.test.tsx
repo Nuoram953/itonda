@@ -4,13 +4,31 @@ import { Card } from "../card";
 
 describe("Card", () => {
   it("renders the card title", () => {
-    render(<Card name="Elden Ring" />);
+    render(
+      <Card
+        media={{
+          assets: [],
+          id: "",
+          media_type: "",
+          title: "Elden Ring",
+        }}
+      />,
+    );
 
     expect(screen.getByText("Elden Ring")).toBeDefined();
   });
 
   it("renders the title inside a heading", () => {
-    render(<Card name="Cyberpunk 2077" />);
+    render(
+      <Card
+        media={{
+          assets: [],
+          id: "",
+          media_type: "",
+          title: "Cyberpunk 2077",
+        }}
+      />,
+    );
 
     const title = screen.getByRole("heading", {
       name: "Cyberpunk 2077",
@@ -20,7 +38,16 @@ describe("Card", () => {
   });
 
   it("renders a card article container", () => {
-    render(<Card name="Baldur's Gate 3" />);
+    render(
+      <Card
+        media={{
+          assets: [],
+          id: "",
+          media_type: "",
+          title: "Cyberpunk 2077",
+        }}
+      />,
+    );
 
     expect(screen.getByRole("article")).toBeDefined();
   });
