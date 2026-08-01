@@ -3,13 +3,15 @@ use tracing::{debug, info};
 use uuid::Uuid;
 
 use crate::{
+    assets::{downloader::AssetDownloader, registry::AssetRegistry},
     events::{EventBus, JobEventType, JobType, SyncEvent},
+    storage::path::AppPaths,
     storefronts::{models::StorefrontId, registry::StorefrontRegistry},
     sync::{
         context::{SyncAction, SyncContext},
         errors::SyncError,
         pipeline::{MediaSyncPipeline, SyncStep},
-        steps::{identify::IdentifyStep, persist::PersistStep},
+        steps::{assets::AssetStep, identify::IdentifyStep, persist::PersistStep},
     },
 };
 
@@ -35,10 +37,16 @@ impl LibrarySyncService {
         db: SqlitePool,
         events: EventBus,
         storefronts: StorefrontRegistry,
+        assets: AssetRegistry,
     ) -> Self {
         let steps: Vec<Box<dyn SyncStep>> = vec![
             Box::new(IdentifyStep::new()),
-            Box::new(PersistStep::new(db)),
+            Box::new(PersistStep::new(db.clone())),
+            Box::new(AssetStep::new(
+                db.clone(),
+                assets,
+                AssetDownloader::new(AppPaths::new()),
+            )),
         ];
         let pipeline = MediaSyncPipeline::new(steps);
         Self {

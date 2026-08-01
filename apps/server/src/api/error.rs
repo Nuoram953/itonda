@@ -15,6 +15,9 @@ pub enum ApiError {
     #[error("media not found")]
     MediaNotFound,
 
+    #[error("asset not found")]
+    AssetNotFound,
+
     #[error("collection not found")]
     CollectionNotFound,
 
@@ -61,9 +64,10 @@ impl ApiError {
 
     fn status(&self) -> StatusCode {
         match self {
-            Self::MediaNotFound | Self::CollectionNotFound | Self::LaunchNotFound => {
-                StatusCode::NOT_FOUND
-            }
+            Self::MediaNotFound
+            | Self::CollectionNotFound
+            | Self::LaunchNotFound
+            | Self::AssetNotFound => StatusCode::NOT_FOUND,
 
             Self::Validation(_) => StatusCode::UNPROCESSABLE_ENTITY,
 
@@ -82,6 +86,7 @@ impl ApiError {
     fn code(&self) -> &'static str {
         match self {
             Self::MediaNotFound => "MEDIA_NOT_FOUND",
+            Self::AssetNotFound => "ASSET_NOT_FOUND",
             Self::CollectionNotFound => "COLLECTION_NOT_FOUND",
             Self::LaunchNotFound => "LAUNCH_NOT_FOUND",
 
@@ -104,6 +109,8 @@ impl ApiError {
             Self::Validation(message) => message.clone(),
 
             Self::MediaNotFound => "Media not found".into(),
+
+            Self::AssetNotFound => "Asset not found".into(),
 
             Self::CollectionNotFound => "Collection not found".into(),
 

@@ -12,6 +12,7 @@ services:
       - server_target:/app/target
       - cargo_registry:/usr/local/cargo/registry
       - ~/.config/itonda-server:/root/.config/itonda-server
+      - ~/.config/itonda-server/data:/root/.local/share/itonda-server
     environment:
       RUST_LOG: info
     restart: unless-stopped

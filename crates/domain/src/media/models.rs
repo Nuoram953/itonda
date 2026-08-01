@@ -45,7 +45,7 @@ pub struct Media {
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct Asset {
-    pub url: String,
+    pub id: String,
     pub asset_type: AssetType,
 }
 
@@ -54,8 +54,8 @@ impl TryFrom<MediaAssetRow> for Asset {
 
     fn try_from(row: MediaAssetRow) -> Result<Self, Self::Error> {
         Ok(Self {
+            id: row.id,
             asset_type: AssetType::try_from(row.asset_id)?,
-            url: row.path,
         })
     }
 }

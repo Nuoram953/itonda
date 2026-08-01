@@ -4,6 +4,22 @@
  */
 
 export interface paths {
+    "/assets/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_asset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/media": {
         parameters: {
             query?: never;
@@ -74,7 +90,7 @@ export interface components {
     schemas: {
         Asset: {
             asset_type: components["schemas"]["AssetType"];
-            url: string;
+            id: string;
         };
         /** @enum {string} */
         AssetType: "poster" | "backdrop" | "logo" | "banner" | "thumbnail" | "icon" | "trailer" | "screenshot";
@@ -123,6 +139,34 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    get_asset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Asset id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Asset file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Asset not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get_media: {
         parameters: {
             query?: never;

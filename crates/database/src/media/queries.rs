@@ -51,6 +51,28 @@ pub async fn find_all(pool: &SqlitePool) -> Result<Vec<MediaRow>, DatabaseError>
     .map_err(DatabaseError::from)
 }
 
+pub async fn find_asset_by_id(
+    pool: &SqlitePool,
+    id: String,
+) -> Result<Option<MediaAssetRow>, DatabaseError> {
+    sqlx::query_as!(
+        MediaAssetRow,
+        r#"
+        SELECT
+            id,
+            media_id,
+            asset_id,
+            path
+        FROM media_assets
+        WHERE id = ?
+        "#,
+        id
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(DatabaseError::from)
+}
+
 pub async fn find_media_by_title(
     pool: &SqlitePool,
     title: String,

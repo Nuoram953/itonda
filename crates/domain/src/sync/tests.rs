@@ -1,4 +1,5 @@
 use crate::{
+    assets::registry::AssetRegistry,
     events::EventBus,
     media::models::{DiscoveredMedia, DiscoveredMediaMetadata, MediaType},
     storefronts::{
@@ -74,8 +75,15 @@ async fn syncs_storefront_games() {
             "Portal 2",
         )])));
     let events = EventBus::new();
+    let assets = AssetRegistry::new();
 
-    let service = LibrarySyncService::new(uuid::Uuid::new_v4(), pool.clone(), events, storefronts);
+    let service = LibrarySyncService::new(
+        uuid::Uuid::new_v4(),
+        pool.clone(),
+        events,
+        storefronts,
+        assets,
+    );
 
     service.sync_all().await.unwrap();
 

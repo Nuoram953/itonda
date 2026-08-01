@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 #[serde(default)]
 pub struct Secrets {
     pub storefronts: StorefrontsSettings,
+    pub asset_store: AssetStoreSettings,
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
@@ -15,9 +16,21 @@ pub struct StorefrontsSettings {
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+pub struct AssetStoreSettings {
+    pub steam_grid_db: SteamGridDbSettings,
+}
+
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct SteamSettings {
     pub api_key: String,
     pub steam_id: u64,
+}
+
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct SteamGridDbSettings {
+    pub api_key: String,
 }
 
 pub type SecretsManager = Store<Secrets, TomlCodec>;

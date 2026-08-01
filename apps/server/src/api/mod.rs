@@ -1,3 +1,4 @@
+pub mod assets;
 pub mod error;
 pub mod extractor;
 pub mod media;
@@ -9,5 +10,5 @@ use axum::Router;
 use crate::state::AppState;
 
 pub fn router() -> Router<AppState> {
-    Router::new().merge(media::routes::router())
+    Router::new().merge(media::routes::router().merge(assets::routes::router()))
 }

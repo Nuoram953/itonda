@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::media::models::{AssetType, DiscoveredAsset};
 
-#[derive(Default, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]
 pub struct GridSearchOptions {
     pub page: Option<u32>,
     pub limit: Option<u32>,

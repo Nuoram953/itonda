@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use axum::Router;
 use itonda_domain::{
+    assets::{registry::AssetRegistry, steam_grid_db::SteamGridDb},
     events::EventBus,
     storage::path::AppPaths,
     store::toml::TomlCodec,
@@ -15,7 +16,6 @@ use itonda_server::{
     api,
     config::{app::AppConfigManager, secrets::SecretsManager, settings::SettingsManager},
     state::{self, AppState},
-    storage::path::AppPaths,
     websocket::{self, AgentManager},
     workers::{
         handlers::{import::ImportHandler, sync::SyncHandler},
@@ -42,7 +42,9 @@ async fn main() -> anyhow::Result<()> {
 
     let storefronts = init_storefronts(&secrets).await?;
 
-    let (jobs, events) = init_worker(&pool, &storefronts).await?;
+    let asset_store = init_asset_store(&secrets).await?;
+
+    let (jobs, events) = init_worker(&pool, &storefronts, &asset_store).await?;
 
     let state = state::AppState {
         db: pool,
@@ -101,6 +103,7 @@ async fn init_db() -> anyhow::Result<SqlitePool> {
 async fn init_worker(
     pool: &SqlitePool,
     storefronts: &StorefrontRegistry,
+    asset_store: &AssetRegistry,
 ) -> anyhow::Result<(Sender<Job>, EventBus)> {
     let events = EventBus::new();
 
@@ -109,7 +112,12 @@ async fn init_worker(
     let worker = Worker::new(
         receiver,
         ImportHandler::new(pool.clone(), events.clone()),
-        SyncHandler::new(pool.clone(), events.clone(), storefronts.clone()),
+        SyncHandler::new(
+            pool.clone(),
+            events.clone(),
+            storefronts.clone(),
+            asset_store.clone(),
+        ),
     );
 
     tokio::spawn(async move {
@@ -151,6 +159,18 @@ async fn init_storefronts(secrets: &SecretsManager) -> anyhow::Result<Storefront
     registry.register(Arc::new(SteamStorefront::new(
         secrets.storefronts.steam.api_key,
         secrets.storefronts.steam.steam_id,
+    )));
+
+    Ok(registry)
+}
+
+async fn init_asset_store(secrets: &SecretsManager) -> anyhow::Result<AssetRegistry> {
+    let secrets = secrets.get().await;
+
+    let mut registry = AssetRegistry::new();
+
+    registry.register_poster(Arc::new(SteamGridDb::new(
+        secrets.asset_store.steam_grid_db.api_key,
     )));
 
     Ok(registry)
