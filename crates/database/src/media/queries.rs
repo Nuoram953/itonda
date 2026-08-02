@@ -6,8 +6,8 @@ use super::models::MediaRow;
 use crate::{
     error::DatabaseError,
     media::{
-        MediaAssetInsert, MediaAssetRow, MediaInsert, MediaLaunchRow, MediaLaunchUpsert,
-        MediaStatusHistoryRow,
+        MediaAssetInsert, MediaAssetRow, MediaGameDetailsRow, MediaGameDetailsUpsert, MediaInsert,
+        MediaLaunchRow, MediaLaunchUpsert, MediaStatusHistoryRow,
     },
     models::{UpsertAction, UpsertResult},
 };
@@ -47,6 +47,28 @@ pub async fn find_all(pool: &SqlitePool) -> Result<Vec<MediaRow>, DatabaseError>
     "#
     )
     .fetch_all(pool)
+    .await
+    .map_err(DatabaseError::from)
+}
+
+pub async fn find_media_by_id(
+    pool: &SqlitePool,
+    media_id: String,
+) -> Result<MediaRow, DatabaseError> {
+    sqlx::query_as!(
+        MediaRow,
+        r#"
+    SELECT
+        id,
+        title,
+        media_type,
+        status_id
+    FROM media
+    where id=?
+    "#,
+        media_id
+    )
+    .fetch_one(pool)
     .await
     .map_err(DatabaseError::from)
 }
@@ -223,8 +245,8 @@ pub async fn upsert_media_launch(
     let changed = existing.program != media_launch.program
         || existing.arguments != media_launch.arguments
         || existing.working_directory != media_launch.working_directory
-        || existing.is_default != media_launch.is_default
-        || existing.enabled != media_launch.enabled;
+        || existing.is_default != media_launch.is_default as i64
+        || existing.enabled != media_launch.enabled as i64;
 
     if !changed {
         return Ok(UpsertResult {
@@ -416,4 +438,176 @@ pub async fn find_media_status_history(
     .fetch_all(pool)
     .await
     .map_err(DatabaseError::from)
+}
+
+pub async fn upsert_media_game_details(
+    pool: &SqlitePool,
+    details: MediaGameDetailsUpsert,
+) -> Result<UpsertResult<MediaGameDetailsRow>, DatabaseError> {
+    let existing = sqlx::query_as!(
+        MediaGameDetailsRow,
+        r#"
+        SELECT
+            media_id,
+            playtime_minutes,
+            last_played_at
+        FROM media_game_details
+        WHERE media_id = ?
+        "#,
+        details.media_id,
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(DatabaseError::from)?;
+
+    let Some(existing) = existing else {
+        let row = sqlx::query_as!(
+            MediaGameDetailsRow,
+            r#"
+            INSERT INTO media_game_details (
+                media_id,
+                playtime_minutes,
+                last_played_at
+            )
+            VALUES (?, ?, ?)
+            RETURNING
+                media_id,
+                playtime_minutes,
+                last_played_at
+            "#,
+            details.media_id,
+            details.playtime_minutes,
+            details.last_played_at,
+        )
+        .fetch_one(pool)
+        .await
+        .map_err(DatabaseError::from)?;
+
+        return Ok(UpsertResult {
+            value: row,
+            action: UpsertAction::Created,
+        });
+    };
+
+    if existing.playtime_minutes == details.playtime_minutes
+        && existing.last_played_at == details.last_played_at
+    {
+        return Ok(UpsertResult {
+            value: existing,
+            action: UpsertAction::Unchanged,
+        });
+    }
+
+    let row = sqlx::query_as!(
+        MediaGameDetailsRow,
+        r#"
+        UPDATE media_game_details
+        SET
+            playtime_minutes = ?,
+            last_played_at = ?
+        WHERE media_id = ?
+        RETURNING
+            media_id,
+            playtime_minutes,
+            last_played_at
+        "#,
+        details.playtime_minutes,
+        details.last_played_at,
+        details.media_id,
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(DatabaseError::from)?;
+
+    Ok(UpsertResult {
+        value: row,
+        action: UpsertAction::Updated,
+    })
+}
+
+pub async fn find_game_details(
+    pool: &SqlitePool,
+    media_id: &str,
+) -> Result<Option<MediaGameDetailsRow>, DatabaseError> {
+    let row = sqlx::query_as!(
+        MediaGameDetailsRow,
+        r#"
+        SELECT
+            media_id,
+            playtime_minutes,
+            last_played_at
+        FROM media_game_details
+        WHERE media_id = ?
+        "#,
+        media_id
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(DatabaseError::from)?;
+
+    Ok(row)
+}
+
+pub async fn find_media_launches_by_media_ids(
+    pool: &SqlitePool,
+    ids: &[String],
+) -> Result<Vec<MediaLaunchRow>, DatabaseError> {
+    let mut qb = QueryBuilder::<Sqlite>::new(
+        r#"
+        SELECT
+            id,
+            media_id,
+            name,
+            launch_type,
+            program,
+            arguments,
+            working_directory,
+            is_default,
+            enabled
+        FROM media_launches
+        WHERE media_id IN (
+        "#,
+    );
+
+    let mut separated = qb.separated(", ");
+
+    for id in ids {
+        separated.push_bind(id);
+    }
+
+    separated.push_unseparated(")");
+
+    qb.build_query_as::<MediaLaunchRow>()
+        .fetch_all(pool)
+        .await
+        .map_err(DatabaseError::from)
+}
+
+pub async fn find_media_launches_by_media_id(
+    pool: &SqlitePool,
+    media_id: &str,
+) -> Result<Vec<MediaLaunchRow>, DatabaseError> {
+    let row = sqlx::query_as!(
+        MediaLaunchRow,
+        r#"
+        SELECT
+            id,
+            media_id,
+            name,
+            launch_type,
+            program,
+            arguments,
+            working_directory,
+            is_default,
+            enabled
+        FROM media_launches
+        WHERE media_id = ?
+        "#,
+        media_id
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(DatabaseError::from)?;
+
+    Ok(row)
 }

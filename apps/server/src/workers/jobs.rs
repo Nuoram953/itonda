@@ -1,4 +1,4 @@
-use itonda_domain::{media::models::MediaType, storefronts::models::StorefrontId};
+use itonda_domain::{media::types::MediaType, storefronts::models::StorefrontId};
 use uuid::Uuid;
 
 pub enum Job {

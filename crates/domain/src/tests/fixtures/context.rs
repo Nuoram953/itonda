@@ -1,5 +1,5 @@
 use crate::{
-    media::models::DiscoveredMedia, sync::context::SyncContext,
+    media::discovered::DiscoveredMedia, sync::context::SyncContext,
     tests::fixtures::media::DiscoveredMediaBuilder,
 };
 

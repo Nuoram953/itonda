@@ -6,7 +6,7 @@ use crate::{
         models::{AssetStoreId, PosterSearchOptions},
         traits::PosterFetcher,
     },
-    media::models::{DiscoveredAsset, MediaType},
+    media::{discovered::DiscoveredAsset, types::MediaType},
     storefronts::models::StorefrontId,
 };
 
@@ -79,7 +79,7 @@ impl AssetRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{assets::traits::AssetFetcher, media::models::AssetType};
+    use crate::assets::{traits::AssetFetcher, types::AssetType};
     use async_trait::async_trait;
 
     struct DummyGamePosterFetcher;

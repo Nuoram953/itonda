@@ -1,6 +1,7 @@
 use crate::media::{
     errors::MediaError,
-    models::{Media, MediaStatus, MediaType},
+    models::Media,
+    types::{MediaStatus, MediaType},
 };
 
 use tracing::instrument;

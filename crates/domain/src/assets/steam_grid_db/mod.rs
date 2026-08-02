@@ -6,8 +6,9 @@ use crate::{
         models::{AssetStoreId, PosterSearchOptions},
         steam_grid_db::{client::SteamGridDbClient, models::GridSearchOptions},
         traits::{AssetFetcher, PosterFetcher},
+        types::AssetType,
     },
-    media::models::{AssetType, DiscoveredAsset, MediaType},
+    media::{discovered::DiscoveredAsset, types::MediaType},
     storefronts::models::StorefrontId,
 };
 

@@ -53,7 +53,7 @@ pub struct MediaGameStorefrontUpsert {
     pub internal_id: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, FromRow)]
 pub struct MediaLaunchRow {
     pub id: String,
     pub media_id: String,
@@ -62,8 +62,8 @@ pub struct MediaLaunchRow {
     pub program: String,
     pub arguments: String,
     pub working_directory: Option<String>,
-    pub is_default: bool,
-    pub enabled: bool,
+    pub is_default: i64,
+    pub enabled: i64,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -76,4 +76,16 @@ pub struct MediaLaunchUpsert {
     pub working_directory: Option<String>,
     pub is_default: bool,
     pub enabled: bool,
+}
+
+pub struct MediaGameDetailsUpsert {
+    pub media_id: String,
+    pub playtime_minutes: Option<i64>,
+    pub last_played_at: Option<i64>,
+}
+
+pub struct MediaGameDetailsRow {
+    pub media_id: String,
+    pub playtime_minutes: Option<i64>,
+    pub last_played_at: Option<i64>,
 }

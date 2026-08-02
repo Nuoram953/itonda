@@ -15,6 +15,7 @@ pub struct SteamApp {
     pub appid: u64,
     pub name: String,
     pub playtime_forever: Option<u64>,
+    pub rtime_last_played: Option<i64>,
 }
 
 // #[derive(Debug, Deserialize)]

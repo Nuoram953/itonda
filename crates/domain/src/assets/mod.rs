@@ -5,3 +5,4 @@ pub mod policy;
 pub mod registry;
 pub mod steam_grid_db;
 pub mod traits;
+pub mod types;

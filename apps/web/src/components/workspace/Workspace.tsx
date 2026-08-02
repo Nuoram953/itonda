@@ -1,6 +1,6 @@
 import { createContext, type ReactNode, useContext } from "react";
 import { cn } from "@/lib/utils";
-import type { IconType } from "react-icons";
+import type { LucideIcon } from "lucide-react";
 
 const WorkspaceContext = createContext({});
 
@@ -56,7 +56,7 @@ function Actions({ children, className }: ActionsProps) {
 }
 
 type ActionProps = {
-  icon: IconType;
+  icon: LucideIcon;
   children: ReactNode;
   active?: boolean;
   className?: string;

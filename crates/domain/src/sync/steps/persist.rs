@@ -1,14 +1,16 @@
 use async_trait::async_trait;
-use itonda_database::{
-    media::{
-        MediaInsert, MediaLaunchUpsert, find_media_by_title, insert_media, upsert_media_launch,
-    },
-    models::UpsertAction,
+use itonda_database::media::{
+    MediaGameDetailsUpsert, MediaInsert, MediaLaunchUpsert, find_media_by_title, insert_media,
+    upsert_media_game_details, upsert_media_launch,
 };
 use sqlx::SqlitePool;
 
 use crate::{
-    media::models::{Media, MediaStatus, MediaType},
+    media::{
+        discovered::DiscoveredMediaMetadata,
+        models::Media,
+        types::{MediaStatus, MediaType},
+    },
     sync::{
         context::{SyncAction, SyncContext},
         errors::SyncError,
@@ -36,7 +38,8 @@ impl SyncStep for PersistStep {
         let row = match find_media_by_title(&self.pool, context.discovered.title.clone()).await? {
             Some(row) => row,
             None => {
-                context.action = SyncAction::Created;
+                context.action.merge(SyncAction::Created);
+
                 insert_media(
                     &self.pool,
                     MediaInsert {
@@ -50,34 +53,47 @@ impl SyncStep for PersistStep {
         };
 
         let media = Media::try_from(row).unwrap();
-        if let MediaType::Game = context.discovered.media_type
-            && let Some(launch) = &context.discovered.launch
-        {
-            let result = upsert_media_launch(
+
+        if let MediaType::Game = context.discovered.media_type {
+            if let Some(launch) = &context.discovered.launch {
+                let result = upsert_media_launch(
+                    &self.pool,
+                    MediaLaunchUpsert {
+                        media_id: media.id.clone(),
+                        name: launch.name.clone(),
+                        launch_type: launch.launch_type.as_str().into(),
+                        program: launch.program.clone(),
+                        arguments: serde_json::to_string(&launch.arguments)?,
+                        working_directory: launch.working_directory.clone(),
+                        is_default: false,
+                        enabled: true,
+                    },
+                )
+                .await?;
+
+                context.action.merge(result.action.into());
+            }
+
+            let DiscoveredMediaMetadata::Game(game) = &context.discovered.metadata;
+
+            let result = upsert_media_game_details(
                 &self.pool,
-                MediaLaunchUpsert {
+                MediaGameDetailsUpsert {
                     media_id: media.id.clone(),
-                    name: launch.name.clone(),
-                    launch_type: launch.launch_type.as_str().into(),
-                    program: launch.program.clone(),
-                    arguments: serde_json::to_string(&launch.arguments)?,
-                    working_directory: launch.working_directory.clone(),
-                    is_default: false,
-                    enabled: true,
+                    playtime_minutes: game.total_playtime.map(|v| v as i64),
+                    last_played_at: game.last_played,
                 },
             )
             .await?;
 
-            if result.action != UpsertAction::Unchanged {
-                context.action = SyncAction::Updated;
-            }
+            context.action.merge(result.action.into());
         }
+
         context.media = Some(media);
 
         Ok(())
     }
 }
-
 #[cfg(test)]
 mod tests {
     use itonda_database::{media::find_media_launch_by_media_id, test_utils::setup_db};

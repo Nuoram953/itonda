@@ -1,47 +1,25 @@
-use itonda_database::media::{MediaAssetRow, MediaRow};
+use itonda_database::media::{MediaAssetRow, MediaGameDetailsRow, MediaLaunchRow, MediaRow};
 use serde::{Deserialize, Serialize};
 
 use utoipa::ToSchema;
 
-use crate::{media::errors::MediaError, storefronts::models::StorefrontId};
-
-#[derive(Clone)]
-pub struct DiscoveredMedia {
-    pub storefront: StorefrontId,
-    pub external_id: String,
-    pub media_type: MediaType,
-    pub title: String,
-    pub metadata: DiscoveredMediaMetadata,
-    pub launch: Option<DiscoveredLaunch>,
-}
-
-#[derive(Clone)]
-pub struct DiscoveredLaunch {
-    pub name: String,
-    pub launch_type: MediaLaunchType,
-    pub program: String,
-    pub arguments: Vec<String>,
-    pub working_directory: Option<String>,
-}
-
-#[derive(Clone)]
-pub struct DiscoveredMediaMetadata {
-    pub total_playtime: Option<u64>,
-}
-
-#[derive(Clone, Debug)]
-pub struct DiscoveredAsset {
-    pub asset_type: AssetType,
-    pub url: String,
-}
+use crate::{
+    assets::{error::AssetError, types::AssetType},
+    media::{
+        errors::MediaError,
+        types::{MediaStatus, MediaType},
+    },
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct Media {
     pub id: String,
     pub title: String,
-    pub media_type: String,
+    pub media_type: MediaType,
     pub status: MediaStatus,
     pub assets: Vec<Asset>,
+    pub details: Option<MediaDetails>,
+    pub launches: Vec<Launch>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -50,8 +28,26 @@ pub struct Asset {
     pub asset_type: AssetType,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct Launch {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[serde(untagged)]
+pub enum MediaDetails {
+    Game(MediaGameDetails),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct MediaGameDetails {
+    pub playtime_minutes: Option<i64>,
+    pub last_played_at: Option<i64>,
+}
+
 impl TryFrom<MediaAssetRow> for Asset {
-    type Error = MediaError;
+    type Error = AssetError;
 
     fn try_from(row: MediaAssetRow) -> Result<Self, Self::Error> {
         Ok(Self {
@@ -61,48 +57,14 @@ impl TryFrom<MediaAssetRow> for Asset {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum MediaType {
-    Game,
-    Movie,
-    TvShow,
-}
-
-impl MediaType {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            MediaType::Game => "game",
-            MediaType::Movie => "movie",
-            MediaType::TvShow => "tv_show",
+impl From<MediaLaunchRow> for Launch {
+    fn from(row: MediaLaunchRow) -> Self {
+        Self {
+            id: row.id,
+            name: row.name,
         }
     }
 }
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum MediaLaunchType {
-    Storefront,
-    Emulator,
-    Custom,
-}
-
-impl MediaLaunchType {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            MediaLaunchType::Storefront => "storefront",
-            MediaLaunchType::Emulator => "emulator",
-            MediaLaunchType::Custom => "custom",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum MediaSource {
-    Steam,
-}
-
 impl TryFrom<MediaRow> for Media {
     type Error = MediaError;
 
@@ -111,94 +73,19 @@ impl TryFrom<MediaRow> for Media {
             id: row.id,
             title: row.title,
             status: row.status_id.try_into()?,
-            media_type: row
-                .media_type
-                .parse()
-                .map_err(|_| MediaError::InvalidMediaType)?,
+            media_type: row.media_type.try_into()?,
             assets: Vec::new(),
+            launches: Vec::new(),
+            details: None,
         })
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, ToSchema)]
-#[repr(i64)]
-#[serde(rename_all = "snake_case")]
-pub enum MediaStatus {
-    NotStarted = 1,
-    InProgress = 2,
-    Completed = 3,
-    Abandoned = 4,
-    Paused = 5,
-}
-
-impl MediaStatus {
-    pub fn id(&self) -> i64 {
-        *self as i64
-    }
-}
-
-impl TryFrom<i64> for MediaStatus {
-    type Error = MediaError;
-
-    fn try_from(value: i64) -> Result<Self, Self::Error> {
-        match value {
-            1 => Ok(Self::NotStarted),
-            2 => Ok(Self::InProgress),
-            3 => Ok(Self::Completed),
-            4 => Ok(Self::Abandoned),
-            5 => Ok(Self::Paused),
-            _ => Err(MediaError::InvalidMediaStatus),
-        }
-    }
-}
-
-#[repr(i64)]
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub enum AssetType {
-    Poster = 1,
-    Backdrop = 2,
-    Logo = 3,
-    Banner = 4,
-    Thumbnail = 5,
-    Icon = 6,
-    Trailer = 7,
-    Screenshot = 8,
-}
-
-impl AssetType {
-    pub fn id(self) -> i64 {
-        self as i64
-    }
-
-    pub fn folder(&self) -> &'static str {
-        match self {
-            AssetType::Poster => "poster",
-            AssetType::Backdrop => "backdrop",
-            AssetType::Logo => "logo",
-            AssetType::Banner => "banner",
-            AssetType::Thumbnail => "thumbnail",
-            AssetType::Icon => "icon",
-            AssetType::Trailer => "trailer",
-            AssetType::Screenshot => "screenshot",
-        }
-    }
-}
-
-impl TryFrom<i64> for AssetType {
-    type Error = MediaError;
-
-    fn try_from(value: i64) -> Result<Self, Self::Error> {
-        match value {
-            1 => Ok(AssetType::Poster),
-            2 => Ok(AssetType::Backdrop),
-            3 => Ok(AssetType::Logo),
-            4 => Ok(AssetType::Banner),
-            5 => Ok(AssetType::Thumbnail),
-            6 => Ok(AssetType::Icon),
-            7 => Ok(AssetType::Trailer),
-            8 => Ok(AssetType::Screenshot),
-            _ => Err(MediaError::InvalidAssetType),
+impl From<MediaGameDetailsRow> for MediaGameDetails {
+    fn from(row: MediaGameDetailsRow) -> Self {
+        Self {
+            playtime_minutes: row.playtime_minutes,
+            last_played_at: row.last_played_at,
         }
     }
 }

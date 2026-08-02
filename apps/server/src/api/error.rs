@@ -3,7 +3,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use itonda_domain::launch::LaunchError;
+use itonda_domain::{launch::LaunchError, media::errors::MediaError};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -139,6 +139,16 @@ impl From<LaunchError> for ApiError {
             LaunchError::Database(err) => ApiError::Database(err),
 
             LaunchError::InvalidId => ApiError::Validation("Invalid launch id".into()),
+        }
+    }
+}
+
+impl From<MediaError> for ApiError {
+    fn from(err: MediaError) -> Self {
+        match err {
+            MediaError::NotFound => ApiError::MediaNotFound,
+            MediaError::Database(err) => ApiError::Database(err),
+            _ => ApiError::InvalidPayload,
         }
     }
 }

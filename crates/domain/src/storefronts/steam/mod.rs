@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 
 use crate::{
-    media::models::DiscoveredMedia,
+    media::discovered::DiscoveredMedia,
     storefronts::{
         error::StorefrontError,
         models::StorefrontId,

@@ -1,6 +1,6 @@
-use crate::{
-    assets::steam_grid_db::models::{Media, MediaAuthor, MediaResponse},
-    media::models::AssetType,
+use crate::assets::{
+    steam_grid_db::models::{Media, MediaAuthor, MediaResponse},
+    types::AssetType,
 };
 
 fn media_fixture(url: &str) -> Media {

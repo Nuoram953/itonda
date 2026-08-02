@@ -5,7 +5,8 @@ use axum::{
     response::IntoResponse,
 };
 use itonda_domain::{
-    launch::service::get_launch_media_details, media::service::get_all_media,
+    launch::service::get_launch_media_details,
+    media::{models::Media, service as MediaService},
     protocol::message::AgentMessage,
 };
 use tracing::instrument;
@@ -34,11 +35,30 @@ use crate::{
 )]
 #[instrument(skip(state))]
 pub async fn get_media(State(state): State<AppState>) -> Result<Json<MediaResponse>, ApiError> {
-    let media = get_all_media(&state.db).await;
+    let media = MediaService::get_all_media(&state.db).await;
 
     Ok(Json(MediaResponse {
         items: media.unwrap(),
     }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/media/{media_id}",
+    responses(
+        (
+            status = 200,
+            body = Media
+        )
+    )
+)]
+pub async fn get_media_by_id(
+    State(state): State<AppState>,
+    Path(media_id): Path<String>,
+) -> Result<Json<Media>, ApiError> {
+    let media = MediaService::get_media_by_id(&state.db, media_id).await?;
+
+    Ok(Json(media))
 }
 
 #[utoipa::path(

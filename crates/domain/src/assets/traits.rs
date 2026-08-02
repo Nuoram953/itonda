@@ -4,8 +4,9 @@ use crate::{
     assets::{
         error::AssetError,
         models::{AssetStoreId, PosterSearchOptions},
+        types::AssetType,
     },
-    media::models::{AssetType, DiscoveredAsset, MediaType},
+    media::{discovered::DiscoveredAsset, types::MediaType},
     storefronts::models::StorefrontId,
 };
 

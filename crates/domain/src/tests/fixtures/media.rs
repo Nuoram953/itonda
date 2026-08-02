@@ -1,6 +1,7 @@
 use crate::{
-    media::models::{
-        DiscoveredLaunch, DiscoveredMedia, DiscoveredMediaMetadata, MediaLaunchType, MediaType,
+    media::{
+        discovered::{DiscoveredLaunch, DiscoveredMedia, DiscoveredMediaMetadata},
+        types::{MediaLaunchType, MediaType},
     },
     storefronts::models::StorefrontId,
 };
