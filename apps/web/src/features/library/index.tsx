@@ -3,6 +3,7 @@ import { Workspace } from "@/components/workspace/Workspace";
 import { Card } from "./components/card";
 import { Refresh } from "./components/action/refresh";
 import { Link } from "@tanstack/react-router";
+import { Search } from "./components/action/search";
 
 export const Libary = () => {
   const mediaQuery = useMedia({});
@@ -17,6 +18,7 @@ export const Libary = () => {
     <Workspace>
       <Workspace.Header title="Media" subtitle={`${media.length} items`}>
         <Workspace.Actions>
+          <Search />
           <Refresh />
         </Workspace.Actions>
       </Workspace.Header>

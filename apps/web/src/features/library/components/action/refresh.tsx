@@ -1,13 +1,13 @@
 import { Workspace } from "@/components/workspace/Workspace";
-import { RiRefreshLine } from "react-icons/ri";
 import { useRefreshMedia } from "../../api/post-media-refresh";
+import { RefreshCcw } from "lucide-react";
 
 export const Refresh = () => {
   const refreshMediaMutation = useRefreshMedia({});
 
   return (
     <Workspace.Action
-      icon={RiRefreshLine}
+      icon={RefreshCcw}
       onClick={() => refreshMediaMutation.mutate({})}
       disabled={refreshMediaMutation.isPending}
     >

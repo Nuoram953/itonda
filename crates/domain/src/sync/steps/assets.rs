@@ -276,7 +276,8 @@ mod tests {
         }));
 
         let downloader = AssetDownloader::new(paths);
-        let step = AssetStep::with_policy(pool.clone(), registry, downloader, AssetPolicy::All);
+        let step =
+            AssetStep::with_policy(pool.clone(), registry, downloader, AssetPolicy::Limit(1));
 
         let media_row = insert_media(
             &pool,
