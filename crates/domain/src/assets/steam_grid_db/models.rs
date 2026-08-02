@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::media::models::{AssetType, DiscoveredAsset};
+use crate::{assets::types::AssetType, media::discovered::DiscoveredAsset};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]
 pub struct GridSearchOptions {

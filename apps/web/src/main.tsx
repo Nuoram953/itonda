@@ -11,25 +11,28 @@ import { RootErrorFallback } from "./app/routes/error";
 import { AxiosInterceptor } from "./lib/AxiosInterceptor";
 import { router } from "./app/router";
 import { WebSocketProvider } from "./app/websocketProvider";
+import { ThemeProvider } from "./components/theme-provider";
 
 const queryClient = new QueryClient();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ErrorBoundary
-      FallbackComponent={RootErrorFallback}
-      onReset={() => window.location.reload()}
-    >
-      <QueryClientProvider client={queryClient}>
-        <NotificationProvider>
-          <WebSocketProvider>
-            <AxiosInterceptor>
-              <RouterProvider router={router} />
-            </AxiosInterceptor>
-            <NotificationViewport />
-          </WebSocketProvider>
-        </NotificationProvider>
-      </QueryClientProvider>
-    </ErrorBoundary>
+    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+      <ErrorBoundary
+        FallbackComponent={RootErrorFallback}
+        onReset={() => window.location.reload()}
+      >
+        <QueryClientProvider client={queryClient}>
+          <NotificationProvider>
+            <WebSocketProvider>
+              <AxiosInterceptor>
+                <RouterProvider router={router} />
+              </AxiosInterceptor>
+              <NotificationViewport />
+            </WebSocketProvider>
+          </NotificationProvider>
+        </QueryClientProvider>
+      </ErrorBoundary>
+    </ThemeProvider>
   </StrictMode>,
 );

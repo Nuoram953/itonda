@@ -1,3 +1,6 @@
+use crate::assets::error::AssetError;
+use itonda_database::error::DatabaseError;
+
 #[derive(Debug, thiserror::Error)]
 pub enum MediaError {
     #[error("title cannot be empty")]
@@ -13,23 +16,23 @@ pub enum MediaError {
     InvalidId,
 
     #[error("database error: {0}")]
-    Database(#[from] itonda_database::error::DatabaseError),
-
-    #[error("database error: {0}")]
-    Sqlx(sqlx::Error),
+    Database(DatabaseError),
 
     #[error("invalid asset type")]
     InvalidAssetType,
 
     #[error("invalid media status")]
     InvalidMediaStatus,
+
+    #[error("asset error: {0}")]
+    AssetError(#[from] AssetError),
 }
 
-impl From<sqlx::Error> for MediaError {
-    fn from(err: sqlx::Error) -> Self {
+impl From<DatabaseError> for MediaError {
+    fn from(err: DatabaseError) -> Self {
         match err {
-            sqlx::Error::RowNotFound => MediaError::NotFound,
-            err => MediaError::Sqlx(err),
+            DatabaseError::NotFound => MediaError::NotFound,
+            err => MediaError::Database(err),
         }
     }
 }

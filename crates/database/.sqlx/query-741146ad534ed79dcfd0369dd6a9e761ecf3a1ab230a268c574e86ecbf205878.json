@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO media_game_details (\n                media_id,\n                playtime_minutes,\n                last_played_at\n            )\n            VALUES (?, ?, ?)\n            RETURNING\n                media_id,\n                playtime_minutes,\n                last_played_at\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "media_id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "playtime_minutes",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "last_played_at",
+        "ordinal": 2,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "741146ad534ed79dcfd0369dd6a9e761ecf3a1ab230a268c574e86ecbf205878"
+}

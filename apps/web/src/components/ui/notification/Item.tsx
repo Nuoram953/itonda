@@ -3,13 +3,12 @@ import { cva } from "class-variance-authority";
 import type { Notification } from "@/app/notificationContext";
 import { useNotification } from "@/hooks/use-notification";
 import {
-  SlCheck,
-  SlClose,
-  SlExclamation,
-  SlInfo,
-  SlOptions,
-} from "react-icons/sl";
-import type { IconType } from "react-icons";
+  Check,
+  CircleAlert,
+  Ellipsis,
+  Info,
+  TriangleAlert,
+} from "lucide-react";
 
 const notificationVariants = cva(
   [
@@ -39,26 +38,18 @@ export function NotificationItem({ notification }: Props) {
   const { notify } = useNotification();
 
   const getIconForSeverity = (severity: Notification["severity"]) => {
-    let Icon: IconType;
     switch (severity) {
       case "success":
-        Icon = SlCheck;
-        break;
+        return <Check />;
       case "info":
-        Icon = SlInfo;
-        break;
+        return <Info />;
       case "warning":
-        Icon = SlExclamation;
-        break;
+        return <CircleAlert />;
       case "error":
-        Icon = SlClose;
-        break;
+        return <TriangleAlert />;
       case "loading":
-        Icon = SlOptions;
-        break;
+        return <Ellipsis />;
     }
-
-    return <Icon className="size-5" />;
   };
 
   const Icon = getIconForSeverity(notification.severity);

@@ -1,3 +1,5 @@
+use itonda_database::error::DatabaseError;
+
 #[derive(Debug, thiserror::Error)]
 pub enum LaunchError {
     #[error("launch id not found")]
@@ -10,5 +12,14 @@ pub enum LaunchError {
     NoAgentAvailable,
 
     #[error("database error: {0}")]
-    Database(#[from] itonda_database::error::DatabaseError),
+    Database(DatabaseError),
+}
+
+impl From<DatabaseError> for LaunchError {
+    fn from(err: DatabaseError) -> Self {
+        match err {
+            DatabaseError::NotFound => LaunchError::NotFound,
+            err => LaunchError::Database(err),
+        }
+    }
 }

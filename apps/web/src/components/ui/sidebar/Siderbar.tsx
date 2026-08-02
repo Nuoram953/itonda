@@ -1,8 +1,6 @@
 import { Link } from "@tanstack/react-router";
+import { ChevronDown, Download, Settings } from "lucide-react";
 import { useState } from "react";
-import type { IconType } from "react-icons";
-import { CgChevronDown } from "react-icons/cg";
-import { HiDownload, HiCog } from "react-icons/hi";
 
 export const Sidebar = () => {
   return (
@@ -31,7 +29,7 @@ export const Sidebar = () => {
           className="flex text-2xl w-full items-center mx-auto justify-center content-center text-text-muted hover:text-primary-hover transition-colors [&.active]:text-primary-active"
           title="Downloads"
         >
-          <HiDownload />
+          <Download />
         </Link>
 
         <div className="h-6 w-px bg-border-strong" />
@@ -41,7 +39,7 @@ export const Sidebar = () => {
           className="flex text-2xl w-full items-center mx-auto justify-center content-center text-text-muted hover:text-primary-hover transition-colors [&.active]:text-primary-active"
           title="Settings"
         >
-          <HiCog />
+          <Settings />
         </Link>
       </div>
     </aside>
@@ -52,10 +50,9 @@ type LinkItemProp = {
   label: string;
   path: string;
   children?: LinkItemProp[];
-  Icon?: IconType;
 };
 
-const LinkItem = ({ label, path, children, Icon }: LinkItemProp) => {
+const LinkItem = ({ label, path, children }: LinkItemProp) => {
   const [open, setOpen] = useState(true);
 
   const toggleOpen = () => {
@@ -70,11 +67,10 @@ const LinkItem = ({ label, path, children, Icon }: LinkItemProp) => {
       >
         <div className="flex p-2 items-center justify-between hover:text-primary-hover hover:bg-surface-hover rounded-md transition-colors cursor-pointer">
           <div className="flex gap-3 items-center">
-            {Icon && <Icon className="text-lg" />}
             <span>{label}</span>
           </div>
           {children && (
-            <CgChevronDown onClick={toggleOpen} aria-label={`toggle`} />
+            <ChevronDown onClick={toggleOpen} aria-label={`toggle`} />
           )}
         </div>
       </Link>

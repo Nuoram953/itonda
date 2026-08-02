@@ -84,6 +84,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/media/{media_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_media_by_id"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -107,12 +123,25 @@ export interface components {
         };
         /** @enum {string} */
         JobStatus: "queued" | "running" | "completed" | "failed";
+        Launch: {
+            id: string;
+            name: string;
+        };
         Media: {
             assets: components["schemas"]["Asset"][];
+            details?: null | components["schemas"]["MediaDetails"];
             id: string;
-            media_type: string;
+            launches: components["schemas"]["Launch"][];
+            media_type: components["schemas"]["MediaType"];
             status: components["schemas"]["MediaStatus"];
             title: string;
+        };
+        MediaDetails: components["schemas"]["MediaGameDetails"];
+        MediaGameDetails: {
+            /** Format: int64 */
+            last_played_at?: number | null;
+            /** Format: int64 */
+            playtime_minutes?: number | null;
         };
         MediaImportItem: {
             media_type: components["schemas"]["MediaType"];
@@ -253,6 +282,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobResponse"];
+                };
+            };
+        };
+    };
+    get_media_by_id: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                media_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Media"];
                 };
             };
         };

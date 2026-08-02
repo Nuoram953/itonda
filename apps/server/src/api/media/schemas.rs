@@ -1,5 +1,5 @@
 use itonda_domain::{
-    media::models::{Media, MediaType},
+    media::{models::Media, types::MediaType},
     storefronts::models::StorefrontId,
 };
 use serde::{Deserialize, Serialize};

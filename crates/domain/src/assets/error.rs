@@ -29,6 +29,9 @@ pub enum AssetError {
     #[error("storefront is unavailable")]
     Unavailable,
 
+    #[error("invalid asset type")]
+    InvalidAssetType,
+
     #[error("{0}")]
     Other(String),
 }

@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        UPDATE media_game_details\n        SET\n            playtime_minutes = ?,\n            last_played_at = ?\n        WHERE media_id = ?\n        RETURNING\n            media_id,\n            playtime_minutes,\n            last_played_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "media_id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "playtime_minutes",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "last_played_at",
+        "ordinal": 2,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "12a8bf9d3c792ea810613356e6912a2cfd8085175895f5f1d03800cfcd59c0cb"
+}

@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { Loader2 } from "lucide-react";
 import type { components } from "@/api/generated.d";
 
 type CardProps = {
@@ -6,6 +8,8 @@ type CardProps = {
 
 export function Card({ media }: CardProps) {
   const poster = media.assets.find((asset) => asset.asset_type === "poster");
+
+  const [loading, setLoading] = useState(true);
 
   function getStatusAccent(status: components["schemas"]["Media"]["status"]) {
     switch (status) {
@@ -31,12 +35,29 @@ export function Card({ media }: CardProps) {
 
   return (
     <article className="group w-60 overflow-hidden rounded-xl bg-surface shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-      <div className="aspect-3/4 overflow-hidden">
+      <div className="relative aspect-3/4 overflow-hidden bg-surface-raised">
         {poster && (
-          <img
-            src={`http://localhost:3005/api/v1/assets/${media.assets[0].id}`}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-          />
+          <>
+            {loading && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-text-muted" />
+              </div>
+            )}
+
+            <img
+              key={poster.id}
+              src={`http://localhost:3005/api/v1/assets/${poster.id}`}
+              alt={media.title}
+              className={`
+                h-full w-full object-cover
+                transition-all duration-300
+                group-hover:scale-105
+                ${loading ? "opacity-0" : "opacity-100"}
+              `}
+              onLoad={() => setLoading(false)}
+              onError={() => setLoading(false)}
+            />
+          </>
         )}
       </div>
 
@@ -44,6 +65,7 @@ export function Card({ media }: CardProps) {
         <div
           className={`absolute inset-x-0 top-0 h-1 bg-linear-to-r ${getStatusAccent(media.status)}`}
         />
+
         <h3 className="truncate font-medium">{media.title}</h3>
       </div>
     </article>

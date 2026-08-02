@@ -4,7 +4,10 @@ use reqwest::{Client, Url};
 use tokio::fs;
 use uuid::Uuid;
 
-use crate::{assets::error::AssetError, media::models::AssetType, storage::path::AppPaths};
+use crate::{
+    assets::{error::AssetError, types::AssetType},
+    storage::path::AppPaths,
+};
 
 pub struct AssetDownloader {
     client: Client,
@@ -67,7 +70,8 @@ mod tests {
     use uuid::Uuid;
 
     use crate::{
-        assets::downloader::AssetDownloader, media::models::AssetType, storage::path::AppPaths,
+        assets::{downloader::AssetDownloader, types::AssetType},
+        storage::path::AppPaths,
     };
 
     #[tokio::test]

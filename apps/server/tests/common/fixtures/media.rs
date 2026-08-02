@@ -1,7 +1,7 @@
 use itonda_database::media::{
     MediaInsert, MediaLaunchRow, MediaLaunchUpsert, MediaRow, insert_media, upsert_media_launch,
 };
-use itonda_domain::media::models::MediaStatus;
+use itonda_domain::media::types::MediaStatus;
 use sqlx::SqlitePool;
 
 pub struct MediaFixture {

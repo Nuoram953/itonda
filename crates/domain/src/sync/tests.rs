@@ -1,7 +1,10 @@
 use crate::{
     assets::registry::AssetRegistry,
     events::EventBus,
-    media::models::{DiscoveredMedia, DiscoveredMediaMetadata, MediaType},
+    media::{
+        discovered::{DiscoveredMedia, DiscoveredMediaMetadata},
+        types::MediaType,
+    },
     storefronts::{
         error::StorefrontError,
         models::StorefrontId,
