@@ -40,6 +40,7 @@ pub struct Media {
     pub id: String,
     pub title: String,
     pub media_type: String,
+    pub status: MediaStatus,
     pub assets: Vec<Asset>,
 }
 
@@ -109,6 +110,7 @@ impl TryFrom<MediaRow> for Media {
         Ok(Self {
             id: row.id,
             title: row.title,
+            status: row.status_id.try_into()?,
             media_type: row
                 .media_type
                 .parse()
@@ -120,6 +122,7 @@ impl TryFrom<MediaRow> for Media {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, ToSchema)]
 #[repr(i64)]
+#[serde(rename_all = "snake_case")]
 pub enum MediaStatus {
     NotStarted = 1,
     InProgress = 2,
@@ -131,6 +134,21 @@ pub enum MediaStatus {
 impl MediaStatus {
     pub fn id(&self) -> i64 {
         *self as i64
+    }
+}
+
+impl TryFrom<i64> for MediaStatus {
+    type Error = MediaError;
+
+    fn try_from(value: i64) -> Result<Self, Self::Error> {
+        match value {
+            1 => Ok(Self::NotStarted),
+            2 => Ok(Self::InProgress),
+            3 => Ok(Self::Completed),
+            4 => Ok(Self::Abandoned),
+            5 => Ok(Self::Paused),
+            _ => Err(MediaError::InvalidMediaStatus),
+        }
     }
 }
 

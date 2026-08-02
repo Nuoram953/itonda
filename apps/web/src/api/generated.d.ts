@@ -111,6 +111,7 @@ export interface components {
             assets: components["schemas"]["Asset"][];
             id: string;
             media_type: string;
+            status: components["schemas"]["MediaStatus"];
             title: string;
         };
         MediaImportItem: {
@@ -126,6 +127,8 @@ export interface components {
         MediaResponse: {
             items: components["schemas"]["Media"][];
         };
+        /** @enum {string} */
+        MediaStatus: "not_started" | "in_progress" | "completed" | "abandoned" | "paused";
         /** @enum {string} */
         MediaType: "game" | "movie" | "tv_show";
         /** @enum {string} */
