@@ -32,3 +32,16 @@ pub struct AgentConnectionsInsert {
     pub agent_id: String,
     pub ip_address: Option<String>,
 }
+
+#[derive(Debug, serde::Serialize, sqlx::FromRow)]
+pub struct AgentWithStatusRow {
+    pub id: String,
+    pub name: String,
+    pub hostname: Option<String>,
+    pub platform: Option<String>,
+    pub agent_version: Option<String>,
+    pub last_seen_at: Option<i64>,
+    pub created_at: i64,
+    pub connected_at: Option<i64>,
+    pub ip_address: Option<String>,
+}

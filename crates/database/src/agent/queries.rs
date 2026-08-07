@@ -1,7 +1,9 @@
 use sqlx::{SqlitePool, sqlite::SqliteQueryResult};
 
 use crate::{
-    agent::{AgentConnectionsInsert, AgentConnectionsRow, AgentsInsert, AgentsRow},
+    agent::{
+        AgentConnectionsInsert, AgentConnectionsRow, AgentWithStatusRow, AgentsInsert, AgentsRow,
+    },
     error::DatabaseError,
 };
 
@@ -110,6 +112,32 @@ pub async fn find_available_agent(
         "#
     )
     .fetch_optional(pool)
+    .await
+    .map_err(DatabaseError::from)
+}
+
+pub async fn get_agents_with_status(
+    pool: &SqlitePool,
+) -> Result<Vec<AgentWithStatusRow>, DatabaseError> {
+    sqlx::query_as!(
+        AgentWithStatusRow,
+        r#"
+        SELECT
+            a.id,
+            a.name,
+            a.hostname,
+            a.platform,
+            a.agent_version,
+            a.last_seen_at,
+            a.created_at,
+            c.connected_at,
+            c.ip_address
+        FROM agents a
+        JOIN agent_connections c ON a.id = c.agent_id AND c.disconnected_at IS NULL
+        ORDER BY a.name ASC
+        "#
+    )
+    .fetch_all(pool)
     .await
     .map_err(DatabaseError::from)
 }

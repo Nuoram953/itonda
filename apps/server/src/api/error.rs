@@ -3,7 +3,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use itonda_domain::{launch::LaunchError, media::errors::MediaError};
+use itonda_domain::{agents::errors::AgentsError, launch::LaunchError, media::errors::MediaError};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -38,6 +38,9 @@ pub enum ApiError {
 
     #[error("forbidden")]
     Forbidden,
+
+    #[error("interal server error")]
+    InternalServer,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -79,7 +82,7 @@ impl ApiError {
 
             Self::InvalidPayload => StatusCode::BAD_REQUEST,
 
-            Self::Database(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::Database(_) | Self::InternalServer => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 
@@ -89,42 +92,29 @@ impl ApiError {
             Self::AssetNotFound => "ASSET_NOT_FOUND",
             Self::CollectionNotFound => "COLLECTION_NOT_FOUND",
             Self::LaunchNotFound => "LAUNCH_NOT_FOUND",
-
             Self::Validation(_) => "VALIDATION_FAILED",
-
             Self::Database(_) => "DATABASE_ERROR",
-
             Self::WorkerUnavailable => "WORKER_UNAVAILABLE",
-
             Self::Unauthorized => "UNAUTHORIZED",
-
             Self::Forbidden => "FORBIDDEN",
-
             Self::InvalidPayload => "INVALID_PAYLOAD",
+            Self::InternalServer => "INTERNAL_SERVER_ERROR",
         }
     }
 
     fn message(&self) -> String {
         match self {
             Self::Validation(message) => message.clone(),
-
             Self::MediaNotFound => "Media not found".into(),
-
             Self::AssetNotFound => "Asset not found".into(),
-
             Self::CollectionNotFound => "Collection not found".into(),
-
             Self::LaunchNotFound => "Media launch not found".into(),
-
             Self::Database(_) => "An unexpected error occurred.".into(),
-
             Self::WorkerUnavailable => "No agent is currently available.".into(),
-
             Self::Unauthorized => "Unauthorized".into(),
-
             Self::Forbidden => "Forbidden".into(),
-
             Self::InvalidPayload => "Invalid payload".into(),
+            Self::InternalServer => "Internal Server Error".into(),
         }
     }
 }
@@ -149,6 +139,14 @@ impl From<MediaError> for ApiError {
             MediaError::NotFound => ApiError::MediaNotFound,
             MediaError::Database(err) => ApiError::Database(err),
             _ => ApiError::InvalidPayload,
+        }
+    }
+}
+
+impl From<AgentsError> for ApiError {
+    fn from(err: AgentsError) -> Self {
+        match err {
+            AgentsError::Database(err) => ApiError::Database(err),
         }
     }
 }
