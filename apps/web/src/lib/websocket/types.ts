@@ -1,6 +1,12 @@
-export type AppEvent = {
-  Job: JobEvent;
-};
+export type AppEvent =
+  | { Job: JobEvent }
+  | { Agent: AgentEvent };
+
+export type AgentEvent =
+  | { Connected: { agent_id: string } }
+  | { Disconnected: { agent_id: string } }
+  | { ScanStarted: { agent_id: string } }
+  | { ScanCompleted: { agent_id: string } };
 
 export type JobEvent = {
   job_id: string;

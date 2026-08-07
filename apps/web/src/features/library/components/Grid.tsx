@@ -11,10 +11,10 @@ export const MediaGrid = () => {
   const { search, filters, sort, applyFilters } = useLibrary();
   const mediaQuery = useMedia({});
 
-  const media = mediaQuery.data?.items ?? [];
+  const media = mediaQuery.data?.items;
 
   const filteredMedia = useMemo(
-    () => applyFilters(media, search, filters, sort),
+    () => applyFilters(media ?? [], search, filters, sort),
     [media, search, filters, sort, applyFilters],
   );
 

@@ -4,6 +4,22 @@
  */
 
 export interface paths {
+    "/agents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_connected_agents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/assets/{id}": {
         parameters: {
             query?: never;
@@ -104,6 +120,21 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        Agent: {
+            agent_version?: string | null;
+            /** Format: int64 */
+            connected_at?: number | null;
+            /** Format: int64 */
+            created_at: number;
+            hostname?: string | null;
+            id: string;
+            ip_address?: string | null;
+            is_connected: boolean;
+            /** Format: int64 */
+            last_seen_at?: number | null;
+            name: string;
+            platform?: string | null;
+        };
         Asset: {
             asset_type: components["schemas"]["AssetType"];
             id: string;
@@ -117,6 +148,9 @@ export interface components {
         };
         /** @enum {string} */
         CommandStatus: "accepted" | "sent";
+        GetAgentsResponse: {
+            agents: components["schemas"]["Agent"][];
+        };
         JobResponse: {
             job_id: string;
             status: components["schemas"]["JobStatus"];
@@ -171,6 +205,25 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    get_connected_agents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetAgentsResponse"];
+                };
+            };
+        };
+    };
     get_asset: {
         parameters: {
             query?: never;
