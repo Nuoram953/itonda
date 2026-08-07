@@ -11,7 +11,10 @@ use itonda_database::agent::{
     AgentConnectionsInsert, AgentsInsert, disconnect_agent_connection, insert_agent_connection,
     upsert_agent,
 };
-use itonda_domain::protocol::{agent::AgentRegistration, message::AgentMessage};
+use itonda_domain::{
+    events::{AgentEvent, AppEvent, EventBus},
+    protocol::{agent::AgentRegistration, message::AgentMessage},
+};
 use sqlx::SqlitePool;
 use tokio::sync::{RwLock, mpsc};
 use tracing::{debug, warn};
@@ -36,8 +39,13 @@ impl AgentManager {
             agents: Arc::new(RwLock::new(HashMap::new())),
         }
     }
+
     pub async fn register(&self, agent_id: String, sender: mpsc::Sender<AgentMessage>) {
         self.agents.write().await.insert(agent_id, sender);
+    }
+
+    pub async fn unregister(&self, agent_id: &str) {
+        self.agents.write().await.remove(agent_id);
     }
 
     pub async fn send(&self, agent_id: &str, command: AgentMessage) -> anyhow::Result<()> {
@@ -55,9 +63,11 @@ impl AgentManager {
 
 pub async fn agent_ws(ws: WebSocketUpgrade, State(state): State<AppState>) -> Response {
     let manager = state.agent_manager.clone();
+    let events = state.events.clone();
+    let pool = state.db.clone();
 
     ws.on_upgrade(move |socket| async move {
-        if let Err(err) = handle_agent(socket, &state.db, manager).await {
+        if let Err(err) = handle_agent(socket, &pool, manager, events).await {
             tracing::error!("Agent connection error: {err}");
         }
     })
@@ -67,6 +77,7 @@ async fn handle_agent(
     mut socket: WebSocket,
     pool: &SqlitePool,
     agent_manager: AgentManager,
+    events: EventBus,
 ) -> anyhow::Result<()> {
     debug!("Waiting for registration");
 
@@ -102,6 +113,32 @@ async fn handle_agent(
 
     agent_manager.register(agent_id.clone(), tx).await;
 
+    if let Ok(agent_uuid) = Uuid::parse_str(&agent_id) {
+        events.publish(AppEvent::Agent(AgentEvent::Connected {
+            agent_id: agent_uuid,
+        }));
+    }
+
+    let result = run_agent_loop(&mut socket, &mut rx, pool, &agent_id).await;
+
+    let _ = disconnect_agent_connection(pool, agent_id.clone()).await;
+    agent_manager.unregister(&agent_id).await;
+
+    if let Ok(agent_uuid) = Uuid::parse_str(&agent_id) {
+        events.publish(AppEvent::Agent(AgentEvent::Disconnected {
+            agent_id: agent_uuid,
+        }));
+    }
+
+    result
+}
+
+async fn run_agent_loop(
+    socket: &mut WebSocket,
+    rx: &mut mpsc::Receiver<AgentMessage>,
+    pool: &SqlitePool,
+    agent_id: &str,
+) -> anyhow::Result<()> {
     loop {
         tokio::select! {
             Some(command) = rx.recv() => {
@@ -111,25 +148,27 @@ async fn handle_agent(
 
                 socket
                     .send(axum::extract::ws::Message::Text(message.into()))
-                    .await
-                    .unwrap();
+                    .await?;
             }
 
             Some(message) = socket.recv() => {
                 debug!("Received from agent: {:?}", message);
-                match message{
-                    Ok(_) => {
-                    }
-
+                match message {
+                    Ok(_) => {}
                     Err(err) => {
                         warn!("Error message: {:?}", err);
-                        disconnect_agent_connection(pool, agent_id.clone()).await?;
+                        disconnect_agent_connection(pool, agent_id.to_string()).await?;
+                        anyhow::bail!("Agent socket error: {err}");
                     }
                 }
             }
-
+            else => {
+                break;
+            }
         }
     }
+
+    Ok(())
 }
 
 async fn wait_for_registration(socket: &mut WebSocket) -> anyhow::Result<AgentRegistration> {
