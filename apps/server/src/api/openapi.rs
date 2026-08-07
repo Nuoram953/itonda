@@ -8,16 +8,13 @@ use utoipa::OpenApi;
         crate::api::media::handlers::import_media,
         crate::api::media::handlers::refresh,
         crate::api::media::handlers::launch_media,
-        crate::api::assets::handlers::get_asset
+        crate::api::assets::handlers::get_asset,
+        crate::api::agents::handlers::get_connected_agents
     ),
     components(
         schemas(
             crate::api::media::schemas::MediaResponse
         )
-    ),
-    tags(
-        (name = "media", description = "Media management"),
-        (name = "assets", description = "Assets management")
     ),
     servers(
         (url="/api/v1")
