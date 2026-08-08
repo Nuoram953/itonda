@@ -99,6 +99,8 @@ async fn handle_agent(
     )
     .await?;
 
+    let _ = disconnect_agent_connection(pool, agent_id.clone()).await;
+
     insert_agent_connection(
         pool,
         AgentConnectionsInsert {

@@ -95,6 +95,8 @@ async fn init_db() -> anyhow::Result<SqlitePool> {
         connection::migrate(&pool).await?;
     }
 
+    let _ = itonda_database::agent::disconnect_all_agent_connections(&pool).await;
+
     tracing::info!("Database initialized");
 
     Ok(pool)
