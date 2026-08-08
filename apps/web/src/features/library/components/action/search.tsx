@@ -50,10 +50,8 @@ export const Search = () => {
           </div>
 
           <SheetFooter>
-            <SheetClose>
-              <Button type="submit" className={"w-full"}>
-                Search
-              </Button>
+            <SheetClose type="submit" className={"w-full"}>
+              Search
             </SheetClose>
           </SheetFooter>
         </form>
