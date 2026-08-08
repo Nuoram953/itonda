@@ -94,6 +94,21 @@ pub async fn disconnect_agent_connection(
     .map_err(DatabaseError::from)
 }
 
+pub async fn disconnect_all_agent_connections(
+    pool: &SqlitePool,
+) -> Result<SqliteQueryResult, DatabaseError> {
+    sqlx::query!(
+        r#"
+        UPDATE agent_connections 
+            SET disconnected_at=unixepoch() 
+        WHERE disconnected_at IS NULL;
+        "#
+    )
+    .execute(pool)
+    .await
+    .map_err(DatabaseError::from)
+}
+
 pub async fn find_available_agent(
     pool: &SqlitePool,
 ) -> Result<Option<AgentConnectionsRow>, DatabaseError> {

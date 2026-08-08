@@ -1,8 +1,8 @@
 use axum::{body::Body, http};
 use http::{Request, StatusCode};
 use itonda_database::agent::{
-    disconnect_agent_connection, insert_agent_connection, upsert_agent, AgentConnectionsInsert,
-    AgentsInsert,
+    AgentConnectionsInsert, AgentsInsert, disconnect_agent_connection, insert_agent_connection,
+    upsert_agent,
 };
 use itonda_server::api::agents::schemas::GetAgentsResponse;
 use tower::ServiceExt;

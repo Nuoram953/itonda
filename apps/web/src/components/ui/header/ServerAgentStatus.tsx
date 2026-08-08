@@ -131,11 +131,6 @@ export function ServerAgentStatus() {
                           {agent.platform}
                         </span>
                       )}
-                      {agent.is_connected ? (
-                        <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                      ) : (
-                        <XCircle className="h-4 w-4 text-text-muted" />
-                      )}
                     </div>
                   </div>
                 ))}
