@@ -2,7 +2,7 @@ use crate::{
     assets::registry::AssetRegistry,
     events::EventBus,
     media::{
-        discovered::{DiscoveredMedia, DiscoveredMediaMetadata},
+        discovered::{DiscoveredMedia, DiscoveredMediaMetadata, GameMetadata},
         types::MediaType,
     },
     storefronts::{
@@ -50,9 +50,10 @@ pub fn discovered_game(title: &str) -> DiscoveredMedia {
         media_type: MediaType::Game,
         storefront: StorefrontId::Steam,
         external_id: "123".to_string(),
-        metadata: DiscoveredMediaMetadata {
+        metadata: DiscoveredMediaMetadata::Game(GameMetadata {
             total_playtime: None,
-        },
+            last_played: None,
+        }),
         launch: None,
     }
 }

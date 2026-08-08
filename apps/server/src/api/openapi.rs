@@ -8,6 +8,7 @@ use utoipa::OpenApi;
         crate::api::media::handlers::import_media,
         crate::api::media::handlers::refresh,
         crate::api::media::handlers::launch_media,
+        crate::api::media::handlers::update_status,
         crate::api::assets::handlers::get_asset,
         crate::api::agents::handlers::get_connected_agents
     ),

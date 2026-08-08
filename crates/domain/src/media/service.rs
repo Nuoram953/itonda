@@ -6,7 +6,7 @@ use sqlx::SqlitePool;
 use crate::media::{
     errors::MediaError,
     models::{Asset, Launch, Media, MediaDetails},
-    types::MediaType,
+    types::{MediaStatus, MediaType},
 };
 
 pub async fn get_media_by_id(pool: &SqlitePool, id: String) -> Result<Media, MediaError> {
@@ -101,4 +101,14 @@ pub async fn get_all_media(pool: &SqlitePool) -> Result<Vec<Media>, MediaError> 
     }
 
     Ok(medias)
+}
+
+pub async fn update_status(
+    pool: &SqlitePool,
+    media_id: String,
+    status_id: MediaStatus,
+) -> Result<(), MediaError> {
+    MediaQueries::update_media_status(pool, &media_id, status_id.id()).await?;
+
+    Ok(())
 }
