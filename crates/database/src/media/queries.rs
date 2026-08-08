@@ -245,8 +245,8 @@ pub async fn upsert_media_launch(
     let changed = existing.program != media_launch.program
         || existing.arguments != media_launch.arguments
         || existing.working_directory != media_launch.working_directory
-        || existing.is_default != media_launch.is_default as i64
-        || existing.enabled != media_launch.enabled as i64;
+        || existing.is_default != media_launch.is_default
+        || existing.enabled != media_launch.enabled;
 
     if !changed {
         return Ok(UpsertResult {
@@ -598,8 +598,8 @@ pub async fn find_media_launches_by_media_id(
             program,
             arguments,
             working_directory,
-            is_default,
-            enabled
+            is_default AS "is_default: bool",
+            enabled AS "enabled: bool"
         FROM media_launches
         WHERE media_id = ?
         "#,

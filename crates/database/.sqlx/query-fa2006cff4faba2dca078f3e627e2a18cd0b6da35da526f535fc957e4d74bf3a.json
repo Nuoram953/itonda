@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n        SELECT\n            id,\n            media_id,\n            name,\n            launch_type,\n            program,\n            arguments,\n            working_directory,\n            is_default,\n            enabled\n        FROM media_launches\n        WHERE media_id = ?\n        ",
+  "query": "\n        SELECT\n            id,\n            media_id,\n            name,\n            launch_type,\n            program,\n            arguments,\n            working_directory,\n            is_default AS \"is_default: bool\",\n            enabled AS \"enabled: bool\"\n        FROM media_launches\n        WHERE media_id = ?\n        ",
   "describe": {
     "columns": [
       {
@@ -39,12 +39,12 @@
         "type_info": "Text"
       },
       {
-        "name": "is_default",
+        "name": "is_default: bool",
         "ordinal": 7,
         "type_info": "Integer"
       },
       {
-        "name": "enabled",
+        "name": "enabled: bool",
         "ordinal": 8,
         "type_info": "Integer"
       }
@@ -64,5 +64,5 @@
       false
     ]
   },
-  "hash": "f7020a3e73f24e1a6377d29772f28b1d79902672d6b529154f00e4f1a42c2664"
+  "hash": "fa2006cff4faba2dca078f3e627e2a18cd0b6da35da526f535fc957e4d74bf3a"
 }

@@ -68,7 +68,7 @@ function Action({ icon: Icon, children, className, ...props }: ActionProps) {
   return (
     <button
       className={cn(
-        "flex w-16 flex-col items-center gap-2 rounded-md p-2",
+        "flex min-w-16 flex-col items-center gap-1.5 rounded-md px-2 py-2",
         "text-text-muted transition-colors",
         "hover:bg-surface-hover hover:text-primary-hover",
         "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-text-muted",
@@ -76,8 +76,8 @@ function Action({ icon: Icon, children, className, ...props }: ActionProps) {
       )}
       {...props}
     >
-      <Icon className="text-lg" />
-      <span className="text-xs">{children}</span>
+      <Icon className="text-lg shrink-0" />
+      <span className="max-w-full text-center text-xs truncate">{children}</span>
     </button>
   );
 }

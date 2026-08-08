@@ -9,6 +9,7 @@ fn maps_owned_game() {
         appid: 570,
         name: "Dota 2".into(),
         playtime_forever: Some(120),
+        rtime_last_played: None,
     };
 
     let mapped = map_owned_game(game);

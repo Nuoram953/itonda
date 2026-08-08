@@ -20,7 +20,7 @@ pub struct AssetStep {
 
 impl AssetStep {
     pub fn new(pool: SqlitePool, registry: AssetRegistry, downloader: AssetDownloader) -> Self {
-        Self::with_policy(pool, registry, downloader, AssetPolicy::Limit(1))
+        Self::with_policy(pool, registry, downloader, AssetPolicy::default())
     }
 
     pub fn with_policy(
@@ -277,8 +277,7 @@ mod tests {
         }));
 
         let downloader = AssetDownloader::new(paths);
-        let step =
-            AssetStep::with_policy(pool.clone(), registry, downloader, AssetPolicy::Limit(1));
+        let step = AssetStep::with_policy(pool.clone(), registry, downloader, AssetPolicy::All);
 
         let media_row = insert_media(
             &pool,

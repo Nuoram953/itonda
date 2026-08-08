@@ -1,6 +1,6 @@
 use crate::{
     media::{
-        discovered::{DiscoveredLaunch, DiscoveredMedia, DiscoveredMediaMetadata},
+        discovered::{DiscoveredLaunch, DiscoveredMedia, DiscoveredMediaMetadata, GameMetadata},
         types::{MediaLaunchType, MediaType},
     },
     storefronts::models::StorefrontId,
@@ -57,9 +57,12 @@ impl DiscoveredMediaBuilder {
             external_id: self.external_id.unwrap_or_else(|| "1234".into()),
             media_type: self.media_type.unwrap_or(MediaType::Game),
             title: self.title.unwrap_or_else(|| "Test Game".into()),
-            metadata: self.metadata.unwrap_or(DiscoveredMediaMetadata {
-                total_playtime: None,
-            }),
+            metadata: self
+                .metadata
+                .unwrap_or(DiscoveredMediaMetadata::Game(GameMetadata {
+                    total_playtime: None,
+                    last_played: None,
+                })),
             launch: self.launch,
         }
     }

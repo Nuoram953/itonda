@@ -62,8 +62,8 @@ pub struct MediaLaunchRow {
     pub program: String,
     pub arguments: String,
     pub working_directory: Option<String>,
-    pub is_default: i64,
-    pub enabled: i64,
+    pub is_default: bool,
+    pub enabled: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]

@@ -116,6 +116,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/media/{media_id}/status/{status_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["update_status"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -357,6 +373,28 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Media"];
                 };
+            };
+        };
+    };
+    update_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID of the media */
+                media_id: string;
+                /** @description ID of new status */
+                status_id: components["schemas"]["MediaStatus"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
