@@ -24,7 +24,7 @@ export const MediaDetails = () => {
       <Workspace.Header title={mediaId}>
         <Workspace.Actions>
           <Launch profiles={launches} />
-          <Status />
+          <Status mediaId={mediaId} currentStatus={data?.status} />
         </Workspace.Actions>
       </Workspace.Header>
 
