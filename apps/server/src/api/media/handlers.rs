@@ -200,6 +200,7 @@ pub async fn update_status(
     State(state): State<AppState>,
     Path((media_id, status_id)): Path<(String, MediaStatus)>,
 ) -> Result<impl IntoResponse, ApiError> {
-    println!("{} {:?}", media_id, status_id);
+    MediaService::update_status(&state.db, media_id, status_id).await?;
+
     Ok(StatusCode::NO_CONTENT)
 }
