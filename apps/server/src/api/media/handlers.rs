@@ -6,7 +6,7 @@ use axum::{
 };
 use itonda_domain::{
     launch::service::get_launch_media_details,
-    media::{models::Media, service as MediaService},
+    media::{models::Media, service as MediaService, types::MediaStatus},
     protocol::message::AgentMessage,
 };
 use tracing::instrument;
@@ -180,4 +180,26 @@ pub async fn launch_media(
             status: CommandStatus::Accepted,
         }),
     ))
+}
+
+#[utoipa::path(
+    patch,
+    path = "/media/{media_id}/status/{status_id}",
+    params(
+        ("media_id" = String, Path, description = "ID of the media"),
+        ("status_id" = MediaStatus, Path, description = "ID of new status")
+    ),
+    responses(
+        (
+            status = 204,
+        )
+    )
+)]
+#[instrument(skip(state))]
+pub async fn update_status(
+    State(state): State<AppState>,
+    Path((media_id, status_id)): Path<(String, MediaStatus)>,
+) -> Result<impl IntoResponse, ApiError> {
+    println!("{} {:?}", media_id, status_id);
+    Ok(StatusCode::NO_CONTENT)
 }
