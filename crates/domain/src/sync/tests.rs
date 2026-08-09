@@ -95,3 +95,42 @@ async fn syncs_storefront_games() {
 
     assert!(media.is_some());
 }
+
+#[tokio::test]
+async fn syncs_existing_db_media_items() {
+    use crate::media::types::MediaStatus;
+    use itonda_database::media::{MediaInsert, insert_media};
+
+    let pool = setup_db().await;
+
+    let media_row = insert_media(
+        &pool,
+        MediaInsert {
+            title: "Mr. Robot".into(),
+            media_type: "tv_show".into(),
+            status_id: MediaStatus::NotStarted.id(),
+        },
+    )
+    .await
+    .unwrap();
+
+    let storefronts = StorefrontRegistry::new();
+    let events = EventBus::new();
+    let assets = AssetRegistry::new();
+
+    let service = LibrarySyncService::new(
+        uuid::Uuid::new_v4(),
+        pool.clone(),
+        events,
+        storefronts,
+        assets,
+    );
+
+    service.sync_all().await.unwrap();
+
+    let media = find_media_by_title(&pool, "Mr. Robot".into())
+        .await
+        .unwrap();
+    assert!(media.is_some());
+    assert_eq!(media.unwrap().id, media_row.id);
+}

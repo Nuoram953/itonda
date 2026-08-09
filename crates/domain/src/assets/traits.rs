@@ -23,14 +23,14 @@ pub trait AssetFetcher: Send + Sync {
 pub trait PosterFetcher: AssetFetcher {
     async fn discover_poster(
         &self,
-        storefront: StorefrontId,
+        storefront: Option<StorefrontId>,
         external_id: Option<&str>,
         title: &str,
     ) -> Result<Option<DiscoveredAsset>, AssetError>;
 
     async fn search_poster(
         &self,
-        storefront: StorefrontId,
+        storefront: Option<StorefrontId>,
         external_id: Option<&str>,
         title: &str,
         options: &PosterSearchOptions,

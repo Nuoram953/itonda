@@ -41,7 +41,7 @@ impl AssetRegistry {
     pub async fn discover(
         &self,
         media_type: MediaType,
-        storefront: StorefrontId,
+        storefront: Option<StorefrontId>,
         external_id: Option<&str>,
         title: &str,
     ) -> Result<Vec<DiscoveredAsset>, AssetError> {
@@ -61,7 +61,7 @@ impl AssetRegistry {
     pub async fn search_poster(
         &self,
         store_id: AssetStoreId,
-        storefront: StorefrontId,
+        storefront: Option<StorefrontId>,
         external_id: Option<&str>,
         title: &str,
         options: &PosterSearchOptions,
@@ -102,7 +102,7 @@ mod tests {
     impl PosterFetcher for DummyGamePosterFetcher {
         async fn discover_poster(
             &self,
-            _storefront: StorefrontId,
+            _storefront: Option<StorefrontId>,
             _external_id: Option<&str>,
             _title: &str,
         ) -> Result<Option<DiscoveredAsset>, AssetError> {
@@ -114,7 +114,7 @@ mod tests {
 
         async fn search_poster(
             &self,
-            _storefront: StorefrontId,
+            _storefront: Option<StorefrontId>,
             _external_id: Option<&str>,
             _title: &str,
             _options: &PosterSearchOptions,
@@ -132,7 +132,12 @@ mod tests {
         registry.register_poster(Arc::new(DummyGamePosterFetcher));
 
         let posters = registry
-            .discover(MediaType::Game, StorefrontId::Steam, Some("123"), "Test")
+            .discover(
+                MediaType::Game,
+                Some(StorefrontId::Steam),
+                Some("123"),
+                "Test",
+            )
             .await
             .unwrap();
 
@@ -146,7 +151,12 @@ mod tests {
         registry.register_poster(Arc::new(DummyGamePosterFetcher));
 
         let posters = registry
-            .discover(MediaType::Movie, StorefrontId::Steam, Some("123"), "Test")
+            .discover(
+                MediaType::Movie,
+                Some(StorefrontId::Steam),
+                Some("123"),
+                "Test",
+            )
             .await
             .unwrap();
 
@@ -161,7 +171,7 @@ mod tests {
         let posters = registry
             .search_poster(
                 AssetStoreId::SteamGridDb,
-                StorefrontId::Steam,
+                Some(StorefrontId::Steam),
                 Some("123"),
                 "Test",
                 &PosterSearchOptions::Default,

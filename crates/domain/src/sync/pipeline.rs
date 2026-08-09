@@ -87,7 +87,9 @@ mod tests {
             "Persist"
         }
         async fn execute(&self, context: &mut SyncContext) -> Result<(), SyncError> {
-            context.discovered.title = "Portal 2".into();
+            if let Some(discovered) = &mut context.discovered {
+                discovered.title = "Portal 2".into();
+            }
             Ok(())
         }
     }
@@ -101,7 +103,7 @@ mod tests {
         }
 
         async fn execute(&self, context: &mut SyncContext) -> Result<(), SyncError> {
-            assert_eq!(context.discovered.title, "Portal 2");
+            assert_eq!(context.discovered.as_ref().unwrap().title, "Portal 2");
             Ok(())
         }
     }

@@ -48,7 +48,7 @@ impl AssetFetcher for SteamGridDb {
 impl PosterFetcher for SteamGridDb {
     async fn discover_poster(
         &self,
-        storefront: StorefrontId,
+        storefront: Option<StorefrontId>,
         external_id: Option<&str>,
         title: &str,
     ) -> Result<Option<DiscoveredAsset>, AssetError> {
@@ -62,7 +62,7 @@ impl PosterFetcher for SteamGridDb {
 
     async fn search_poster(
         &self,
-        storefront: StorefrontId,
+        storefront: Option<StorefrontId>,
         external_id: Option<&str>,
         title: &str,
         options: &PosterSearchOptions,
