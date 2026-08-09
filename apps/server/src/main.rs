@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{fs::File, sync::Arc};
 
 use axum::Router;
 use itonda_domain::{
@@ -10,6 +10,7 @@ use itonda_domain::{
 };
 use sqlx::SqlitePool;
 use tokio::sync::mpsc::Sender;
+use tracing::level_filters::LevelFilter;
 use utoipa_swagger_ui::SwaggerUi;
 
 use itonda_server::{
@@ -24,7 +25,7 @@ use itonda_server::{
     },
 };
 
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{filter, layer::SubscriberExt, prelude::*, util::SubscriberInitExt};
 
 use api::openapi::ApiDoc;
 use itonda_database::connection;
@@ -63,12 +64,22 @@ async fn main() -> anyhow::Result<()> {
 }
 
 fn init_logging() {
+    let paths = AppPaths::new();
+    let log_file =
+        File::create(paths.log_dir().join("debug.txt")).expect("Failed to create log file");
+
+    let stdout_layer = tracing_subscriber::fmt::layer()
+        .with_writer(std::io::stdout)
+        .with_filter(LevelFilter::INFO);
+
+    let file_layer = tracing_subscriber::fmt::layer()
+        .with_writer(log_file)
+        .with_ansi(false)
+        .with_filter(LevelFilter::DEBUG);
+
     tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "itonda=debug".into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
+        .with(stdout_layer)
+        .with(file_layer)
         .init();
 
     tracing::info!("Logging initialized");
