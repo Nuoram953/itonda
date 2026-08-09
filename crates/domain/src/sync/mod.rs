@@ -26,6 +26,7 @@ pub mod tests;
 
 pub struct LibrarySyncService {
     job_id: Uuid,
+    db: SqlitePool,
     storefronts: StorefrontRegistry,
     events: EventBus,
     pipeline: MediaSyncPipeline,
@@ -51,6 +52,7 @@ impl LibrarySyncService {
         let pipeline = MediaSyncPipeline::new(steps);
         Self {
             job_id,
+            db,
             storefronts,
             events,
             pipeline,
@@ -63,6 +65,7 @@ impl LibrarySyncService {
 
     pub async fn sync_all(&self) -> Result<(), SyncError> {
         info!("Starting sync process for all");
+        let mut synced_ids = std::collections::HashSet::new();
 
         for (_, storefront) in self.storefronts.get_all() {
             let discovered_media = storefront.owned_games().await?;
@@ -78,15 +81,44 @@ impl LibrarySyncService {
 
                 self.pipeline.execute(&mut context).await?;
 
-                if context.action != SyncAction::Unchanged {
-                    self.events.publish_job(
-                        self.job_id,
-                        JobType::Sync,
-                        JobEventType::Sync(SyncEvent::MediaSynced {
-                            media_id: context.media.unwrap().id,
-                        }),
-                    )
+                if let Some(media) = &context.media {
+                    synced_ids.insert(media.id.clone());
+
+                    if context.action != SyncAction::Unchanged {
+                        self.events.publish_job(
+                            self.job_id,
+                            JobType::Sync,
+                            JobEventType::Sync(SyncEvent::MediaSynced {
+                                media_id: media.id.clone(),
+                            }),
+                        );
+                    }
                 }
+            }
+        }
+
+        let db_rows = itonda_database::media::find_all(&self.db).await?;
+        info!("Found {} media items in database", db_rows.len());
+
+        for row in db_rows {
+            if synced_ids.contains(&row.id) {
+                continue;
+            }
+
+            let media = crate::media::models::Media::try_from(row).unwrap();
+            debug!("Syncing database media item {}", media.title);
+            let mut context = SyncContext::from_media(media.clone());
+
+            info!("{:?}", context);
+
+            self.pipeline.execute(&mut context).await?;
+
+            if context.action != SyncAction::Unchanged {
+                self.events.publish_job(
+                    self.job_id,
+                    JobType::Sync,
+                    JobEventType::Sync(SyncEvent::MediaSynced { media_id: media.id }),
+                );
             }
         }
 

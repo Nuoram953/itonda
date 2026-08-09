@@ -2,8 +2,9 @@ use itonda_database::models::UpsertAction;
 
 use crate::media::{discovered::DiscoveredMedia, models::Media};
 
+#[derive(Debug)]
 pub struct SyncContext {
-    pub discovered: DiscoveredMedia,
+    pub discovered: Option<DiscoveredMedia>,
     pub media: Option<Media>,
     pub action: SyncAction,
 }
@@ -11,8 +12,16 @@ pub struct SyncContext {
 impl SyncContext {
     pub fn new(discovered: DiscoveredMedia) -> Self {
         Self {
-            discovered,
+            discovered: Some(discovered),
             media: None,
+            action: SyncAction::Unchanged,
+        }
+    }
+
+    pub fn from_media(media: Media) -> Self {
+        Self {
+            discovered: None,
+            media: Some(media),
             action: SyncAction::Unchanged,
         }
     }

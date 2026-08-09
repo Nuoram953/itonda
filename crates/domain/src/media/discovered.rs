@@ -4,7 +4,7 @@ use crate::{
     storefronts::models::StorefrontId,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DiscoveredMedia {
     pub storefront: StorefrontId,
     pub external_id: String,
@@ -14,7 +14,7 @@ pub struct DiscoveredMedia {
     pub launch: Option<DiscoveredLaunch>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DiscoveredLaunch {
     pub name: String,
     pub launch_type: MediaLaunchType,

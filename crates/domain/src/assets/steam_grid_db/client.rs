@@ -28,11 +28,12 @@ impl SteamGridDbClient {
 
     pub async fn find_game_id(
         &self,
-        storefront: StorefrontId,
+        storefront: Option<StorefrontId>,
         external_id: Option<&str>,
         title: &str,
     ) -> Result<Option<u32>, AssetError> {
         if let Some(external_id) = external_id
+            && let Some(storefront) = storefront
             && let Some(id) = self
                 .find_game_by_external_id(storefront, external_id)
                 .await?

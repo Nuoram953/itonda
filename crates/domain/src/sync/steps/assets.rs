@@ -58,14 +58,19 @@ impl SyncStep for AssetStep {
             return Ok(());
         }
 
+        let (media_type, storefront, external_id, title) = match &context.discovered {
+            Some(discovered) => (
+                discovered.media_type.clone(),
+                Some(discovered.storefront),
+                Some(discovered.external_id.as_str()),
+                discovered.title.as_str(),
+            ),
+            None => (media.media_type.clone(), None, None, media.title.as_str()),
+        };
+
         let discovered_assets = self
             .registry
-            .discover(
-                context.discovered.media_type.clone(),
-                context.discovered.storefront,
-                Some(&context.discovered.external_id),
-                &context.discovered.title,
-            )
+            .discover(media_type, storefront, external_id, title)
             .await?;
 
         let assets_to_process = match self.policy.max_items() {
@@ -126,7 +131,7 @@ mod tests {
             traits::{AssetFetcher, PosterFetcher},
             types::AssetType,
         },
-        media::{discovered::DiscoveredAsset, models::Media, types::MediaStatus},
+        media::{discovered::DiscoveredAsset, models::Media, types::MediaStatus, types::MediaType},
         storage::path::AppPaths,
         storefronts::models::StorefrontId,
         tests::fixtures::media::DiscoveredMediaBuilder,
@@ -134,6 +139,23 @@ mod tests {
 
     struct IndividualPosterFetcher {
         url: String,
+        support_all: bool,
+    }
+
+    impl IndividualPosterFetcher {
+        fn new(url: String) -> Self {
+            Self {
+                url,
+                support_all: false,
+            }
+        }
+
+        fn supporting_all(url: String) -> Self {
+            Self {
+                url,
+                support_all: true,
+            }
+        }
     }
 
     impl AssetFetcher for IndividualPosterFetcher {
@@ -144,13 +166,21 @@ mod tests {
         fn asset_type(&self) -> AssetType {
             AssetType::Poster
         }
+
+        fn supports_media_type(&self, media_type: MediaType) -> bool {
+            if self.support_all {
+                true
+            } else {
+                matches!(media_type, MediaType::Game)
+            }
+        }
     }
 
     #[async_trait]
     impl PosterFetcher for IndividualPosterFetcher {
         async fn discover_poster(
             &self,
-            _storefront: StorefrontId,
+            _storefront: Option<StorefrontId>,
             _external_id: Option<&str>,
             _title: &str,
         ) -> Result<Option<DiscoveredAsset>, AssetError> {
@@ -162,7 +192,7 @@ mod tests {
 
         async fn search_poster(
             &self,
-            _storefront: StorefrontId,
+            _storefront: Option<StorefrontId>,
             _external_id: Option<&str>,
             _title: &str,
             _options: &PosterSearchOptions,
@@ -212,12 +242,14 @@ mod tests {
         };
 
         let mut registry = AssetRegistry::new();
-        registry.register_poster(Arc::new(IndividualPosterFetcher {
-            url: format!("{}/poster1.png", server.uri()),
-        }));
-        registry.register_poster(Arc::new(IndividualPosterFetcher {
-            url: format!("{}/poster2.png", server.uri()),
-        }));
+        registry.register_poster(Arc::new(IndividualPosterFetcher::new(format!(
+            "{}/poster1.png",
+            server.uri()
+        ))));
+        registry.register_poster(Arc::new(IndividualPosterFetcher::new(format!(
+            "{}/poster2.png",
+            server.uri()
+        ))));
 
         let downloader = AssetDownloader::new(paths);
         let step = AssetStep::new(pool.clone(), registry, downloader);
@@ -239,6 +271,52 @@ mod tests {
         let discovered = DiscoveredMediaBuilder::new().title("Test Game").build();
         let mut context = SyncContext::new(discovered);
         context.media = Some(media.clone());
+
+        step.execute(&mut context).await.unwrap();
+
+        let assets = find_assets_by_media_ids(&pool, &[media.id]).await.unwrap();
+        assert_eq!(assets.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn step_fetches_assets_for_non_api_media() {
+        let pool = setup_db().await;
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/mr_robot.png"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(b"mrrobotimage"))
+            .mount(&server)
+            .await;
+
+        let temp = tempdir().unwrap();
+        let paths = AppPaths {
+            config_dir: temp.path().join("config"),
+            data_dir: temp.path().join("data"),
+        };
+
+        let mut registry = AssetRegistry::new();
+        registry.register_poster(Arc::new(IndividualPosterFetcher::supporting_all(format!(
+            "{}/mr_robot.png",
+            server.uri()
+        ))));
+
+        let downloader = AssetDownloader::new(paths);
+        let step = AssetStep::new(pool.clone(), registry, downloader);
+
+        let media_row = insert_media(
+            &pool,
+            MediaInsert {
+                title: "Mr. Robot".into(),
+                media_type: "tv_show".into(),
+                status_id: MediaStatus::NotStarted.id(),
+            },
+        )
+        .await
+        .unwrap();
+        let media = Media::try_from(media_row).unwrap();
+
+        let mut context = SyncContext::from_media(media.clone());
 
         step.execute(&mut context).await.unwrap();
 
@@ -269,12 +347,14 @@ mod tests {
         };
 
         let mut registry = AssetRegistry::new();
-        registry.register_poster(Arc::new(IndividualPosterFetcher {
-            url: format!("{}/poster1.png", server.uri()),
-        }));
-        registry.register_poster(Arc::new(IndividualPosterFetcher {
-            url: format!("{}/poster2.png", server.uri()),
-        }));
+        registry.register_poster(Arc::new(IndividualPosterFetcher::new(format!(
+            "{}/poster1.png",
+            server.uri()
+        ))));
+        registry.register_poster(Arc::new(IndividualPosterFetcher::new(format!(
+            "{}/poster2.png",
+            server.uri()
+        ))));
 
         let downloader = AssetDownloader::new(paths);
         let step = AssetStep::with_policy(pool.clone(), registry, downloader, AssetPolicy::All);

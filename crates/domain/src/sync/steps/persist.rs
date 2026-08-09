@@ -35,27 +35,41 @@ impl SyncStep for PersistStep {
     }
 
     async fn execute(&self, context: &mut SyncContext) -> Result<(), SyncError> {
-        let row = match find_media_by_title(&self.pool, context.discovered.title.clone()).await? {
-            Some(row) => row,
-            None => {
-                context.action.merge(SyncAction::Created);
+        let Some(discovered) = &context.discovered else {
+            if context.media.is_none() {
+                return Err(SyncError::MissingMedia);
+            }
+            return Ok(());
+        };
 
-                insert_media(
-                    &self.pool,
-                    MediaInsert {
-                        title: context.discovered.title.clone(),
-                        media_type: context.discovered.media_type.as_str().into(),
-                        status_id: MediaStatus::NotStarted.id(),
-                    },
-                )
-                .await?
+        let media = match &context.media {
+            Some(media) => media.clone(),
+            None => {
+                let row = match find_media_by_title(&self.pool, discovered.title.clone()).await? {
+                    Some(row) => row,
+                    None => {
+                        context.action.merge(SyncAction::Created);
+
+                        insert_media(
+                            &self.pool,
+                            MediaInsert {
+                                title: discovered.title.clone(),
+                                media_type: discovered.media_type.as_str().into(),
+                                status_id: MediaStatus::NotStarted.id(),
+                            },
+                        )
+                        .await?
+                    }
+                };
+
+                let media = Media::try_from(row).unwrap();
+                context.media = Some(media.clone());
+                media
             }
         };
 
-        let media = Media::try_from(row).unwrap();
-
-        if let MediaType::Game = context.discovered.media_type {
-            if let Some(launch) = &context.discovered.launch {
+        if let MediaType::Game = discovered.media_type {
+            if let Some(launch) = &discovered.launch {
                 let result = upsert_media_launch(
                     &self.pool,
                     MediaLaunchUpsert {
@@ -74,7 +88,7 @@ impl SyncStep for PersistStep {
                 context.action.merge(result.action.into());
             }
 
-            let DiscoveredMediaMetadata::Game(game) = &context.discovered.metadata;
+            let DiscoveredMediaMetadata::Game(game) = &discovered.metadata;
 
             let result = upsert_media_game_details(
                 &self.pool,
@@ -88,8 +102,6 @@ impl SyncStep for PersistStep {
 
             context.action.merge(result.action.into());
         }
-
-        context.media = Some(media);
 
         Ok(())
     }
