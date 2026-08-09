@@ -16,6 +16,10 @@ pub async fn find_assets_by_media_ids(
     pool: &SqlitePool,
     ids: &[String],
 ) -> Result<Vec<MediaAssetRow>, DatabaseError> {
+    if ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
     let mut qb = QueryBuilder::<Sqlite>::new(
         "SELECT id, media_id, asset_id, path FROM media_assets WHERE media_id IN (",
     );
@@ -34,21 +38,21 @@ pub async fn find_assets_by_media_ids(
         .map_err(DatabaseError::from)
 }
 
-pub async fn find_all(pool: &SqlitePool) -> Result<Vec<MediaRow>, DatabaseError> {
-    sqlx::query_as!(
-        MediaRow,
-        r#"
-    SELECT
-        id,
-        title,
-        media_type,
-        status_id
-    FROM media
-    "#
-    )
-    .fetch_all(pool)
-    .await
-    .map_err(DatabaseError::from)
+pub async fn find_all(
+    pool: &SqlitePool,
+    media_type: Option<&str>,
+) -> Result<Vec<MediaRow>, DatabaseError> {
+    let mut qb = QueryBuilder::<Sqlite>::new("SELECT id, title, media_type, status_id FROM media");
+
+    if let Some(media_type) = media_type {
+        qb.push(" WHERE media_type = ");
+        qb.push_bind(media_type);
+    }
+
+    qb.build_query_as::<MediaRow>()
+        .fetch_all(pool)
+        .await
+        .map_err(DatabaseError::from)
 }
 
 pub async fn find_media_by_id(
@@ -552,6 +556,10 @@ pub async fn find_media_launches_by_media_ids(
     pool: &SqlitePool,
     ids: &[String],
 ) -> Result<Vec<MediaLaunchRow>, DatabaseError> {
+    if ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
     let mut qb = QueryBuilder::<Sqlite>::new(
         r#"
         SELECT

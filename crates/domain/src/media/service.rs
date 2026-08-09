@@ -40,8 +40,12 @@ pub async fn get_media_by_id(pool: &SqlitePool, id: String) -> Result<Media, Med
     Ok(media)
 }
 
-pub async fn get_all_media(pool: &SqlitePool) -> Result<Vec<Media>, MediaError> {
-    let rows = MediaQueries::find_all(pool).await?;
+pub async fn get_all_media(
+    pool: &SqlitePool,
+    media_type: Option<MediaType>,
+) -> Result<Vec<Media>, MediaError> {
+    let type_str = media_type.as_ref().map(|t| t.as_str());
+    let rows = MediaQueries::find_all(pool, type_str).await?;
 
     let ids = rows.iter().map(|row| row.id.clone()).collect::<Vec<_>>();
 

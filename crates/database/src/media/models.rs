@@ -1,7 +1,7 @@
 use serde::Serialize;
 use sqlx::prelude::FromRow;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, FromRow)]
 pub struct MediaRow {
     pub id: String,
     pub title: String,

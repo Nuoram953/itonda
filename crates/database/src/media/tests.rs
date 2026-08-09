@@ -77,7 +77,7 @@ async fn find_all_returns_all_media() {
     .await
     .unwrap();
 
-    let media = MediaQueries::find_all(&pool).await.unwrap();
+    let media = MediaQueries::find_all(&pool, None).await.unwrap();
 
     assert_eq!(media.len(), 2);
 
@@ -89,10 +89,55 @@ async fn find_all_returns_all_media() {
 }
 
 #[tokio::test]
+async fn find_all_filters_by_media_type() {
+    let pool = setup_db().await;
+
+    MediaQueries::insert_media(
+        &pool,
+        MediaQueries::MediaInsert {
+            title: "Halo".to_string(),
+            media_type: "game".to_string(),
+            status_id: 1,
+        },
+    )
+    .await
+    .unwrap();
+
+    MediaQueries::insert_media(
+        &pool,
+        MediaQueries::MediaInsert {
+            title: "The Matrix".to_string(),
+            media_type: "movie".to_string(),
+            status_id: 1,
+        },
+    )
+    .await
+    .unwrap();
+
+    let games = MediaQueries::find_all(&pool, Some("game")).await.unwrap();
+
+    assert_eq!(games.len(), 1);
+    assert_eq!(games[0].title, "Halo");
+    assert_eq!(games[0].media_type, "game");
+
+    let movies = MediaQueries::find_all(&pool, Some("movie")).await.unwrap();
+
+    assert_eq!(movies.len(), 1);
+    assert_eq!(movies[0].title, "The Matrix");
+    assert_eq!(movies[0].media_type, "movie");
+
+    let tv_shows = MediaQueries::find_all(&pool, Some("tv_show"))
+        .await
+        .unwrap();
+
+    assert_eq!(tv_shows.len(), 0);
+}
+
+#[tokio::test]
 async fn find_all_returns_empty_when_no_media_exists() {
     let pool = setup_db().await;
 
-    let media = MediaQueries::find_all(&pool).await.unwrap();
+    let media = MediaQueries::find_all(&pool, None).await.unwrap();
 
     assert_eq!(media.len(), 0);
 }

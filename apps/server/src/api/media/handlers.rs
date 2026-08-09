@@ -1,6 +1,6 @@
 use axum::{
     Json,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
 };
@@ -16,7 +16,9 @@ use crate::{
     api::{
         error::ApiError,
         extractor::AppJson,
-        media::schemas::{MediaImportPayload, MediaRefreshPayload, MediaResponse},
+        media::schemas::{
+            MediaImportPayload, MediaQueryParams, MediaRefreshPayload, MediaResponse,
+        },
         response::{CommandResponse, CommandStatus, JobResponse, JobStatus},
     },
     state::AppState,
@@ -26,6 +28,9 @@ use crate::{
 #[utoipa::path(
     get,
     path = "/media",
+    params(
+        MediaQueryParams
+    ),
     responses(
         (
             status = 200,
@@ -34,12 +39,13 @@ use crate::{
     )
 )]
 #[instrument(skip(state))]
-pub async fn get_media(State(state): State<AppState>) -> Result<Json<MediaResponse>, ApiError> {
-    let media = MediaService::get_all_media(&state.db).await;
+pub async fn get_media(
+    State(state): State<AppState>,
+    Query(query): Query<MediaQueryParams>,
+) -> Result<Json<MediaResponse>, ApiError> {
+    let media = MediaService::get_all_media(&state.db, query.media_type).await?;
 
-    Ok(Json(MediaResponse {
-        items: media.unwrap(),
-    }))
+    Ok(Json(MediaResponse { items: media }))
 }
 
 #[utoipa::path(

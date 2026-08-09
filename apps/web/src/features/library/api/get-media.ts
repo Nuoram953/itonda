@@ -4,24 +4,27 @@ import type { components } from "@/api/generated.d";
 import { api } from "@/lib/api-client";
 import { type QueryConfig } from "@/lib/react-query";
 
-export const getMedia = (): Promise<components["schemas"]["MediaResponse"]> => {
-  return api.get(`/media`);
+export const getMedia = (type?: string): Promise<components["schemas"]["MediaResponse"]> => {
+  return api.get(`/media`, {
+    params: type ? { type } : undefined,
+  });
 };
 
-export const getMediaQueryOptions = () => {
+export const getMediaQueryOptions = (type?: string) => {
   return queryOptions({
-    queryKey: ["media"],
-    queryFn: () => getMedia(),
+    queryKey: ["media", { type }],
+    queryFn: () => getMedia(type),
   });
 };
 
 type UseMediaOptions = {
+  type?: string;
   queryConfig?: QueryConfig<typeof getMediaQueryOptions>;
 };
 
-export const useMedia = ({ queryConfig }: UseMediaOptions) => {
+export const useMedia = ({ type, queryConfig }: UseMediaOptions = {}) => {
   return useQuery({
-    ...getMediaQueryOptions(),
+    ...getMediaQueryOptions(type),
     ...queryConfig,
   });
 };

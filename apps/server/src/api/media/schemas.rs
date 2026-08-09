@@ -3,7 +3,14 @@ use itonda_domain::{
     storefronts::models::StorefrontId,
 };
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
+
+#[derive(Debug, Deserialize, ToSchema, IntoParams)]
+#[into_params(parameter_in = Query)]
+pub struct MediaQueryParams {
+    #[serde(rename = "type")]
+    pub media_type: Option<MediaType>,
+}
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct MediaResponse {

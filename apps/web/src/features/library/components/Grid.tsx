@@ -1,15 +1,24 @@
 import { useMemo } from "react";
+import { Link, useSearch } from "@tanstack/react-router";
 import { useMedia } from "../api/get-media";
 import { useLibrary } from "../hooks/useLibrary";
-import { Link } from "@tanstack/react-router";
 import { Card } from "./card";
 import { Workspace } from "@/components/workspace/Workspace";
 import { Search } from "./action/search";
 import { Refresh } from "./action/refresh";
 
+const typeTitles: Record<string, string> = {
+  game: "Games",
+  movie: "Movies",
+  tv_show: "TV Series",
+};
+
 export const MediaGrid = () => {
+  const searchParams = useSearch({ strict: false });
+  const type = typeof searchParams?.type === "string" ? searchParams.type : undefined;
+
   const { search, filters, sort, applyFilters } = useLibrary();
-  const mediaQuery = useMedia({});
+  const mediaQuery = useMedia({ type });
 
   const media = mediaQuery.data?.items;
 
@@ -18,10 +27,12 @@ export const MediaGrid = () => {
     [media, search, filters, sort, applyFilters],
   );
 
+  const title = type ? typeTitles[type] ?? "Media" : "Media";
+
   return (
     <Workspace>
       <Workspace.Header
-        title="Media"
+        title={title}
         subtitle={`${filteredMedia.length} items`}
       >
         <Workspace.Actions>

@@ -46,9 +46,18 @@ const indexRoute = createRoute({
   component: () => <Home />,
 });
 
-const mediaRoute = createRoute({
+export type MediaSearch = {
+  type?: string;
+};
+
+export const mediaRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "media",
+  validateSearch: (search: Record<string, unknown>): MediaSearch => {
+    return {
+      type: typeof search.type === "string" ? search.type : undefined,
+    };
+  },
   component: () => <MediaLayout />,
 });
 

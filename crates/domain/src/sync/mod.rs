@@ -97,7 +97,7 @@ impl LibrarySyncService {
             }
         }
 
-        let db_rows = itonda_database::media::find_all(&self.db).await?;
+        let db_rows = itonda_database::media::find_all(&self.db, None).await?;
         info!("Found {} media items in database", db_rows.len());
 
         for row in db_rows {

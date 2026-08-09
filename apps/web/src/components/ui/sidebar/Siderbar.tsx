@@ -13,11 +13,9 @@ export const Sidebar = () => {
             label="Media"
             path={"/media"}
             children={[
-              { label: "Games", path: "/games" },
-              { label: "Movies", path: "/movies" },
-              { label: "TV Series", path: "/series" },
-              { label: "Books", path: "/books" },
-              { label: "Music", path: "/music" },
+              { label: "Games", path: "/media", search: { type: "game" } },
+              { label: "Movies", path: "/media", search: { type: "movie" } },
+              { label: "TV Series", path: "/media", search: { type: "tv_show" } },
             ]}
           />
         </nav>
@@ -49,10 +47,11 @@ export const Sidebar = () => {
 type LinkItemProp = {
   label: string;
   path: string;
+  search?: Record<string, unknown>;
   children?: LinkItemProp[];
 };
 
-const LinkItem = ({ label, path, children }: LinkItemProp) => {
+const LinkItem = ({ label, path, search, children }: LinkItemProp) => {
   const [open, setOpen] = useState(true);
 
   const toggleOpen = () => {
@@ -63,6 +62,7 @@ const LinkItem = ({ label, path, children }: LinkItemProp) => {
     <div className="flex flex-col gap-1">
       <Link
         to={path}
+        search={search}
         className="[&.active]:font-bold text-foreground [&.active]:text-primary-active w-full"
       >
         <div className="flex p-2 items-center justify-between hover:text-primary-hover hover:bg-surface-hover rounded-md transition-colors cursor-pointer">
@@ -78,7 +78,7 @@ const LinkItem = ({ label, path, children }: LinkItemProp) => {
       {children && open && (
         <div className="pl-4 border-l border-border-strong ml-4 mt-1">
           {children.map((subItem) => (
-            <LinkItem key={subItem.path} {...subItem} />
+            <LinkItem key={`${subItem.path}-${subItem.search?.type ?? subItem.label}`} {...subItem} />
           ))}
         </div>
       )}

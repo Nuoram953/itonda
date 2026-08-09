@@ -42,6 +42,7 @@ vi.mock("../../api/post-media-refresh", () => ({
 }));
 
 vi.mock("@tanstack/react-router", () => ({
+  useSearch: () => ({ type: undefined }),
   Link: ({
     children,
     to,
