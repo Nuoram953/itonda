@@ -25,12 +25,34 @@ const mockMediaItems: Media[] = [
   },
 ];
 
-let mockMediaData: { items: Media[] } = { items: mockMediaItems };
+let mockMediaData: { items: Media[]; total: number } = {
+  items: mockMediaItems,
+  total: mockMediaItems.length,
+};
 
 vi.mock("../../api/get-media", () => ({
   useMedia: () => ({
     data: mockMediaData,
     isLoading: false,
+  }),
+  useInfiniteMedia: () => ({
+    data: {
+      pages: [
+        {
+          items: mockMediaData.items,
+          total: mockMediaData.total,
+          page: 1,
+          limit: 24,
+          total_pages: 1,
+          has_next: false,
+        },
+      ],
+      pageParams: [1],
+    },
+    isLoading: false,
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    fetchNextPage: vi.fn(),
   }),
 }));
 
@@ -68,7 +90,7 @@ function renderMediaGrid() {
 describe("MediaGrid Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockMediaData = { items: mockMediaItems };
+    mockMediaData = { items: mockMediaItems, total: mockMediaItems.length };
   });
 
   it("renders workspace header with title and item count", () => {
@@ -94,7 +116,7 @@ describe("MediaGrid Component", () => {
   });
 
   it("renders 0 items subtitle and no cards when library is empty", () => {
-    mockMediaData = { items: [] };
+    mockMediaData = { items: [], total: 0 };
 
     renderMediaGrid();
 

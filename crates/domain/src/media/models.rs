@@ -23,6 +23,16 @@ pub struct Media {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct PaginatedMedia {
+    pub items: Vec<Media>,
+    pub total: u64,
+    pub page: u32,
+    pub limit: u32,
+    pub total_pages: u32,
+    pub has_next: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct Asset {
     pub id: String,
     pub asset_type: AssetType,

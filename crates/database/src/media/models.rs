@@ -89,3 +89,33 @@ pub struct MediaGameDetailsRow {
     pub playtime_minutes: Option<i64>,
     pub last_played_at: Option<i64>,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DbMediaSortField {
+    Title,
+    LastPlayedAt,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DbSortOrder {
+    Asc,
+    Desc,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct DbMediaFilterOptions<'a> {
+    pub media_type: Option<&'a str>,
+    pub search: Option<&'a str>,
+    pub status_id: Option<i64>,
+    pub storefront_id: Option<&'a str>,
+    pub sort_by: Option<DbMediaSortField>,
+    pub sort_order: Option<DbSortOrder>,
+    pub page: u32,
+    pub limit: u32,
+}
+
+#[derive(Debug)]
+pub struct PaginatedMediaRows {
+    pub items: Vec<MediaRow>,
+    pub total: u64,
+}

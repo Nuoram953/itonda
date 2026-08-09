@@ -43,9 +43,29 @@ pub async fn get_media(
     State(state): State<AppState>,
     Query(query): Query<MediaQueryParams>,
 ) -> Result<Json<MediaResponse>, ApiError> {
-    let media = MediaService::get_all_media(&state.db, query.media_type).await?;
+    let paginated = MediaService::get_paginated_media(
+        &state.db,
+        MediaService::MediaSearchQuery {
+            media_type: query.media_type,
+            search: query.search.as_deref(),
+            status: query.status,
+            storefront: query.storefront.as_deref(),
+            sort_by: query.sort_by,
+            sort_order: query.sort_order,
+            page: query.page,
+            limit: query.limit,
+        },
+    )
+    .await?;
 
-    Ok(Json(MediaResponse { items: media }))
+    Ok(Json(MediaResponse {
+        items: paginated.items,
+        total: paginated.total,
+        page: paginated.page,
+        limit: paginated.limit,
+        total_pages: paginated.total_pages,
+        has_next: paginated.has_next,
+    }))
 }
 
 #[utoipa::path(
