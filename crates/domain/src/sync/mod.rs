@@ -89,7 +89,7 @@ impl LibrarySyncService {
                             self.job_id,
                             JobType::Sync,
                             JobEventType::Sync(SyncEvent::MediaSynced {
-                                media_id: media.id.clone(),
+                                media_id: media.title.clone(),
                             }),
                         );
                     }

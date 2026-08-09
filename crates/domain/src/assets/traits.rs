@@ -4,7 +4,6 @@ use crate::{
     assets::{
         error::AssetError,
         models::{AssetStoreId, PosterSearchOptions},
-        types::AssetType,
     },
     media::{discovered::DiscoveredAsset, types::MediaType},
     storefronts::models::StorefrontId,
@@ -13,7 +12,6 @@ use crate::{
 #[async_trait]
 pub trait AssetFetcher: Send + Sync {
     fn id(&self) -> AssetStoreId;
-    fn asset_type(&self) -> AssetType;
     fn supports_media_type(&self, _media_type: MediaType) -> bool {
         true
     }
@@ -23,6 +21,7 @@ pub trait AssetFetcher: Send + Sync {
 pub trait PosterFetcher: AssetFetcher {
     async fn discover_poster(
         &self,
+        media_type: Option<MediaType>,
         storefront: Option<StorefrontId>,
         external_id: Option<&str>,
         title: &str,
@@ -30,6 +29,7 @@ pub trait PosterFetcher: AssetFetcher {
 
     async fn search_poster(
         &self,
+        media_type: Option<MediaType>,
         storefront: Option<StorefrontId>,
         external_id: Option<&str>,
         title: &str,

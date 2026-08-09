@@ -18,6 +18,7 @@ pub struct StorefrontsSettings {
 #[serde(default)]
 pub struct AssetStoreSettings {
     pub steam_grid_db: SteamGridDbSettings,
+    pub tmdb: TheMovieDatabaseSettings,
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
@@ -30,6 +31,12 @@ pub struct SteamSettings {
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct SteamGridDbSettings {
+    pub api_key: String,
+}
+
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct TheMovieDatabaseSettings {
     pub api_key: String,
 }
 

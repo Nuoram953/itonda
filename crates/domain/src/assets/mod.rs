@@ -4,5 +4,6 @@ pub mod models;
 pub mod policy;
 pub mod registry;
 pub mod steam_grid_db;
+pub mod the_movie_database;
 pub mod traits;
 pub mod types;
