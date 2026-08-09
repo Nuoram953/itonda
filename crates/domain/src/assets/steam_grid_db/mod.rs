@@ -35,10 +35,6 @@ impl AssetFetcher for SteamGridDb {
         AssetStoreId::SteamGridDb
     }
 
-    fn asset_type(&self) -> AssetType {
-        AssetType::Poster
-    }
-
     fn supports_media_type(&self, media_type: MediaType) -> bool {
         matches!(media_type, MediaType::Game)
     }
@@ -48,13 +44,14 @@ impl AssetFetcher for SteamGridDb {
 impl PosterFetcher for SteamGridDb {
     async fn discover_poster(
         &self,
+        media_type: Option<MediaType>,
         storefront: Option<StorefrontId>,
         external_id: Option<&str>,
         title: &str,
     ) -> Result<Option<DiscoveredAsset>, AssetError> {
         let opts = PosterSearchOptions::SteamGridDb(GridSearchOptions::poster(1, 1));
         Ok(self
-            .search_poster(storefront, external_id, title, &opts)
+            .search_poster(media_type, storefront, external_id, title, &opts)
             .await?
             .into_iter()
             .next())
@@ -62,6 +59,7 @@ impl PosterFetcher for SteamGridDb {
 
     async fn search_poster(
         &self,
+        _media_type: Option<MediaType>,
         storefront: Option<StorefrontId>,
         external_id: Option<&str>,
         title: &str,

@@ -49,7 +49,7 @@ impl AssetRegistry {
         for poster in &self.posters {
             if poster.supports_media_type(media_type.clone())
                 && let Some(asset) = poster
-                    .discover_poster(storefront, external_id, title)
+                    .discover_poster(Some(media_type.clone()), storefront, external_id, title)
                     .await?
             {
                 results.push(asset);
@@ -61,6 +61,7 @@ impl AssetRegistry {
     pub async fn search_poster(
         &self,
         store_id: AssetStoreId,
+        media_type: Option<MediaType>,
         storefront: Option<StorefrontId>,
         external_id: Option<&str>,
         title: &str,
@@ -68,7 +69,7 @@ impl AssetRegistry {
     ) -> Result<Vec<DiscoveredAsset>, AssetError> {
         if let Some(fetcher) = self.get_poster(store_id) {
             fetcher
-                .search_poster(storefront, external_id, title, options)
+                .search_poster(media_type, storefront, external_id, title, options)
                 .await
         } else {
             Ok(Vec::new())
@@ -89,10 +90,6 @@ mod tests {
             AssetStoreId::SteamGridDb
         }
 
-        fn asset_type(&self) -> AssetType {
-            AssetType::Poster
-        }
-
         fn supports_media_type(&self, media_type: MediaType) -> bool {
             matches!(media_type, MediaType::Game)
         }
@@ -102,6 +99,7 @@ mod tests {
     impl PosterFetcher for DummyGamePosterFetcher {
         async fn discover_poster(
             &self,
+            _media_type: Option<MediaType>,
             _storefront: Option<StorefrontId>,
             _external_id: Option<&str>,
             _title: &str,
@@ -114,6 +112,7 @@ mod tests {
 
         async fn search_poster(
             &self,
+            _media_type: Option<MediaType>,
             _storefront: Option<StorefrontId>,
             _external_id: Option<&str>,
             _title: &str,
@@ -171,6 +170,7 @@ mod tests {
         let posters = registry
             .search_poster(
                 AssetStoreId::SteamGridDb,
+                Some(MediaType::Game),
                 Some(StorefrontId::Steam),
                 Some("123"),
                 "Test",

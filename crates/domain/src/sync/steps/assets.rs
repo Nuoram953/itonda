@@ -163,10 +163,6 @@ mod tests {
             AssetStoreId::SteamGridDb
         }
 
-        fn asset_type(&self) -> AssetType {
-            AssetType::Poster
-        }
-
         fn supports_media_type(&self, media_type: MediaType) -> bool {
             if self.support_all {
                 true
@@ -180,6 +176,7 @@ mod tests {
     impl PosterFetcher for IndividualPosterFetcher {
         async fn discover_poster(
             &self,
+            _media_type: Option<MediaType>,
             _storefront: Option<StorefrontId>,
             _external_id: Option<&str>,
             _title: &str,
@@ -192,6 +189,7 @@ mod tests {
 
         async fn search_poster(
             &self,
+            _media_type: Option<MediaType>,
             _storefront: Option<StorefrontId>,
             _external_id: Option<&str>,
             _title: &str,

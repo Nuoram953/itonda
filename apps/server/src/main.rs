@@ -2,7 +2,9 @@ use std::{fs::File, sync::Arc};
 
 use axum::Router;
 use itonda_domain::{
-    assets::{registry::AssetRegistry, steam_grid_db::SteamGridDb},
+    assets::{
+        registry::AssetRegistry, steam_grid_db::SteamGridDb, the_movie_database::TheMovieDatabase,
+    },
     events::EventBus,
     storage::path::AppPaths,
     store::toml::TomlCodec,
@@ -25,7 +27,7 @@ use itonda_server::{
     },
 };
 
-use tracing_subscriber::{filter, layer::SubscriberExt, prelude::*, util::SubscriberInitExt};
+use tracing_subscriber::{layer::SubscriberExt, prelude::*, util::SubscriberInitExt};
 
 use api::openapi::ApiDoc;
 use itonda_database::connection;
@@ -184,6 +186,10 @@ async fn init_asset_store(secrets: &SecretsManager) -> anyhow::Result<AssetRegis
 
     registry.register_poster(Arc::new(SteamGridDb::new(
         secrets.asset_store.steam_grid_db.api_key,
+    )));
+
+    registry.register_poster(Arc::new(TheMovieDatabase::new(
+        secrets.asset_store.tmdb.api_key,
     )));
 
     Ok(registry)

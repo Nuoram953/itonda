@@ -1,12 +1,14 @@
 #[derive(Hash, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AssetStoreId {
     SteamGridDb,
+    TheMovieDatabase,
 }
 
 impl From<AssetStoreId> for u32 {
     fn from(value: AssetStoreId) -> Self {
         match value {
             AssetStoreId::SteamGridDb => 0,
+            AssetStoreId::TheMovieDatabase => 1,
         }
     }
 }
