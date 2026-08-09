@@ -15,7 +15,11 @@ export const Sidebar = () => {
             children={[
               { label: "Games", path: "/media", search: { type: "game" } },
               { label: "Movies", path: "/media", search: { type: "movie" } },
-              { label: "TV Series", path: "/media", search: { type: "tv_show" } },
+              {
+                label: "TV Series",
+                path: "/media",
+                search: { type: "tv_show" },
+              },
             ]}
           />
         </nav>
@@ -78,7 +82,10 @@ const LinkItem = ({ label, path, search, children }: LinkItemProp) => {
       {children && open && (
         <div className="pl-4 border-l border-border-strong ml-4 mt-1">
           {children.map((subItem) => (
-            <LinkItem key={`${subItem.path}-${subItem.search?.type ?? subItem.label}`} {...subItem} />
+            <LinkItem
+              key={`${subItem.path}-${subItem.search?.type ?? subItem.label}`}
+              {...subItem}
+            />
           ))}
         </div>
       )}

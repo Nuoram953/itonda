@@ -205,7 +205,14 @@ export interface components {
         };
         MediaResponse: {
             items: components["schemas"]["Media"][];
+            total: number;
+            page: number;
+            limit: number;
+            total_pages: number;
+            has_next: boolean;
         };
+        MediaSortField: "title" | "last_played_at";
+        SortOrder: "asc" | "desc";
         /** @enum {string} */
         MediaStatus: "not_started" | "in_progress" | "completed" | "abandoned" | "paused";
         /** @enum {string} */
@@ -270,7 +277,16 @@ export interface operations {
     };
     get_media: {
         parameters: {
-            query?: never;
+            query?: {
+                type?: components["schemas"]["MediaType"];
+                search?: string;
+                status?: components["schemas"]["MediaStatus"];
+                storefront?: string;
+                sort_by?: components["schemas"]["MediaSortField"];
+                sort_order?: components["schemas"]["SortOrder"];
+                page?: number;
+                limit?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;

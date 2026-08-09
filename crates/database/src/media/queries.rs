@@ -2,7 +2,9 @@ use sqlx::{QueryBuilder, Sqlite, SqlitePool};
 
 use uuid::Uuid;
 
-use super::models::MediaRow;
+use super::models::{
+    DbMediaFilterOptions, DbMediaSortField, DbSortOrder, MediaRow, PaginatedMediaRows,
+};
 use crate::{
     error::DatabaseError,
     media::{
@@ -53,6 +55,168 @@ pub async fn find_all(
         .fetch_all(pool)
         .await
         .map_err(DatabaseError::from)
+}
+
+pub async fn find_paginated(
+    pool: &SqlitePool,
+    options: DbMediaFilterOptions<'_>,
+) -> Result<PaginatedMediaRows, DatabaseError> {
+    let page = if options.page == 0 { 1 } else { options.page };
+    let limit = if options.limit == 0 {
+        24
+    } else {
+        options.limit
+    };
+    let offset = (page - 1) * limit;
+
+    let needs_storefront_join = options.storefront_id.is_some();
+
+    let mut count_qb = QueryBuilder::<Sqlite>::new("SELECT COUNT(DISTINCT media.id) FROM media");
+
+    if needs_storefront_join {
+        count_qb
+            .push(" INNER JOIN media_game_storefront ON media_game_storefront.media_id = media.id");
+    }
+
+    let mut has_where = false;
+    if let Some(media_type) = options.media_type {
+        count_qb.push(" WHERE media.media_type = ");
+        count_qb.push_bind(media_type);
+        has_where = true;
+    }
+
+    if let Some(search) = options.search
+        && !search.trim().is_empty()
+    {
+        if has_where {
+            count_qb.push(" AND ");
+        } else {
+            count_qb.push(" WHERE ");
+            has_where = true;
+        }
+        count_qb.push("media.title LIKE ");
+        count_qb.push_bind(format!("%{}%", search.trim()));
+    }
+
+    if let Some(status_id) = options.status_id {
+        if has_where {
+            count_qb.push(" AND ");
+        } else {
+            count_qb.push(" WHERE ");
+            has_where = true;
+        }
+        count_qb.push("media.status_id = ");
+        count_qb.push_bind(status_id);
+    }
+
+    if let Some(storefront_id) = options.storefront_id {
+        if has_where {
+            count_qb.push(" AND ");
+        } else {
+            count_qb.push(" WHERE ");
+        }
+        count_qb.push("media_game_storefront.storefront_id = ");
+        count_qb.push_bind(storefront_id);
+    }
+
+    let total: (i64,) = count_qb
+        .build_query_as()
+        .fetch_one(pool)
+        .await
+        .map_err(DatabaseError::from)?;
+
+    let mut qb = QueryBuilder::<Sqlite>::new(
+        "SELECT media.id, media.title, media.media_type, media.status_id FROM media",
+    );
+
+    let needs_details_join = matches!(options.sort_by, Some(DbMediaSortField::LastPlayedAt));
+    if needs_details_join {
+        qb.push(" LEFT JOIN media_game_details ON media_game_details.media_id = media.id");
+    }
+
+    if needs_storefront_join {
+        qb.push(" INNER JOIN media_game_storefront ON media_game_storefront.media_id = media.id");
+    }
+
+    let mut has_where = false;
+    if let Some(media_type) = options.media_type {
+        qb.push(" WHERE media.media_type = ");
+        qb.push_bind(media_type);
+        has_where = true;
+    }
+
+    if let Some(search) = options.search
+        && !search.trim().is_empty()
+    {
+        if has_where {
+            qb.push(" AND ");
+        } else {
+            qb.push(" WHERE ");
+            has_where = true;
+        }
+        qb.push("media.title LIKE ");
+        qb.push_bind(format!("%{}%", search.trim()));
+    }
+
+    if let Some(status_id) = options.status_id {
+        if has_where {
+            qb.push(" AND ");
+        } else {
+            qb.push(" WHERE ");
+            has_where = true;
+        }
+        qb.push("media.status_id = ");
+        qb.push_bind(status_id);
+    }
+
+    if let Some(storefront_id) = options.storefront_id {
+        if has_where {
+            qb.push(" AND ");
+        } else {
+            qb.push(" WHERE ");
+        }
+        qb.push("media_game_storefront.storefront_id = ");
+        qb.push_bind(storefront_id);
+    }
+
+    let sort_order_str = match options.sort_order.unwrap_or(DbSortOrder::Asc) {
+        DbSortOrder::Asc => "ASC",
+        DbSortOrder::Desc => "DESC",
+    };
+
+    match options.sort_by {
+        Some(DbMediaSortField::Title) => {
+            qb.push(format!(
+                " ORDER BY media.title {}, media.id ASC",
+                sort_order_str
+            ));
+        }
+        Some(DbMediaSortField::LastPlayedAt) => {
+            qb.push(format!(
+                " ORDER BY COALESCE(media_game_details.last_played_at, 0) {}, media.title ASC, media.id ASC",
+                sort_order_str
+            ));
+        }
+        None => {
+            qb.push(" ORDER BY media.title ASC, media.id ASC");
+        }
+    }
+
+    qb.push(" LIMIT ");
+    qb.push_bind(limit as i64);
+    qb.push(" OFFSET ");
+    qb.push_bind(offset as i64);
+
+    let items = qb
+        .build_query_as::<MediaRow>()
+        .fetch_all(pool)
+        .await
+        .map_err(DatabaseError::from)?;
+
+    Ok(PaginatedMediaRows {
+        items,
+        total: total.0 as u64,
+    })
 }
 
 pub async fn find_media_by_id(

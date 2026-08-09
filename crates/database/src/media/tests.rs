@@ -143,6 +143,132 @@ async fn find_all_returns_empty_when_no_media_exists() {
 }
 
 #[tokio::test]
+async fn find_paginated_supports_filters_sorting_and_pagination() {
+    let pool = setup_db().await;
+
+    let media1 = MediaQueries::insert_media(
+        &pool,
+        MediaQueries::MediaInsert {
+            title: "Cyberpunk 2077".to_string(),
+            media_type: "game".to_string(),
+            status_id: 1,
+        },
+    )
+    .await
+    .unwrap();
+
+    let media2 = MediaQueries::insert_media(
+        &pool,
+        MediaQueries::MediaInsert {
+            title: "Elden Ring".to_string(),
+            media_type: "game".to_string(),
+            status_id: 2,
+        },
+    )
+    .await
+    .unwrap();
+
+    let _media3 = MediaQueries::insert_media(
+        &pool,
+        MediaQueries::MediaInsert {
+            title: "The Matrix".to_string(),
+            media_type: "movie".to_string(),
+            status_id: 1,
+        },
+    )
+    .await
+    .unwrap();
+
+    MediaQueries::upsert_media_game_details(
+        &pool,
+        MediaQueries::MediaGameDetailsUpsert {
+            media_id: media1.id.clone(),
+            playtime_minutes: Some(100),
+            last_played_at: Some(1000),
+        },
+    )
+    .await
+    .unwrap();
+
+    MediaQueries::upsert_media_game_details(
+        &pool,
+        MediaQueries::MediaGameDetailsUpsert {
+            media_id: media2.id.clone(),
+            playtime_minutes: Some(500),
+            last_played_at: Some(2000),
+        },
+    )
+    .await
+    .unwrap();
+
+    let result = MediaQueries::find_paginated(
+        &pool,
+        MediaQueries::DbMediaFilterOptions {
+            media_type: Some("game"),
+            sort_by: Some(MediaQueries::DbMediaSortField::Title),
+            sort_order: Some(MediaQueries::DbSortOrder::Asc),
+            page: 1,
+            limit: 1,
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(result.total, 2);
+    assert_eq!(result.items.len(), 1);
+    assert_eq!(result.items[0].title, "Cyberpunk 2077");
+
+    let result_p2 = MediaQueries::find_paginated(
+        &pool,
+        MediaQueries::DbMediaFilterOptions {
+            media_type: Some("game"),
+            sort_by: Some(MediaQueries::DbMediaSortField::Title),
+            sort_order: Some(MediaQueries::DbSortOrder::Asc),
+            page: 2,
+            limit: 1,
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(result_p2.total, 2);
+    assert_eq!(result_p2.items.len(), 1);
+    assert_eq!(result_p2.items[0].title, "Elden Ring");
+
+    let search_result = MediaQueries::find_paginated(
+        &pool,
+        MediaQueries::DbMediaFilterOptions {
+            search: Some("elden"),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(search_result.total, 1);
+    assert_eq!(search_result.items[0].title, "Elden Ring");
+
+    let last_played_result = MediaQueries::find_paginated(
+        &pool,
+        MediaQueries::DbMediaFilterOptions {
+            media_type: Some("game"),
+            sort_by: Some(MediaQueries::DbMediaSortField::LastPlayedAt),
+            sort_order: Some(MediaQueries::DbSortOrder::Desc),
+            page: 1,
+            limit: 10,
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(last_played_result.items[0].title, "Elden Ring");
+    assert_eq!(last_played_result.items[1].title, "Cyberpunk 2077");
+}
+
+#[tokio::test]
 async fn find_media_by_title_returns_media_when_exists() {
     let pool = setup_db().await;
 

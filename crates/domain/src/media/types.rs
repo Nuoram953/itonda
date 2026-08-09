@@ -89,3 +89,17 @@ impl MediaLaunchType {
 pub enum MediaSource {
     Steam,
 }
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, ToSchema, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum MediaSortField {
+    Title,
+    LastPlayedAt,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, ToSchema, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SortOrder {
+    Asc,
+    Desc,
+}
