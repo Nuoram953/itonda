@@ -23,7 +23,7 @@ export const MediaDetails = () => {
 
   return (
     <Workspace>
-      <Workspace.Header title={mediaId}>
+      <Workspace.Header title={data.title}>
         <Workspace.Actions>
           <Launch profiles={data.launches} />
           <Status mediaId={mediaId} currentStatus={data.status} />

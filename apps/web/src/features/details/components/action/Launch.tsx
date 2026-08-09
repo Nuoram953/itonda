@@ -42,7 +42,11 @@ export const Launch = ({ profiles = [] }: LaunchProps) => {
 
   return (
     <>
-      <Workspace.Action icon={Play} onClick={handleClick}>
+      <Workspace.Action
+        disabled={!profiles.length}
+        icon={Play}
+        onClick={handleClick}
+      >
         Play
       </Workspace.Action>
 
