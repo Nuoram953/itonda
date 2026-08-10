@@ -1,6 +1,6 @@
 import { createContext, type ReactNode, useContext } from "react";
 import { cn } from "@/lib/utils";
-import type { LucideIcon } from "lucide-react";
+import { ArrowLeft, type LucideIcon } from "lucide-react";
 
 const WorkspaceContext = createContext({});
 
@@ -17,11 +17,18 @@ export function Workspace({ children }: { children: ReactNode }) {
 type HeaderProps = {
   title: ReactNode;
   subtitle?: ReactNode;
+  showBackBtn?: boolean;
   children?: ReactNode;
   className?: string;
 };
 
-function Header({ title, subtitle, children, className }: HeaderProps) {
+function Header({
+  title,
+  subtitle,
+  showBackBtn,
+  children,
+  className,
+}: HeaderProps) {
   useContext(WorkspaceContext);
 
   return (
@@ -32,7 +39,26 @@ function Header({ title, subtitle, children, className }: HeaderProps) {
       )}
     >
       <div>
-        <h1 className="text-2xl font-semibold">{title}</h1>
+        <div className="flex items-center gap-4">
+          {showBackBtn && (
+            <button
+              onClick={() => {
+                history.back();
+              }}
+              className={cn(
+                "flex flex-col items-center gap-1.5 rounded-md px-1 py-1",
+                "text-text-muted transition-colors",
+                "hover:bg-surface-hover hover:text-primary-hover",
+                "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-text-muted",
+                className,
+              )}
+            >
+              <ArrowLeft />
+            </button>
+          )}
+
+          <h1 className="text-2xl font-semibold">{title}</h1>
+        </div>
 
         {subtitle && <p className="mt-1 text-sm text-text-muted">{subtitle}</p>}
       </div>
@@ -77,7 +103,9 @@ function Action({ icon: Icon, children, className, ...props }: ActionProps) {
       {...props}
     >
       <Icon className="text-lg shrink-0" />
-      <span className="max-w-full text-center text-xs truncate">{children}</span>
+      <span className="max-w-full text-center text-xs truncate">
+        {children}
+      </span>
     </button>
   );
 }

@@ -23,7 +23,7 @@ export const MediaDetails = () => {
 
   return (
     <Workspace>
-      <Workspace.Header title={data.title}>
+      <Workspace.Header title={data.title} showBackBtn>
         <Workspace.Actions>
           <Launch profiles={data.launches} />
           <Status mediaId={mediaId} currentStatus={data.status} />
