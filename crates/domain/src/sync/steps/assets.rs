@@ -67,12 +67,27 @@ impl SyncStep for AssetStep {
             None => (media.media_type.clone(), None, None, media.title.as_str()),
         };
 
-        let discovered_assets = self
-            .registry
-            .discover(media_type, storefront, external_id, title)
-            .await?;
+        if let Some(limit) = self.policy.max_items()
+            && !self
+                .registry
+                .needs_discovery(&media_type, &existing_counts, limit)
+        {
+            return Ok(());
+        }
 
         let limit = self.policy.max_items();
+
+        let discovered_assets = self
+            .registry
+            .discover_needed(
+                media_type,
+                storefront,
+                external_id,
+                title,
+                &existing_counts,
+                limit,
+            )
+            .await?;
         let mut assets_to_process = Vec::new();
 
         for asset in discovered_assets {
@@ -133,7 +148,7 @@ mod tests {
             error::AssetError,
             models::{AssetStoreId, PosterSearchOptions},
             policy::AssetPolicy,
-            traits::{AssetFetcher, PosterFetcher},
+            traits::{AssetFetcher, BannerFetcher, PosterFetcher},
             types::AssetType,
         },
         media::{discovered::DiscoveredAsset, models::Media, types::MediaStatus, types::MediaType},
@@ -455,6 +470,10 @@ mod tests {
 
     #[async_trait]
     impl PosterFetcher for CustomAssetFetcher {
+        fn discovered_asset_types(&self) -> Vec<AssetType> {
+            vec![self.asset_type]
+        }
+
         async fn discover_poster(
             &self,
             _media_type: Option<MediaType>,
@@ -481,6 +500,179 @@ mod tests {
                 url: self.url.clone(),
             }])
         }
+    }
+
+    struct CustomBannerFetcher {
+        asset_type: AssetType,
+        url: String,
+    }
+
+    impl CustomBannerFetcher {
+        fn new(asset_type: AssetType, url: String) -> Self {
+            Self { asset_type, url }
+        }
+    }
+
+    impl AssetFetcher for CustomBannerFetcher {
+        fn id(&self) -> AssetStoreId {
+            AssetStoreId::SteamGridDb
+        }
+
+        fn supports_media_type(&self, _media_type: MediaType) -> bool {
+            true
+        }
+    }
+
+    #[async_trait]
+    impl BannerFetcher for CustomBannerFetcher {
+        fn discovered_asset_types(&self) -> Vec<AssetType> {
+            vec![self.asset_type]
+        }
+
+        async fn discover_banner(
+            &self,
+            _media_type: Option<MediaType>,
+            _storefront: Option<StorefrontId>,
+            _external_id: Option<&str>,
+            _title: &str,
+        ) -> Result<Option<DiscoveredAsset>, AssetError> {
+            Ok(Some(DiscoveredAsset {
+                asset_type: self.asset_type,
+                url: self.url.clone(),
+            }))
+        }
+
+        async fn search_banner(
+            &self,
+            _media_type: Option<MediaType>,
+            _storefront: Option<StorefrontId>,
+            _external_id: Option<&str>,
+            _title: &str,
+            _options: &PosterSearchOptions,
+        ) -> Result<Vec<DiscoveredAsset>, AssetError> {
+            Ok(vec![DiscoveredAsset {
+                asset_type: self.asset_type,
+                url: self.url.clone(),
+            }])
+        }
+    }
+
+    #[tokio::test]
+    async fn step_downloads_missing_grid_when_another_asset_type_exists() {
+        let pool = setup_db().await;
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/poster1.png"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(b"poster1"))
+            .mount(&server)
+            .await;
+
+        let temp = tempdir().unwrap();
+        let paths = AppPaths {
+            config_dir: temp.path().join("config"),
+            data_dir: temp.path().join("data"),
+        };
+
+        let mut registry = AssetRegistry::new();
+        registry.register_poster(Arc::new(CustomAssetFetcher::new(
+            AssetType::Poster,
+            format!("{}/poster1.png", server.uri()),
+        )));
+
+        let downloader = AssetDownloader::new(paths);
+        let step = AssetStep::new(pool.clone(), registry, downloader);
+
+        let media_row = insert_media(
+            &pool,
+            MediaInsert {
+                title: "Test Game".into(),
+                media_type: "game".into(),
+                status_id: MediaStatus::NotStarted.id(),
+            },
+        )
+        .await
+        .unwrap();
+        let media = Media::try_from(media_row).unwrap();
+
+        insert_media_asset(
+            &pool,
+            MediaAssetInsert {
+                media_id: media.id.clone(),
+                path: "/path/to/existing_icon.png".into(),
+                asset_id: AssetType::Icon.id(),
+            },
+        )
+        .await
+        .unwrap();
+
+        let mut context = SyncContext::from_media(media.clone());
+        step.execute(&mut context).await.unwrap();
+
+        let assets = find_assets_by_media_ids(&pool, &[media.id]).await.unwrap();
+        assert_eq!(assets.len(), 2);
+        let asset_ids: Vec<i64> = assets.iter().map(|a| a.asset_id).collect();
+        assert!(asset_ids.contains(&AssetType::Icon.id()));
+        assert!(asset_ids.contains(&AssetType::Poster.id()));
+    }
+
+    #[tokio::test]
+    async fn step_downloads_missing_banner_when_poster_exists() {
+        let pool = setup_db().await;
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/banner1.png"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(b"banner1"))
+            .mount(&server)
+            .await;
+
+        let temp = tempdir().unwrap();
+        let paths = AppPaths {
+            config_dir: temp.path().join("config"),
+            data_dir: temp.path().join("data"),
+        };
+
+        let mut registry = AssetRegistry::new();
+        registry.register_banner(Arc::new(CustomBannerFetcher::new(
+            AssetType::Banner,
+            format!("{}/banner1.png", server.uri()),
+        )));
+
+        let downloader = AssetDownloader::new(paths);
+        let step = AssetStep::new(pool.clone(), registry, downloader);
+
+        let media_row = insert_media(
+            &pool,
+            MediaInsert {
+                title: "Test Game".into(),
+                media_type: "game".into(),
+                status_id: MediaStatus::NotStarted.id(),
+            },
+        )
+        .await
+        .unwrap();
+        let media = Media::try_from(media_row).unwrap();
+
+        insert_media_asset(
+            &pool,
+            MediaAssetInsert {
+                media_id: media.id.clone(),
+                path: "/path/to/existing_poster.png".into(),
+                asset_id: AssetType::Poster.id(),
+            },
+        )
+        .await
+        .unwrap();
+
+        let mut context = SyncContext::from_media(media.clone());
+        step.execute(&mut context).await.unwrap();
+
+        let assets = find_assets_by_media_ids(&pool, &[media.id]).await.unwrap();
+        assert_eq!(assets.len(), 2);
+        let asset_ids: Vec<i64> = assets.iter().map(|a| a.asset_id).collect();
+        assert!(asset_ids.contains(&AssetType::Poster.id()));
+        assert!(asset_ids.contains(&AssetType::Banner.id()));
     }
 
     #[tokio::test]
@@ -631,5 +823,144 @@ mod tests {
             .count();
         assert_eq!(poster_count, 1);
         assert_eq!(backdrop_count, 1);
+    }
+
+    struct PanicPosterFetcher;
+
+    impl AssetFetcher for PanicPosterFetcher {
+        fn id(&self) -> AssetStoreId {
+            AssetStoreId::SteamGridDb
+        }
+
+        fn supports_media_type(&self, _media_type: MediaType) -> bool {
+            true
+        }
+    }
+
+    #[async_trait]
+    impl PosterFetcher for PanicPosterFetcher {
+        async fn discover_poster(
+            &self,
+            _media_type: Option<MediaType>,
+            _storefront: Option<StorefrontId>,
+            _external_id: Option<&str>,
+            _title: &str,
+        ) -> Result<Option<DiscoveredAsset>, AssetError> {
+            panic!("discover_poster should not be called when limit is already reached!");
+        }
+
+        async fn search_poster(
+            &self,
+            _media_type: Option<MediaType>,
+            _storefront: Option<StorefrontId>,
+            _external_id: Option<&str>,
+            _title: &str,
+            _options: &PosterSearchOptions,
+        ) -> Result<Vec<DiscoveredAsset>, AssetError> {
+            panic!("search_poster should not be called when limit is already reached!");
+        }
+    }
+
+    #[tokio::test]
+    async fn step_skips_calling_discover_when_enough_assets_exist() {
+        let pool = setup_db().await;
+
+        let temp = tempdir().unwrap();
+        let paths = AppPaths {
+            config_dir: temp.path().join("config"),
+            data_dir: temp.path().join("data"),
+        };
+
+        let mut registry = AssetRegistry::new();
+        registry.register_poster(Arc::new(PanicPosterFetcher));
+
+        let downloader = AssetDownloader::new(paths);
+        let step = AssetStep::new(pool.clone(), registry, downloader);
+
+        let media_row = insert_media(
+            &pool,
+            MediaInsert {
+                title: "Test Game".into(),
+                media_type: "game".into(),
+                status_id: MediaStatus::NotStarted.id(),
+            },
+        )
+        .await
+        .unwrap();
+        let media = Media::try_from(media_row).unwrap();
+
+        insert_media_asset(
+            &pool,
+            MediaAssetInsert {
+                media_id: media.id.clone(),
+                path: "/path/to/existing_poster.png".into(),
+                asset_id: AssetType::Poster.id(),
+            },
+        )
+        .await
+        .unwrap();
+
+        let mut context = SyncContext::from_media(media.clone());
+        step.execute(&mut context).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn step_skips_poster_discovery_when_poster_limit_reached_but_banner_missing() {
+        let pool = setup_db().await;
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/banner1.png"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(b"banner1"))
+            .mount(&server)
+            .await;
+
+        let temp = tempdir().unwrap();
+        let paths = AppPaths {
+            config_dir: temp.path().join("config"),
+            data_dir: temp.path().join("data"),
+        };
+
+        let mut registry = AssetRegistry::new();
+        registry.register_poster(Arc::new(PanicPosterFetcher));
+        registry.register_banner(Arc::new(CustomBannerFetcher::new(
+            AssetType::Banner,
+            format!("{}/banner1.png", server.uri()),
+        )));
+
+        let downloader = AssetDownloader::new(paths);
+        let step = AssetStep::new(pool.clone(), registry, downloader);
+
+        let media_row = insert_media(
+            &pool,
+            MediaInsert {
+                title: "Test Game".into(),
+                media_type: "game".into(),
+                status_id: MediaStatus::NotStarted.id(),
+            },
+        )
+        .await
+        .unwrap();
+        let media = Media::try_from(media_row).unwrap();
+
+        insert_media_asset(
+            &pool,
+            MediaAssetInsert {
+                media_id: media.id.clone(),
+                path: "/path/to/existing_poster.png".into(),
+                asset_id: AssetType::Poster.id(),
+            },
+        )
+        .await
+        .unwrap();
+
+        let mut context = SyncContext::from_media(media.clone());
+        step.execute(&mut context).await.unwrap();
+
+        let assets = find_assets_by_media_ids(&pool, &[media.id]).await.unwrap();
+        assert_eq!(assets.len(), 2);
+        let asset_ids: Vec<i64> = assets.iter().map(|a| a.asset_id).collect();
+        assert!(asset_ids.contains(&AssetType::Poster.id()));
+        assert!(asset_ids.contains(&AssetType::Banner.id()));
     }
 }

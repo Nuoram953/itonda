@@ -100,4 +100,22 @@ impl SteamGridDbClient {
 
         Ok(response)
     }
+
+    pub async fn heroes(
+        &self,
+        game_id: u32,
+        options: GridSearchOptions,
+    ) -> Result<MediaResponse, AssetError> {
+        let response = self
+            .client
+            .get(format!("{}heroes/game/{}", self.base_url, game_id))
+            .bearer_auth(&self.api_key)
+            .query(&options)
+            .send()
+            .await?;
+
+        let response = response.json::<MediaResponse>().await?;
+
+        Ok(response)
+    }
 }
