@@ -1,4 +1,4 @@
-use std::slice::from_ref;
+use std::{collections::HashMap, slice::from_ref};
 
 use async_trait::async_trait;
 use sqlx::SqlitePool;
@@ -52,10 +52,9 @@ impl SyncStep for AssetStep {
         let media = context.media.as_ref().ok_or(SyncError::MissingMedia)?;
 
         let existing_assets = find_assets_by_media_ids(&self.pool, from_ref(&media.id)).await?;
-        if let Some(limit) = self.policy.max_items()
-            && existing_assets.len() >= limit
-        {
-            return Ok(());
+        let mut existing_counts = HashMap::<i64, usize>::new();
+        for asset in &existing_assets {
+            *existing_counts.entry(asset.asset_id).or_default() += 1;
         }
 
         let (media_type, storefront, external_id, title) = match &context.discovered {
@@ -73,15 +72,21 @@ impl SyncStep for AssetStep {
             .discover(media_type, storefront, external_id, title)
             .await?;
 
-        let assets_to_process = match self.policy.max_items() {
-            Some(limit) => {
-                let needed = limit.saturating_sub(existing_assets.len());
-                let mut items = discovered_assets;
-                items.truncate(needed);
-                items
+        let limit = self.policy.max_items();
+        let mut assets_to_process = Vec::new();
+
+        for asset in discovered_assets {
+            let asset_type_id = asset.asset_type.id();
+            let count = existing_counts.entry(asset_type_id).or_default();
+            if let Some(max) = limit {
+                if *count < max {
+                    *count += 1;
+                    assets_to_process.push(asset);
+                }
+            } else {
+                assets_to_process.push(asset);
             }
-            None => discovered_assets,
-        };
+        }
 
         for asset in assets_to_process {
             let path = self
@@ -425,5 +430,206 @@ mod tests {
         let assets = find_assets_by_media_ids(&pool, &[media.id]).await.unwrap();
         assert_eq!(assets.len(), 1);
         assert_eq!(assets[0].path, "/path/to/existing_poster.png");
+    }
+
+    struct CustomAssetFetcher {
+        asset_type: AssetType,
+        url: String,
+    }
+
+    impl CustomAssetFetcher {
+        fn new(asset_type: AssetType, url: String) -> Self {
+            Self { asset_type, url }
+        }
+    }
+
+    impl AssetFetcher for CustomAssetFetcher {
+        fn id(&self) -> AssetStoreId {
+            AssetStoreId::SteamGridDb
+        }
+
+        fn supports_media_type(&self, _media_type: MediaType) -> bool {
+            true
+        }
+    }
+
+    #[async_trait]
+    impl PosterFetcher for CustomAssetFetcher {
+        async fn discover_poster(
+            &self,
+            _media_type: Option<MediaType>,
+            _storefront: Option<StorefrontId>,
+            _external_id: Option<&str>,
+            _title: &str,
+        ) -> Result<Option<DiscoveredAsset>, AssetError> {
+            Ok(Some(DiscoveredAsset {
+                asset_type: self.asset_type,
+                url: self.url.clone(),
+            }))
+        }
+
+        async fn search_poster(
+            &self,
+            _media_type: Option<MediaType>,
+            _storefront: Option<StorefrontId>,
+            _external_id: Option<&str>,
+            _title: &str,
+            _options: &PosterSearchOptions,
+        ) -> Result<Vec<DiscoveredAsset>, AssetError> {
+            Ok(vec![DiscoveredAsset {
+                asset_type: self.asset_type,
+                url: self.url.clone(),
+            }])
+        }
+    }
+
+    #[tokio::test]
+    async fn step_limits_assets_per_asset_type() {
+        let pool = setup_db().await;
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/poster1.png"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(b"poster1"))
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/poster2.png"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(b"poster2"))
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/backdrop1.png"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(b"backdrop1"))
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/backdrop2.png"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(b"backdrop2"))
+            .mount(&server)
+            .await;
+
+        let temp = tempdir().unwrap();
+        let paths = AppPaths {
+            config_dir: temp.path().join("config"),
+            data_dir: temp.path().join("data"),
+        };
+
+        let mut registry = AssetRegistry::new();
+        registry.register_poster(Arc::new(CustomAssetFetcher::new(
+            AssetType::Poster,
+            format!("{}/poster1.png", server.uri()),
+        )));
+        registry.register_poster(Arc::new(CustomAssetFetcher::new(
+            AssetType::Poster,
+            format!("{}/poster2.png", server.uri()),
+        )));
+        registry.register_poster(Arc::new(CustomAssetFetcher::new(
+            AssetType::Backdrop,
+            format!("{}/backdrop1.png", server.uri()),
+        )));
+        registry.register_poster(Arc::new(CustomAssetFetcher::new(
+            AssetType::Backdrop,
+            format!("{}/backdrop2.png", server.uri()),
+        )));
+
+        let downloader = AssetDownloader::new(paths);
+        let step = AssetStep::new(pool.clone(), registry, downloader);
+
+        let media_row = insert_media(
+            &pool,
+            MediaInsert {
+                title: "Test Game".into(),
+                media_type: "game".into(),
+                status_id: MediaStatus::NotStarted.id(),
+            },
+        )
+        .await
+        .unwrap();
+        let media = Media::try_from(media_row).unwrap();
+
+        let mut context = SyncContext::from_media(media.clone());
+        step.execute(&mut context).await.unwrap();
+
+        let assets = find_assets_by_media_ids(&pool, &[media.id]).await.unwrap();
+        assert_eq!(assets.len(), 2);
+        let asset_ids: Vec<i64> = assets.iter().map(|a| a.asset_id).collect();
+        assert!(asset_ids.contains(&AssetType::Poster.id()));
+        assert!(asset_ids.contains(&AssetType::Backdrop.id()));
+    }
+
+    #[tokio::test]
+    async fn step_limits_per_asset_type_considering_existing_assets() {
+        let pool = setup_db().await;
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/poster2.png"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(b"poster2"))
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/backdrop1.png"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(b"backdrop1"))
+            .mount(&server)
+            .await;
+
+        let temp = tempdir().unwrap();
+        let paths = AppPaths {
+            config_dir: temp.path().join("config"),
+            data_dir: temp.path().join("data"),
+        };
+
+        let mut registry = AssetRegistry::new();
+        registry.register_poster(Arc::new(CustomAssetFetcher::new(
+            AssetType::Poster,
+            format!("{}/poster2.png", server.uri()),
+        )));
+        registry.register_poster(Arc::new(CustomAssetFetcher::new(
+            AssetType::Backdrop,
+            format!("{}/backdrop1.png", server.uri()),
+        )));
+
+        let downloader = AssetDownloader::new(paths);
+        let step = AssetStep::new(pool.clone(), registry, downloader);
+
+        let media_row = insert_media(
+            &pool,
+            MediaInsert {
+                title: "Test Game".into(),
+                media_type: "game".into(),
+                status_id: MediaStatus::NotStarted.id(),
+            },
+        )
+        .await
+        .unwrap();
+        let media = Media::try_from(media_row).unwrap();
+
+        insert_media_asset(
+            &pool,
+            MediaAssetInsert {
+                media_id: media.id.clone(),
+                path: "/path/to/existing_poster.png".into(),
+                asset_id: AssetType::Poster.id(),
+            },
+        )
+        .await
+        .unwrap();
+
+        let mut context = SyncContext::from_media(media.clone());
+        step.execute(&mut context).await.unwrap();
+
+        let assets = find_assets_by_media_ids(&pool, &[media.id]).await.unwrap();
+        assert_eq!(assets.len(), 2);
+        let poster_count = assets
+            .iter()
+            .filter(|a| a.asset_id == AssetType::Poster.id())
+            .count();
+        let backdrop_count = assets
+            .iter()
+            .filter(|a| a.asset_id == AssetType::Backdrop.id())
+            .count();
+        assert_eq!(poster_count, 1);
+        assert_eq!(backdrop_count, 1);
     }
 }
