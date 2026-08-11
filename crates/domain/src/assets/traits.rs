@@ -4,6 +4,7 @@ use crate::{
     assets::{
         error::AssetError,
         models::{AssetStoreId, PosterSearchOptions},
+        types::AssetType,
     },
     media::{discovered::DiscoveredAsset, types::MediaType},
     storefronts::models::StorefrontId,
@@ -19,6 +20,10 @@ pub trait AssetFetcher: Send + Sync {
 
 #[async_trait]
 pub trait PosterFetcher: AssetFetcher {
+    fn discovered_asset_types(&self) -> Vec<AssetType> {
+        vec![AssetType::Poster]
+    }
+
     async fn discover_poster(
         &self,
         media_type: Option<MediaType>,
@@ -28,6 +33,30 @@ pub trait PosterFetcher: AssetFetcher {
     ) -> Result<Option<DiscoveredAsset>, AssetError>;
 
     async fn search_poster(
+        &self,
+        media_type: Option<MediaType>,
+        storefront: Option<StorefrontId>,
+        external_id: Option<&str>,
+        title: &str,
+        options: &PosterSearchOptions,
+    ) -> Result<Vec<DiscoveredAsset>, AssetError>;
+}
+
+#[async_trait]
+pub trait BannerFetcher: AssetFetcher {
+    fn discovered_asset_types(&self) -> Vec<AssetType> {
+        vec![AssetType::Banner]
+    }
+
+    async fn discover_banner(
+        &self,
+        media_type: Option<MediaType>,
+        storefront: Option<StorefrontId>,
+        external_id: Option<&str>,
+        title: &str,
+    ) -> Result<Option<DiscoveredAsset>, AssetError>;
+
+    async fn search_banner(
         &self,
         media_type: Option<MediaType>,
         storefront: Option<StorefrontId>,

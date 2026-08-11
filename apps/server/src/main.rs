@@ -185,7 +185,11 @@ async fn init_asset_store(secrets: &SecretsManager) -> anyhow::Result<AssetRegis
     let mut registry = AssetRegistry::new();
 
     registry.register_poster(Arc::new(SteamGridDb::new(
-        secrets.asset_store.steam_grid_db.api_key,
+        secrets.asset_store.steam_grid_db.api_key.clone(),
+    )));
+
+    registry.register_banner(Arc::new(SteamGridDb::new(
+        secrets.asset_store.steam_grid_db.api_key.clone(),
     )));
 
     registry.register_poster(Arc::new(TheMovieDatabase::new(
