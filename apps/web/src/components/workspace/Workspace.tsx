@@ -7,7 +7,7 @@ const WorkspaceContext = createContext({});
 export function Workspace({ children }: { children: ReactNode }) {
   return (
     <WorkspaceContext.Provider value={{}}>
-      <section className="flex h-full flex-col overflow-hidden">
+      <section className="flex h-full flex-col overflow-hidden bg-background text-foreground">
         {children}
       </section>
     </WorkspaceContext.Provider>
@@ -34,33 +34,44 @@ function Header({
   return (
     <header
       className={cn(
-        "flex items-center justify-between border-b border-border-strong px-6 py-4",
+        "flex items-center justify-between border-b border-white/10 bg-surface/50 px-6 py-4 z-10 shrink-0",
         className,
       )}
     >
-      <div>
-        <div className="flex items-center gap-4">
-          {showBackBtn && (
-            <button
-              onClick={() => {
-                history.back();
-              }}
-              className={cn(
-                "flex flex-col items-center gap-1.5 rounded-md px-1 py-1",
-                "text-text-muted transition-colors",
-                "hover:bg-surface-hover hover:text-primary-hover",
-                "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-text-muted",
-                className,
-              )}
-            >
-              <ArrowLeft />
-            </button>
+      <div className="flex items-center gap-3 min-w-0">
+        {showBackBtn && (
+          <button
+            type="button"
+            onClick={() => {
+              history.back();
+            }}
+            className={cn(
+              "flex items-center justify-center p-2 rounded-xl border border-white/10 bg-surface/70 text-text-muted transition-colors cursor-pointer",
+              "hover:bg-surface-hover hover:text-foreground hover:border-white/20",
+              "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-text-muted",
+            )}
+            title="Go back"
+            aria-label="Back"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+        )}
+
+        <div className="flex items-center gap-3 flex-wrap">
+          {typeof title === "string" ? (
+            <h1 className="text-xl font-bold tracking-tight text-foreground">
+              {title}
+            </h1>
+          ) : (
+            title
           )}
 
-          <h1 className="text-2xl font-semibold">{title}</h1>
+          {subtitle && (
+            <span className="inline-flex items-center rounded-full bg-surface-raised/80 border border-white/10 px-2.5 py-0.5 text-xs font-semibold text-text-muted">
+              {subtitle}
+            </span>
+          )}
         </div>
-
-        {subtitle && <p className="mt-1 text-sm text-text-muted">{subtitle}</p>}
       </div>
 
       {children}
@@ -77,7 +88,7 @@ function Actions({ children, className }: ActionsProps) {
   useContext(WorkspaceContext);
 
   return (
-    <div className={cn("flex items-center gap-2", className)}>{children}</div>
+    <div className={cn("flex items-center gap-2.5", className)}>{children}</div>
   );
 }
 
@@ -88,24 +99,28 @@ type ActionProps = {
   className?: string;
 } & React.ButtonHTMLAttributes<HTMLButtonElement>;
 
-function Action({ icon: Icon, children, className, ...props }: ActionProps) {
+function Action({
+  icon: Icon,
+  children,
+  className,
+  active,
+  ...props
+}: ActionProps) {
   useContext(WorkspaceContext);
 
   return (
     <button
       className={cn(
-        "flex min-w-16 flex-col items-center gap-1.5 rounded-md px-2 py-2",
-        "text-text-muted transition-colors",
-        "hover:bg-surface-hover hover:text-primary-hover",
+        "flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface/70 border border-white/10 text-xs font-medium text-text-muted shadow-sm transition-all duration-200 cursor-pointer",
+        "hover:bg-surface-hover hover:text-foreground hover:border-white/20",
         "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-text-muted",
+        active && "bg-primary/10 text-primary border-primary/40 font-semibold",
         className,
       )}
       {...props}
     >
-      <Icon className="text-lg shrink-0" />
-      <span className="max-w-full text-center text-xs truncate">
-        {children}
-      </span>
+      <Icon className="w-4 h-4 shrink-0" />
+      <span className="truncate">{children}</span>
     </button>
   );
 }

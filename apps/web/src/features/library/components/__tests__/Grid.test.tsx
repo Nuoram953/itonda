@@ -108,10 +108,11 @@ describe("MediaGrid Component", () => {
     expect(screen.getAllByRole("article").length).toBe(2);
   });
 
-  it("renders header action buttons for Search and Refresh", () => {
+  it("renders header action buttons for Filters, Sort and Refresh", () => {
     renderMediaGrid();
 
-    expect(screen.getByRole("button", { name: "Search" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "Filters" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "Sort" })).toBeDefined();
     expect(screen.getByRole("button", { name: "Refresh" })).toBeDefined();
   });
 

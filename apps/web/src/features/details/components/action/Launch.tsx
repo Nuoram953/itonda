@@ -1,5 +1,4 @@
 import type { components } from "@/api/generated.d";
-import { Workspace } from "@/components/workspace/Workspace";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -42,13 +41,16 @@ export const Launch = ({ profiles = [] }: LaunchProps) => {
 
   return (
     <>
-      <Workspace.Action
+      <button
+        type="button"
         disabled={!profiles.length}
-        icon={Play}
         onClick={handleClick}
+        aria-label="Play"
+        className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-accent-gold hover:bg-accent-gold-hover text-black font-extrabold text-xs sm:text-sm shadow-lg shadow-accent-gold/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
       >
-        Play
-      </Workspace.Action>
+        <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+        <span>Launch</span>
+      </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>

@@ -9,15 +9,14 @@ import {
 import NotFoundRoute from "./routes/not-found";
 import { Home } from "@/home";
 import { Header } from "@/components/ui/header/Header";
-import { Sidebar } from "@/components/ui/sidebar/Siderbar";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { Sidebar } from "@/components/ui/sidebar/Sidebar";
 import { Libary } from "@/features/library";
 import { MediaDetails } from "@/features/details";
 
 function MediaLayout() {
   return (
     <div className="relative h-full overflow-hidden">
-      <Libary />
-
       <Outlet />
     </div>
   );
@@ -25,17 +24,16 @@ function MediaLayout() {
 
 const rootRoute = createRootRoute({
   component: () => (
-    <div className="flex h-screen w-full flex-col bg-background text-foreground">
-      <Header />
+    <SidebarProvider>
+      <Sidebar />
+      <SidebarInset className="flex h-svh flex-col overflow-hidden">
+        <Header />
 
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar />
-
-        <main className="flex-1 overflow-hidden">
+        <main className="flex-1 overflow-auto">
           <Outlet />
         </main>
-      </div>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   ),
   notFoundComponent: () => NotFoundRoute(),
 });
@@ -64,17 +62,13 @@ export const mediaRoute = createRoute({
 const mediaIndexRoute = createRoute({
   getParentRoute: () => mediaRoute,
   path: "/",
-  component: () => null,
+  component: () => <Libary />,
 });
 
 const mediaDetailsRoute = createRoute({
   getParentRoute: () => mediaRoute,
   path: "$mediaId",
-  component: () => (
-    <div className="absolute inset-0 z-10 bg-background">
-      <MediaDetails />
-    </div>
-  ),
+  component: () => <MediaDetails />,
 });
 
 const routeTree = rootRoute.addChildren([

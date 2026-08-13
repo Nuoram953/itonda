@@ -1,19 +1,14 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { screen, render } from "@/test/test-utils";
 import { Header } from "./Header";
 
-vi.mock("@/hooks/use-websocket-status", () => ({
-  useWebSocketStatus: () => "connected",
-}));
-
-vi.mock("@/api/get-agents", () => ({
-  useAgents: () => ({ data: { agents: [] }, isLoading: false }),
-}));
-
 describe("Header", () => {
-  it("renders name", () => {
+  it("renders search input and action buttons", () => {
     render(<Header />);
 
-    expect(screen.findByText("Itonda")).toBeDefined();
+    expect(screen.getByPlaceholderText("Search media, games, movies...")).toBeDefined();
+    expect(screen.getByText("Add Media")).toBeDefined();
+    expect(screen.getByLabelText("Notifications")).toBeDefined();
   });
 });
+

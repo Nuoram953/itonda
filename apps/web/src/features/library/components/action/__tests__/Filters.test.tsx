@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen } from "@/test/test-utils";
-import { Search } from "../search";
+import { Filters } from "../Filters";
 import { LibraryProvider } from "../../../store/LibraryContext";
 
 const mockSetSearch = vi.fn();
@@ -12,29 +12,29 @@ vi.mock("../../../hooks/useLibrary", () => ({
   }),
 }));
 
-function renderSearch() {
+function renderFilters() {
   return render(
     <LibraryProvider>
-      <Search />
+      <Filters />
     </LibraryProvider>,
   );
 }
 
-describe("Search Component", () => {
+describe("Filters Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("renders search action trigger button", () => {
-    renderSearch();
+    renderFilters();
 
-    expect(screen.getByRole("button", { name: "Search" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "Filters" })).toBeDefined();
   });
 
-  it("opens sheet modal when search button is clicked", () => {
-    renderSearch();
+  it("opens sheet modal when filters button is clicked", () => {
+    renderFilters();
 
-    const trigger = screen.getByRole("button", { name: "Search" });
+    const trigger = screen.getByRole("button", { name: "Filters" });
     fireEvent.click(trigger);
 
     expect(screen.getByText("Search library")).toBeDefined();
@@ -43,19 +43,15 @@ describe("Search Component", () => {
   });
 
   it("submits search query and calls setSearch", () => {
-    renderSearch();
+    renderFilters();
 
-    // Open sheet
-    const trigger = screen.getByRole("button", { name: "Search" });
+    const trigger = screen.getByRole("button", { name: "Filters" });
     fireEvent.click(trigger);
 
-    // Type query
     const input = screen.getByPlaceholderText("Search by title");
     fireEvent.change(input, { target: { value: "Elden Ring" } });
 
-    // Submit form by clicking submit button inside sheet
-    const submitButtons = screen.getAllByRole("button", { name: "Search" });
-    const submitButton = submitButtons[submitButtons.length - 1];
+    const submitButton = screen.getByRole("button", { name: "Search" });
     fireEvent.click(submitButton);
 
     expect(mockSetSearch).toHaveBeenCalledWith("Elden Ring");
