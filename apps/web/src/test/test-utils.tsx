@@ -1,6 +1,5 @@
 import { type ReactElement, type ReactNode } from "react";
 import {
-  render,
   render as rtlRender,
   type RenderOptions,
 } from "@testing-library/react";
@@ -11,6 +10,8 @@ import { NotificationProvider } from "@/app/notificationProvider";
 import { NotificationViewport } from "@/components/ui/notification/Viewport";
 import { AxiosInterceptor } from "@/lib/AxiosInterceptor";
 import { RootErrorFallback } from "@/app/routes/error";
+import { WebSocketContext } from "@/app/websocketProvider";
+import type { AppWebSocket } from "@/lib/websocket/client";
 import { Toast } from "radix-ui";
 import {
   createMemoryHistory,
@@ -18,6 +19,22 @@ import {
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router";
+
+import { SidebarProvider } from "@/components/ui/sidebar";
+
+const mockWebSocket = {
+  getStatus: () => "connected" as const,
+  onStatusChange: (handler: (status: "connected") => void) => {
+    handler("connected");
+    return () => {};
+  },
+  connect: () => {},
+  disconnect: () => {},
+  send: () => {},
+  on: () => () => {},
+  off: () => {},
+  registerHandler: () => () => {},
+} as unknown as AppWebSocket;
 
 function renderWithProviders(
   ui: ReactElement,
@@ -37,9 +54,13 @@ function renderWithProviders(
         <ErrorBoundary FallbackComponent={RootErrorFallback} onReset={() => {}}>
           <QueryClientProvider client={testQueryClient}>
             <NotificationProvider>
-              <AxiosInterceptor>{children}</AxiosInterceptor>
-              <Toast.ToastViewport />
-              <NotificationViewport />
+              <WebSocketContext.Provider value={mockWebSocket}>
+                <SidebarProvider>
+                  <AxiosInterceptor>{children}</AxiosInterceptor>
+                  <Toast.ToastViewport />
+                  <NotificationViewport />
+                </SidebarProvider>
+              </WebSocketContext.Provider>
             </NotificationProvider>
           </QueryClientProvider>
         </ErrorBoundary>
@@ -52,7 +73,7 @@ function renderWithProviders(
 
 export const renderWithRouter = (component: React.ReactNode) => {
   const rootRoute = createRootRoute({
-    component: () => component,
+    component: () => <SidebarProvider>{component}</SidebarProvider>,
   });
 
   const router = createRouter({
@@ -60,7 +81,7 @@ export const renderWithRouter = (component: React.ReactNode) => {
     history: createMemoryHistory(),
   });
 
-  return render(<RouterProvider router={router} />);
+  return renderWithProviders(<RouterProvider router={router} />);
 };
 
 /* eslint-disable react-refresh/only-export-components */

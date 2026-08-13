@@ -104,4 +104,22 @@ describe("ServerAgentStatus", () => {
     expect(screen.getByText("agent-host-1")).toBeDefined();
     expect(screen.getByText("linux")).toBeDefined();
   });
+
+  it("displays empty state message when no agents are connected", () => {
+    vi.mocked(useWebSocketStatus).mockReturnValue("connected");
+    vi.mocked(useAgents).mockReturnValue({
+      data: { agents: [] },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useAgents>);
+
+    render(<ServerAgentStatus />);
+
+    const button = screen.getByRole("button", {
+      name: /Server and Agent Status/i,
+    });
+    fireEvent.click(button);
+
+    expect(screen.getByText("No Agents Paired")).toBeDefined();
+  });
 });
+
