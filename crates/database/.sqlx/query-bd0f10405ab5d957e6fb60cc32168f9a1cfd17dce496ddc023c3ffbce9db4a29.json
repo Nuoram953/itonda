@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n        INSERT INTO media_launches (\n            id,\n            media_id,\n            name,\n            launch_type,\n            program,\n            arguments,\n            working_directory,\n            is_default,\n            enabled\n        )\n        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)\n        RETURNING\n            id,\n            media_id,\n            name,\n            launch_type,\n            program,\n            arguments,\n            working_directory,\n            is_default AS \"is_default: bool\",\n            enabled AS \"enabled: bool\"\n        ",
+  "query": "\n        SELECT\n            id,\n            media_id,\n            agent_id,\n            name,\n            launch_type,\n            program,\n            arguments,\n            working_directory,\n            is_default AS \"is_default: bool\",\n            enabled AS \"enabled: bool\"\n        FROM media_launches\n        WHERE media_id = ?\n          AND agent_id = ?\n          AND name = ?\n          AND launch_type = ?\n        ",
   "describe": {
     "columns": [
       {
@@ -14,47 +14,53 @@
         "type_info": "Text"
       },
       {
-        "name": "name",
+        "name": "agent_id",
         "ordinal": 2,
         "type_info": "Text"
       },
       {
-        "name": "launch_type",
+        "name": "name",
         "ordinal": 3,
         "type_info": "Text"
       },
       {
-        "name": "program",
+        "name": "launch_type",
         "ordinal": 4,
         "type_info": "Text"
       },
       {
-        "name": "arguments",
+        "name": "program",
         "ordinal": 5,
         "type_info": "Text"
       },
       {
-        "name": "working_directory",
+        "name": "arguments",
         "ordinal": 6,
         "type_info": "Text"
       },
       {
-        "name": "is_default: bool",
+        "name": "working_directory",
         "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "is_default: bool",
+        "ordinal": 8,
         "type_info": "Integer"
       },
       {
         "name": "enabled: bool",
-        "ordinal": 8,
+        "ordinal": 9,
         "type_info": "Integer"
       }
     ],
     "parameters": {
-      "Right": 9
+      "Right": 4
     },
     "nullable": [
       false,
       false,
+      true,
       false,
       false,
       false,
@@ -64,5 +70,5 @@
       false
     ]
   },
-  "hash": "edc894744ddf953f854fd37c47a4122213da3ffb1675e6c1fffd7fe5b5a66935"
+  "hash": "bd0f10405ab5d957e6fb60cc32168f9a1cfd17dce496ddc023c3ffbce9db4a29"
 }

@@ -327,6 +327,7 @@ pub async fn find_media_launch_by_media_id(
         SELECT
             id,
             media_id,
+            agent_id,
             name,
             launch_type,
             program,
@@ -354,6 +355,7 @@ pub async fn find_media_launch_by_id(
         SELECT
             id,
             media_id,
+            agent_id,
             name,
             launch_type,
             program,
@@ -381,6 +383,7 @@ pub async fn upsert_media_launch(
         SELECT
             id,
             media_id,
+            agent_id,
             name,
             launch_type,
             program,
@@ -390,10 +393,12 @@ pub async fn upsert_media_launch(
             enabled AS "enabled: bool"
         FROM media_launches
         WHERE media_id = ?
+          AND agent_id = ?
           AND name = ?
           AND launch_type = ?
         "#,
         media_launch.media_id,
+        media_launch.agent_id,
         media_launch.name,
         media_launch.launch_type,
     )
@@ -438,6 +443,7 @@ pub async fn upsert_media_launch(
         RETURNING
             id,
             media_id,
+            agent_id,
             name,
             launch_type,
             program,
@@ -475,6 +481,7 @@ async fn insert_media_launch(
         INSERT INTO media_launches (
             id,
             media_id,
+            agent_id,
             name,
             launch_type,
             program,
@@ -483,10 +490,11 @@ async fn insert_media_launch(
             is_default,
             enabled
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         RETURNING
             id,
             media_id,
+            agent_id,
             name,
             launch_type,
             program,
@@ -497,6 +505,7 @@ async fn insert_media_launch(
         "#,
         id,
         media_launch.media_id,
+        media_launch.agent_id,
         media_launch.name,
         media_launch.launch_type,
         media_launch.program,
@@ -729,6 +738,7 @@ pub async fn find_media_launches_by_media_ids(
         SELECT
             id,
             media_id,
+            agent_id,
             name,
             launch_type,
             program,
@@ -765,6 +775,7 @@ pub async fn find_media_launches_by_media_id(
         SELECT
             id,
             media_id,
+            agent_id,
             name,
             launch_type,
             program,

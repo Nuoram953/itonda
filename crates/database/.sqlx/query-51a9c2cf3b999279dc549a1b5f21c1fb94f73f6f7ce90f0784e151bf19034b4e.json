@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n        SELECT\n            id,\n            media_id,\n            name,\n            launch_type,\n            program,\n            arguments,\n            working_directory,\n            is_default AS \"is_default: bool\",\n            enabled AS \"enabled: bool\"\n        from media_launches\n        where id=?\n        ",
+  "query": "\n        SELECT\n            id,\n            media_id,\n            agent_id,\n            name,\n            launch_type,\n            program,\n            arguments,\n            working_directory,\n            is_default AS \"is_default: bool\",\n            enabled AS \"enabled: bool\"\n        from media_launches\n        where media_id=?\n        ",
   "describe": {
     "columns": [
       {
@@ -14,38 +14,43 @@
         "type_info": "Text"
       },
       {
-        "name": "name",
+        "name": "agent_id",
         "ordinal": 2,
         "type_info": "Text"
       },
       {
-        "name": "launch_type",
+        "name": "name",
         "ordinal": 3,
         "type_info": "Text"
       },
       {
-        "name": "program",
+        "name": "launch_type",
         "ordinal": 4,
         "type_info": "Text"
       },
       {
-        "name": "arguments",
+        "name": "program",
         "ordinal": 5,
         "type_info": "Text"
       },
       {
-        "name": "working_directory",
+        "name": "arguments",
         "ordinal": 6,
         "type_info": "Text"
       },
       {
-        "name": "is_default: bool",
+        "name": "working_directory",
         "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "is_default: bool",
+        "ordinal": 8,
         "type_info": "Integer"
       },
       {
         "name": "enabled: bool",
-        "ordinal": 8,
+        "ordinal": 9,
         "type_info": "Integer"
       }
     ],
@@ -55,6 +60,7 @@
     "nullable": [
       false,
       false,
+      true,
       false,
       false,
       false,
@@ -64,5 +70,5 @@
       false
     ]
   },
-  "hash": "fa70cf573aab64a14525071f6fa570e43aeff818dd8d888fffd336dd9137950b"
+  "hash": "51a9c2cf3b999279dc549a1b5f21c1fb94f73f6f7ce90f0784e151bf19034b4e"
 }

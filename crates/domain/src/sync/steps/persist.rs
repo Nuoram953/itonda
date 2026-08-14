@@ -74,6 +74,7 @@ impl SyncStep for PersistStep {
                     &self.pool,
                     MediaLaunchUpsert {
                         media_id: media.id.clone(),
+                        agent_id: None,
                         name: launch.name.clone(),
                         launch_type: launch.launch_type.as_str().into(),
                         program: launch.program.clone(),

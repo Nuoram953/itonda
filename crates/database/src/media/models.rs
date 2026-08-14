@@ -57,6 +57,7 @@ pub struct MediaGameStorefrontUpsert {
 pub struct MediaLaunchRow {
     pub id: String,
     pub media_id: String,
+    pub agent_id: Option<String>,
     pub name: String,
     pub launch_type: String,
     pub program: String,
@@ -69,6 +70,7 @@ pub struct MediaLaunchRow {
 #[derive(Debug, Clone, Serialize)]
 pub struct MediaLaunchUpsert {
     pub media_id: String,
+    pub agent_id: Option<String>,
     pub name: String,
     pub launch_type: String,
     pub program: String,
