@@ -1,4 +1,5 @@
 use itonda_domain::{
+    agents::AgentManager,
     assets::registry::AssetRegistry,
     events::{EventBus, JobEventType, JobType, SyncEvent},
     storefronts::registry::StorefrontRegistry,
@@ -11,6 +12,7 @@ use crate::workers::jobs::SyncJob;
 pub struct SyncHandler {
     db: SqlitePool,
     events: EventBus,
+    agents: AgentManager,
     storefronts: StorefrontRegistry,
     assets: AssetRegistry,
 }
@@ -19,12 +21,14 @@ impl SyncHandler {
     pub fn new(
         db: SqlitePool,
         events: EventBus,
+        agents: AgentManager,
         storefronts: StorefrontRegistry,
         assets: AssetRegistry,
     ) -> Self {
         Self {
             db,
             events,
+            agents,
             storefronts,
             assets,
         }
@@ -41,6 +45,7 @@ impl SyncHandler {
             job.id,
             self.db.clone(),
             self.events.clone(),
+            self.agents.clone(),
             self.storefronts.clone(),
             self.assets.clone(),
         );

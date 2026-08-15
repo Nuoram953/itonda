@@ -85,6 +85,7 @@ async fn syncs_storefront_games() {
         uuid::Uuid::new_v4(),
         pool.clone(),
         events,
+        crate::agents::AgentManager::new(),
         storefronts,
         assets,
     );
@@ -122,6 +123,7 @@ async fn syncs_existing_db_media_items() {
         uuid::Uuid::new_v4(),
         pool.clone(),
         events,
+        crate::agents::AgentManager::new(),
         storefronts,
         assets,
     );
@@ -133,4 +135,33 @@ async fn syncs_existing_db_media_items() {
         .unwrap();
     assert!(media.is_some());
     assert_eq!(media.unwrap().id, media_row.id);
+}
+
+#[tokio::test]
+async fn sync_all_triggers_agent_scan() {
+    use crate::protocol::ServerToAgentMessage;
+    use tokio::sync::mpsc;
+
+    let pool = setup_db().await;
+    let agents = crate::agents::AgentManager::new();
+    let (tx, mut rx) = mpsc::channel(10);
+    agents.register("agent-123".into(), tx).await;
+
+    let storefronts = StorefrontRegistry::new();
+    let events = EventBus::new();
+    let assets = AssetRegistry::new();
+
+    let service = LibrarySyncService::new(
+        uuid::Uuid::new_v4(),
+        pool.clone(),
+        events,
+        agents,
+        storefronts,
+        assets,
+    );
+
+    service.sync_all().await.unwrap();
+
+    let received = rx.recv().await;
+    assert!(matches!(received, Some(ServerToAgentMessage::Scan(_))));
 }

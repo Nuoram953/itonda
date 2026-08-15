@@ -1,5 +1,3 @@
-use std::{collections::HashMap, sync::Arc};
-
 use axum::{
     extract::{
         State,
@@ -7,59 +5,27 @@ use axum::{
     },
     response::Response,
 };
-use itonda_database::agent::{
-    AgentConnectionsInsert, AgentsInsert, disconnect_agent_connection, insert_agent_connection,
-    upsert_agent,
+use itonda_database::{
+    agent::{
+        AgentConnectionsInsert, AgentsInsert, disconnect_agent_connection, insert_agent_connection,
+        upsert_agent,
+    },
+    media::{
+        MediaInsert, MediaLaunchUpsert, find_media_by_title, insert_media, upsert_media_launch,
+    },
 };
+pub use itonda_domain::agents::AgentManager;
 use itonda_domain::{
     events::{AgentEvent, AppEvent, EventBus},
-    protocol::{AgentRegistration, AgentToServerMessage, ServerToAgentMessage},
+    media::types::MediaStatus,
+    protocol::{AgentRegistration, AgentToServerMessage, ScanResult, ServerToAgentMessage},
 };
 use sqlx::SqlitePool;
-use tokio::sync::{RwLock, mpsc};
-use tracing::{debug, warn};
+use tokio::sync::mpsc;
+use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 use crate::state::AppState;
-
-#[derive(Debug, Clone)]
-pub struct AgentManager {
-    agents: Arc<RwLock<HashMap<String, mpsc::Sender<ServerToAgentMessage>>>>,
-}
-
-impl Default for AgentManager {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl AgentManager {
-    pub fn new() -> Self {
-        Self {
-            agents: Arc::new(RwLock::new(HashMap::new())),
-        }
-    }
-
-    pub async fn register(&self, agent_id: String, sender: mpsc::Sender<ServerToAgentMessage>) {
-        self.agents.write().await.insert(agent_id, sender);
-    }
-
-    pub async fn unregister(&self, agent_id: &str) {
-        self.agents.write().await.remove(agent_id);
-    }
-
-    pub async fn send(&self, agent_id: &str, command: ServerToAgentMessage) -> anyhow::Result<()> {
-        let agents = self.agents.read().await;
-
-        let sender = agents
-            .get(agent_id)
-            .ok_or_else(|| anyhow::anyhow!("Agent not connected"))?;
-
-        sender.send(command).await?;
-
-        Ok(())
-    }
-}
 
 pub async fn agent_ws(ws: WebSocketUpgrade, State(state): State<AppState>) -> Response {
     let manager = state.agent_manager.clone();
@@ -121,7 +87,7 @@ async fn handle_agent(
         }));
     }
 
-    let result = run_agent_loop(&mut socket, &mut rx, pool, &agent_id).await;
+    let result = run_agent_loop(&mut socket, &mut rx, pool, &events, &agent_id).await;
 
     let _ = disconnect_agent_connection(pool, agent_id.clone()).await;
     agent_manager.unregister(&agent_id).await;
@@ -139,6 +105,7 @@ async fn run_agent_loop(
     socket: &mut WebSocket,
     rx: &mut mpsc::Receiver<ServerToAgentMessage>,
     pool: &SqlitePool,
+    events: &EventBus,
     agent_id: &str,
 ) -> anyhow::Result<()> {
     loop {
@@ -156,6 +123,21 @@ async fn run_agent_loop(
             Some(message) = socket.recv() => {
                 debug!("Received from agent: {:?}", message);
                 match message {
+                    Ok(Message::Text(text)) => {
+                        if let Ok(agent_msg) = serde_json::from_str::<AgentToServerMessage>(&text) {
+                            match agent_msg {
+                                AgentToServerMessage::ScanResult(scan_result) => {
+                                    if let Err(err) = handle_agent_scan_result(pool, events, scan_result).await {
+                                        warn!("Error handling scan result: {err}");
+                                    }
+                                }
+                                AgentToServerMessage::Pong => {
+                                    debug!("Pong received from agent {}", agent_id);
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
                     Ok(_) => {}
                     Err(err) => {
                         warn!("Error message: {:?}", err);
@@ -173,6 +155,71 @@ async fn run_agent_loop(
     Ok(())
 }
 
+pub async fn handle_agent_scan_result(
+    pool: &SqlitePool,
+    events: &EventBus,
+    scan_result: ScanResult,
+) -> anyhow::Result<()> {
+    info!(
+        "Processing scan result with {} items from agent {}",
+        scan_result.items.len(),
+        scan_result.agent_id
+    );
+
+    if let Ok(agent_uuid) = Uuid::parse_str(&scan_result.agent_id) {
+        events.publish(AppEvent::Agent(AgentEvent::ScanStarted {
+            agent_id: agent_uuid,
+        }));
+    }
+
+    for item in scan_result.items {
+        let media_row = match find_media_by_title(pool, item.title.clone()).await? {
+            Some(row) => row,
+            None => {
+                insert_media(
+                    pool,
+                    MediaInsert {
+                        title: item.title.clone(),
+                        media_type: item.media_type.as_str().into(),
+                        status_id: MediaStatus::NotStarted.id(),
+                    },
+                )
+                .await?
+            }
+        };
+
+        if let Some(launch) = item.launch {
+            upsert_media_launch(
+                pool,
+                MediaLaunchUpsert {
+                    media_id: media_row.id,
+                    agent_id: Some(scan_result.agent_id.clone()),
+                    name: launch.name,
+                    launch_type: launch.launch_type.as_str().into(),
+                    program: launch.program,
+                    arguments: serde_json::to_string(&launch.arguments)?,
+                    working_directory: launch.working_directory,
+                    is_default: false,
+                    enabled: true,
+                },
+            )
+            .await?;
+        }
+    }
+
+    if let Ok(agent_uuid) = Uuid::parse_str(&scan_result.agent_id) {
+        events.publish(AppEvent::Agent(AgentEvent::ScanCompleted {
+            agent_id: agent_uuid,
+        }));
+    }
+
+    info!(
+        "Scan result processing complete for agent {}",
+        scan_result.agent_id
+    );
+    Ok(())
+}
+
 async fn wait_for_registration(socket: &mut WebSocket) -> anyhow::Result<AgentRegistration> {
     while let Some(message) = socket.recv().await {
         match message? {
@@ -182,9 +229,13 @@ async fn wait_for_registration(socket: &mut WebSocket) -> anyhow::Result<AgentRe
 
                 debug!("Parsed: {:?}", message);
 
-                match message {
-                    AgentToServerMessage::Register(registration) => return Ok(registration),
+                if let AgentToServerMessage::Register(registration) = message {
+                    return Ok(registration);
                 }
+                // match message {
+                //     AgentToServerMessage::Register(registration) => return Ok(registration),
+                //     _ => {}
+                // }
             }
 
             Message::Close(_) => {

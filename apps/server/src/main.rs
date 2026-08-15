@@ -47,7 +47,9 @@ async fn main() -> anyhow::Result<()> {
 
     let asset_store = init_asset_store(&secrets).await?;
 
-    let (jobs, events) = init_worker(&pool, &storefronts, &asset_store).await?;
+    let agent_manager = AgentManager::new();
+
+    let (jobs, events) = init_worker(&pool, &storefronts, &asset_store, &agent_manager).await?;
 
     let state = state::AppState {
         db: pool,
@@ -57,7 +59,7 @@ async fn main() -> anyhow::Result<()> {
         config,
         secrets,
         storefronts,
-        agent_manager: AgentManager::new(),
+        agent_manager,
     };
 
     init_server(state).await?;
@@ -119,6 +121,7 @@ async fn init_worker(
     pool: &SqlitePool,
     storefronts: &StorefrontRegistry,
     asset_store: &AssetRegistry,
+    agent_manager: &AgentManager,
 ) -> anyhow::Result<(Sender<Job>, EventBus)> {
     let events = EventBus::new();
 
@@ -130,6 +133,7 @@ async fn init_worker(
         SyncHandler::new(
             pool.clone(),
             events.clone(),
+            agent_manager.clone(),
             storefronts.clone(),
             asset_store.clone(),
         ),

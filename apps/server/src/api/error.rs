@@ -147,6 +147,10 @@ impl From<AgentsError> for ApiError {
     fn from(err: AgentsError) -> Self {
         match err {
             AgentsError::Database(err) => ApiError::Database(err),
+            AgentsError::NotConnected(msg) => {
+                ApiError::Validation(format!("Agent not connected: {msg}"))
+            }
+            AgentsError::SendFailed(_) => ApiError::InternalServer,
         }
     }
 }

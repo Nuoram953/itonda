@@ -3,7 +3,7 @@ use utoipa::ToSchema;
 
 use crate::media::errors::MediaError;
 
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum MediaType {
     Game,
@@ -66,7 +66,7 @@ impl TryFrom<i64> for MediaStatus {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum MediaLaunchType {
     Storefront,
@@ -88,6 +88,14 @@ impl MediaLaunchType {
 #[serde(rename_all = "snake_case")]
 pub enum MediaSource {
     Steam,
+}
+
+impl MediaSource {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Steam => "steam",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, ToSchema, PartialEq, Eq)]

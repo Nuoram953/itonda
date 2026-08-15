@@ -11,6 +11,7 @@ pub struct MediaFixture {
 }
 
 pub struct MediaLaunchFixture {
+    pub agent_id: Option<String>,
     pub name: String,
     pub launch_type: String,
     pub program: String,
@@ -33,6 +34,7 @@ impl Default for MediaFixture {
 impl Default for MediaLaunchFixture {
     fn default() -> Self {
         Self {
+            agent_id: None,
             name: "Default".into(),
             launch_type: "steam".into(),
             program: "steam".into(),
@@ -69,6 +71,7 @@ impl MediaFixture {
                     db,
                     MediaLaunchUpsert {
                         media_id: media.id.clone(),
+                        agent_id: launch.agent_id,
                         name: launch.name,
                         launch_type: launch.launch_type,
                         program: launch.program,

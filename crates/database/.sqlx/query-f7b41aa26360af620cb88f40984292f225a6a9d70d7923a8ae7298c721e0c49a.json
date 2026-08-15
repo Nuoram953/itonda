@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n        SELECT\n            id,\n            media_id,\n            agent_id,\n            name,\n            launch_type,\n            program,\n            arguments,\n            working_directory,\n            is_default AS \"is_default: bool\",\n            enabled AS \"enabled: bool\"\n        FROM media_launches\n        WHERE media_id = ?\n          AND agent_id = ?\n          AND name = ?\n          AND launch_type = ?\n        ",
+  "query": "\n        SELECT\n            id,\n            media_id,\n            agent_id,\n            name,\n            launch_type,\n            program,\n            arguments,\n            working_directory,\n            is_default AS \"is_default: bool\",\n            enabled AS \"enabled: bool\"\n        FROM media_launches\n        WHERE media_id = ?\n          AND agent_id IS ?\n          AND name = ?\n          AND launch_type = ?\n        ",
   "describe": {
     "columns": [
       {
@@ -70,5 +70,5 @@
       false
     ]
   },
-  "hash": "bd0f10405ab5d957e6fb60cc32168f9a1cfd17dce496ddc023c3ffbce9db4a29"
+  "hash": "f7b41aa26360af620cb88f40984292f225a6a9d70d7923a8ae7298c721e0c49a"
 }

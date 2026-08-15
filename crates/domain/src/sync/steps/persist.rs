@@ -1,21 +1,17 @@
 use async_trait::async_trait;
 use itonda_database::media::{
-    MediaGameDetailsUpsert, MediaInsert, MediaLaunchUpsert, find_media_by_title, insert_media,
-    upsert_media_game_details, upsert_media_launch,
+    MediaGameDetailsUpsert, MediaInsert, find_media_by_title, insert_media,
+    upsert_media_game_details,
 };
 use sqlx::SqlitePool;
 
 use crate::{
     media::{
-        discovered::DiscoveredMediaMetadata,
+        discovered::{DiscoveredMedia, DiscoveredMediaMetadata},
         models::Media,
         types::{MediaStatus, MediaType},
     },
-    sync::{
-        context::{SyncAction, SyncContext},
-        errors::SyncError,
-        pipeline::SyncStep,
-    },
+    sync::{context::SyncContext, errors::SyncError, pipeline::SyncStep},
 };
 
 pub struct PersistStep {
@@ -36,25 +32,29 @@ impl SyncStep for PersistStep {
 
     async fn execute(&self, context: &mut SyncContext) -> Result<(), SyncError> {
         let Some(discovered) = &context.discovered else {
-            if context.media.is_none() {
-                return Err(SyncError::MissingMedia);
-            }
             return Ok(());
         };
+
+        let DiscoveredMedia {
+            title,
+            media_type,
+            metadata,
+            ..
+        } = discovered;
 
         let media = match &context.media {
             Some(media) => media.clone(),
             None => {
-                let row = match find_media_by_title(&self.pool, discovered.title.clone()).await? {
+                let existing = find_media_by_title(&self.pool, title.clone()).await?;
+
+                let row = match existing {
                     Some(row) => row,
                     None => {
-                        context.action.merge(SyncAction::Created);
-
                         insert_media(
                             &self.pool,
                             MediaInsert {
-                                title: discovered.title.clone(),
-                                media_type: discovered.media_type.as_str().into(),
+                                title: title.clone(),
+                                media_type: media_type.as_str().into(),
                                 status_id: MediaStatus::NotStarted.id(),
                             },
                         )
@@ -68,28 +68,8 @@ impl SyncStep for PersistStep {
             }
         };
 
-        if let MediaType::Game = discovered.media_type {
-            if let Some(launch) = &discovered.launch {
-                let result = upsert_media_launch(
-                    &self.pool,
-                    MediaLaunchUpsert {
-                        media_id: media.id.clone(),
-                        agent_id: None,
-                        name: launch.name.clone(),
-                        launch_type: launch.launch_type.as_str().into(),
-                        program: launch.program.clone(),
-                        arguments: serde_json::to_string(&launch.arguments)?,
-                        working_directory: launch.working_directory.clone(),
-                        is_default: false,
-                        enabled: true,
-                    },
-                )
-                .await?;
-
-                context.action.merge(result.action.into());
-            }
-
-            let DiscoveredMediaMetadata::Game(game) = &discovered.metadata;
+        if let MediaType::Game = media_type {
+            let DiscoveredMediaMetadata::Game(game) = metadata;
 
             let result = upsert_media_game_details(
                 &self.pool,
@@ -107,13 +87,14 @@ impl SyncStep for PersistStep {
         Ok(())
     }
 }
+
 #[cfg(test)]
 mod tests {
-    use itonda_database::{media::find_media_launch_by_media_id, test_utils::setup_db};
+    use itonda_database::{media::find_game_details, test_utils::setup_db};
 
-    use crate::tests::fixtures::{
-        context::sync_context_with_media,
-        media::{DiscoveredLaunchBuilder, DiscoveredMediaBuilder},
+    use crate::{
+        media::discovered::{DiscoveredMediaMetadata, GameMetadata},
+        tests::fixtures::{context::sync_context_with_media, media::DiscoveredMediaBuilder},
     };
 
     use super::*;
@@ -165,17 +146,16 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn creates_storefront_relationship_for_game() {
+    async fn creates_game_details_for_game() {
         let pool = setup_db().await;
 
         let step = PersistStep::new(pool.clone());
 
         let media = DiscoveredMediaBuilder::new()
-            .launch(
-                DiscoveredLaunchBuilder::new()
-                    .name("Test storefront")
-                    .build(),
-            )
+            .metadata(DiscoveredMediaMetadata::Game(GameMetadata {
+                total_playtime: Some(120),
+                last_played: None,
+            }))
             .build();
 
         let mut context = sync_context_with_media(media);
@@ -184,10 +164,8 @@ mod tests {
 
         let media = context.media.unwrap();
 
-        let storefront = find_media_launch_by_media_id(&pool, media.id)
-            .await
-            .unwrap();
+        let details = find_game_details(&pool, &media.id).await.unwrap().unwrap();
 
-        assert_eq!(storefront[0].name, "Test storefront");
+        assert_eq!(details.playtime_minutes, Some(120));
     }
 }
