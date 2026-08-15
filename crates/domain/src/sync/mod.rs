@@ -3,6 +3,7 @@ use tracing::{debug, info};
 use uuid::Uuid;
 
 use crate::{
+    agents::AgentManager,
     assets::{downloader::AssetDownloader, registry::AssetRegistry},
     events::{EventBus, JobEventType, JobType, SyncEvent},
     storage::path::AppPaths,
@@ -11,7 +12,7 @@ use crate::{
         context::{SyncAction, SyncContext},
         errors::SyncError,
         pipeline::{MediaSyncPipeline, SyncStep},
-        steps::{assets::AssetStep, identify::IdentifyStep, persist::PersistStep},
+        steps::{assets::AssetStep, identify::IdentifyStep, persist::PersistStep, scan::ScanStep},
     },
 };
 
@@ -27,6 +28,7 @@ pub mod tests;
 pub struct LibrarySyncService {
     job_id: Uuid,
     db: SqlitePool,
+    agents: AgentManager,
     storefronts: StorefrontRegistry,
     events: EventBus,
     pipeline: MediaSyncPipeline,
@@ -37,6 +39,7 @@ impl LibrarySyncService {
         job_id: Uuid,
         db: SqlitePool,
         events: EventBus,
+        agents: AgentManager,
         storefronts: StorefrontRegistry,
         assets: AssetRegistry,
     ) -> Self {
@@ -53,6 +56,7 @@ impl LibrarySyncService {
         Self {
             job_id,
             db,
+            agents,
             storefronts,
             events,
             pipeline,
@@ -65,6 +69,12 @@ impl LibrarySyncService {
 
     pub async fn sync_all(&self) -> Result<(), SyncError> {
         info!("Starting sync process for all");
+
+        let scan_step = ScanStep::new(self.agents.clone());
+        if let Err(err) = scan_step.scan().await {
+            tracing::warn!("Agent scan step encountered an error: {err}");
+        }
+
         let mut synced_ids = std::collections::HashSet::new();
 
         for (_, storefront) in self.storefronts.get_all() {

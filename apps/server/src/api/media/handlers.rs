@@ -71,6 +71,9 @@ pub async fn get_media(
 #[utoipa::path(
     get,
     path = "/media/{media_id}",
+    params(
+        ("media_id" = String, Path, description = "Media ID"),
+    ),
     responses(
         (
             status = 200,

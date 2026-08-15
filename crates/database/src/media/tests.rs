@@ -325,6 +325,7 @@ async fn upsert_media_launch_creates_launch() {
         &pool,
         MediaQueries::MediaLaunchUpsert {
             media_id: media.id.clone(),
+            agent_id: None,
             name: "Default".to_string(),
             launch_type: "steam".to_string(),
             program: "steam".to_string(),
@@ -368,6 +369,7 @@ async fn find_media_launch_by_media_id_returns_launches() {
         &pool,
         MediaQueries::MediaLaunchUpsert {
             media_id: media.id.clone(),
+            agent_id: None,
             name: "Default".to_string(),
             launch_type: "steam".to_string(),
             program: "steam".to_string(),
@@ -418,6 +420,7 @@ async fn find_media_launch_by_id_returns_launch() {
         &pool,
         MediaQueries::MediaLaunchUpsert {
             media_id: media.id,
+            agent_id: None,
             name: "Default".to_string(),
             launch_type: "steam".to_string(),
             program: "steam".to_string(),
@@ -489,6 +492,7 @@ async fn upsert_media_launch_returns_unchanged_when_nothing_changed() {
 
     let launch = MediaQueries::MediaLaunchUpsert {
         media_id: media.id,
+        agent_id: None,
         name: "Default".to_string(),
         launch_type: "steam".to_string(),
         program: "steam".to_string(),
@@ -531,6 +535,7 @@ async fn upsert_media_launch_updates_existing_launch() {
         &pool,
         MediaQueries::MediaLaunchUpsert {
             media_id: media.id.clone(),
+            agent_id: None,
             name: "Default".to_string(),
             launch_type: "steam".to_string(),
             program: "steam".to_string(),
@@ -549,6 +554,7 @@ async fn upsert_media_launch_updates_existing_launch() {
         &pool,
         MediaQueries::MediaLaunchUpsert {
             media_id: media.id,
+            agent_id: None,
             name: "Default".to_string(),
             launch_type: "steam".to_string(),
             program: "steam".to_string(),

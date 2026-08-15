@@ -393,7 +393,7 @@ pub async fn upsert_media_launch(
             enabled AS "enabled: bool"
         FROM media_launches
         WHERE media_id = ?
-          AND agent_id = ?
+          AND agent_id IS ?
           AND name = ?
           AND launch_type = ?
         "#,
