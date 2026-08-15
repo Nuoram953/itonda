@@ -1,5 +1,5 @@
 use futures_util::{SinkExt, StreamExt};
-use itonda_domain::protocol::server::ServerMessage;
+use itonda_domain::protocol::ServerToAgentMessage;
 use serde::Serialize;
 use tokio::net::TcpStream;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, tungstenite};
@@ -16,7 +16,7 @@ impl AgentConnection {
         Ok(Self { socket })
     }
 
-    pub async fn receive(&mut self) -> anyhow::Result<ServerMessage> {
+    pub async fn receive(&mut self) -> anyhow::Result<ServerToAgentMessage> {
         let message = self
             .socket
             .next()
@@ -25,7 +25,7 @@ impl AgentConnection {
 
         match message {
             Message::Text(text) => {
-                let command = serde_json::from_str::<ServerMessage>(&text)?;
+                let command = serde_json::from_str::<ServerToAgentMessage>(&text)?;
                 Ok(command)
             }
 

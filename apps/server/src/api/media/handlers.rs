@@ -7,7 +7,7 @@ use axum::{
 use itonda_domain::{
     launch::service::get_launch_media_details,
     media::{models::Media, service as MediaService, types::MediaStatus},
-    protocol::message::AgentMessage,
+    protocol::ServerToAgentMessage,
 };
 use tracing::instrument;
 use uuid::Uuid;
@@ -195,7 +195,7 @@ pub async fn launch_media(
 
     let _ = state
         .agent_manager
-        .send(&agent_id, AgentMessage::Launch(command))
+        .send(&agent_id, ServerToAgentMessage::Launch(command))
         .await;
 
     Ok((

@@ -1,7 +1,7 @@
 use crate::common::{app::test_app, fixtures::media::MediaFixture, response::json};
 use axum::http;
 use http::{Request, StatusCode};
-use itonda_domain::protocol::message::AgentMessage;
+use itonda_domain::protocol::ServerToAgentMessage;
 use itonda_server::api::error::{ApiError, ErrorResponse};
 use tower::ServiceExt;
 use uuid::Uuid;
@@ -33,7 +33,7 @@ async fn launch_media_creates_job() {
         .await
         .expect("agent did not receive launch command");
 
-    assert!(matches!(command, AgentMessage::Launch(_)));
+    assert!(matches!(command, ServerToAgentMessage::Launch(_)));
 }
 
 #[tokio::test]

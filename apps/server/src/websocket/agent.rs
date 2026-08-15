@@ -13,7 +13,7 @@ use itonda_database::agent::{
 };
 use itonda_domain::{
     events::{AgentEvent, AppEvent, EventBus},
-    protocol::{agent::AgentRegistration, message::AgentMessage},
+    protocol::{AgentRegistration, AgentToServerMessage, ServerToAgentMessage},
 };
 use sqlx::SqlitePool;
 use tokio::sync::{RwLock, mpsc};
@@ -24,7 +24,7 @@ use crate::state::AppState;
 
 #[derive(Debug, Clone)]
 pub struct AgentManager {
-    agents: Arc<RwLock<HashMap<String, mpsc::Sender<AgentMessage>>>>,
+    agents: Arc<RwLock<HashMap<String, mpsc::Sender<ServerToAgentMessage>>>>,
 }
 
 impl Default for AgentManager {
@@ -40,7 +40,7 @@ impl AgentManager {
         }
     }
 
-    pub async fn register(&self, agent_id: String, sender: mpsc::Sender<AgentMessage>) {
+    pub async fn register(&self, agent_id: String, sender: mpsc::Sender<ServerToAgentMessage>) {
         self.agents.write().await.insert(agent_id, sender);
     }
 
@@ -48,7 +48,7 @@ impl AgentManager {
         self.agents.write().await.remove(agent_id);
     }
 
-    pub async fn send(&self, agent_id: &str, command: AgentMessage) -> anyhow::Result<()> {
+    pub async fn send(&self, agent_id: &str, command: ServerToAgentMessage) -> anyhow::Result<()> {
         let agents = self.agents.read().await;
 
         let sender = agents
@@ -137,7 +137,7 @@ async fn handle_agent(
 
 async fn run_agent_loop(
     socket: &mut WebSocket,
-    rx: &mut mpsc::Receiver<AgentMessage>,
+    rx: &mut mpsc::Receiver<ServerToAgentMessage>,
     pool: &SqlitePool,
     agent_id: &str,
 ) -> anyhow::Result<()> {
@@ -178,12 +178,12 @@ async fn wait_for_registration(socket: &mut WebSocket) -> anyhow::Result<AgentRe
         match message? {
             Message::Text(text) => {
                 debug!("Raw agent message: {}", text);
-                let message: AgentMessage = serde_json::from_str(&text)?;
+                let message: AgentToServerMessage = serde_json::from_str(&text)?;
 
                 debug!("Parsed: {:?}", message);
 
-                if let AgentMessage::Register(registration) = message {
-                    return Ok(registration);
+                match message {
+                    AgentToServerMessage::Register(registration) => return Ok(registration),
                 }
             }
 

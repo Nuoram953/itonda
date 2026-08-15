@@ -1,8 +1,12 @@
 use serde::{Deserialize, Serialize};
 
-// Agent -> Server
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", content = "payload")]
+pub enum AgentToServerMessage {
+    Register(AgentRegistration),
+}
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentRegistration {
     pub id: String,
     pub name: String,
