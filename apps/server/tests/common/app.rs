@@ -4,7 +4,7 @@ use itonda_database::{
     test_utils::setup_db,
 };
 use itonda_domain::{
-    events::EventBus, protocol::message::AgentMessage, store::toml::TomlCodec,
+    events::EventBus, protocol::ServerToAgentMessage, store::toml::TomlCodec,
     storefronts::registry::StorefrontRegistry,
 };
 use itonda_server::{
@@ -23,7 +23,7 @@ pub struct TestApp {
     pub router: Router,
     pub jobs: Receiver<Job>,
     pub db: SqlitePool,
-    pub agent_messages: Receiver<AgentMessage>,
+    pub agent_messages: Receiver<ServerToAgentMessage>,
 }
 
 pub async fn test_app() -> TestApp {

@@ -6,7 +6,7 @@ use itonda_database::{
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
-use crate::{launch::errors::LaunchError, protocol::server::LaunchCommand};
+use crate::{launch::errors::LaunchError, protocol::server_to_agent::LaunchCommand};
 
 pub async fn get_launch_media_details(
     pool: &SqlitePool,
