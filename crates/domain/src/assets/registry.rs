@@ -1,9 +1,12 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use crate::{
     assets::{
         error::AssetError,
-        models::{AssetStoreId, PosterSearchOptions},
+        models::{AssetStoreId, DiscoverOptions, PosterSearchOptions},
         traits::{BannerFetcher, PosterFetcher},
     },
     media::{discovered::DiscoveredAsset, types::MediaType},
@@ -56,37 +59,6 @@ impl AssetRegistry {
         self.banners.iter().find(|f| f.id() == id).cloned()
     }
 
-    pub fn needs_discovery(
-        &self,
-        media_type: &MediaType,
-        existing_counts: &HashMap<i64, usize>,
-        limit: usize,
-    ) -> bool {
-        for poster in &self.posters {
-            if poster.supports_media_type(media_type.clone()) {
-                for asset_type in poster.discovered_asset_types() {
-                    let count = existing_counts.get(&asset_type.id()).copied().unwrap_or(0);
-                    if count < limit {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        for banner in &self.banners {
-            if banner.supports_media_type(media_type.clone()) {
-                for asset_type in banner.discovered_asset_types() {
-                    let count = existing_counts.get(&asset_type.id()).copied().unwrap_or(0);
-                    if count < limit {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        false
-    }
-
     pub async fn discover(
         &self,
         media_type: MediaType,
@@ -94,15 +66,21 @@ impl AssetRegistry {
         external_id: Option<&str>,
         title: &str,
     ) -> Result<Vec<DiscoveredAsset>, AssetError> {
-        self.discover_needed(
-            media_type,
-            storefront,
-            external_id,
-            title,
-            &HashMap::new(),
-            None,
-        )
-        .await
+        let (assets, _) = self
+            .discover_needed(
+                media_type,
+                storefront,
+                external_id,
+                title,
+                DiscoverOptions {
+                    existing_counts: &HashMap::new(),
+                    searched_types: &HashSet::new(),
+                    limit: None,
+                    force: true,
+                },
+            )
+            .await?;
+        Ok(assets)
     }
 
     pub async fn discover_needed(
@@ -111,47 +89,74 @@ impl AssetRegistry {
         storefront: Option<StorefrontId>,
         external_id: Option<&str>,
         title: &str,
-        existing_counts: &HashMap<i64, usize>,
-        limit: Option<usize>,
-    ) -> Result<Vec<DiscoveredAsset>, AssetError> {
+        options: DiscoverOptions<'_>,
+    ) -> Result<(Vec<DiscoveredAsset>, HashSet<i64>), AssetError> {
         let mut results = Vec::new();
+        let mut attempted = HashSet::new();
+
         for poster in &self.posters {
             if poster.supports_media_type(media_type.clone()) {
-                let needed = match limit {
-                    Some(max) => poster.discovered_asset_types().iter().any(|asset_type| {
-                        existing_counts.get(&asset_type.id()).copied().unwrap_or(0) < max
-                    }),
-                    None => true,
-                };
+                let asset_types = poster.discovered_asset_types();
+                let needed = options.force
+                    || match options.limit {
+                        Some(max) => asset_types.iter().any(|asset_type| {
+                            !options.searched_types.contains(&asset_type.id())
+                                && options
+                                    .existing_counts
+                                    .get(&asset_type.id())
+                                    .copied()
+                                    .unwrap_or(0)
+                                    < max
+                        }),
+                        None => true,
+                    };
 
-                if needed
-                    && let Some(asset) = poster
+                if needed {
+                    for at in &asset_types {
+                        attempted.insert(at.id());
+                    }
+                    if let Some(asset) = poster
                         .discover_poster(Some(media_type.clone()), storefront, external_id, title)
                         .await?
-                {
-                    results.push(asset);
+                    {
+                        results.push(asset);
+                    }
                 }
             }
         }
+
         for banner in &self.banners {
             if banner.supports_media_type(media_type.clone()) {
-                let needed = match limit {
-                    Some(max) => banner.discovered_asset_types().iter().any(|asset_type| {
-                        existing_counts.get(&asset_type.id()).copied().unwrap_or(0) < max
-                    }),
-                    None => true,
-                };
+                let asset_types = banner.discovered_asset_types();
+                let needed = options.force
+                    || match options.limit {
+                        Some(max) => asset_types.iter().any(|asset_type| {
+                            !options.searched_types.contains(&asset_type.id())
+                                && options
+                                    .existing_counts
+                                    .get(&asset_type.id())
+                                    .copied()
+                                    .unwrap_or(0)
+                                    < max
+                        }),
+                        None => true,
+                    };
 
-                if needed
-                    && let Some(asset) = banner
+                if needed {
+                    for at in &asset_types {
+                        attempted.insert(at.id());
+                    }
+                    if let Some(asset) = banner
                         .discover_banner(Some(media_type.clone()), storefront, external_id, title)
                         .await?
-                {
-                    results.push(asset);
+                    {
+                        results.push(asset);
+                    }
                 }
             }
         }
-        Ok(results)
+
+        Ok((results, attempted))
     }
 
     pub async fn search_poster(
@@ -297,19 +302,85 @@ mod tests {
         assert_eq!(posters[0].url, "http://example.com/poster.png");
     }
 
-    #[test]
-    fn checks_if_discovery_is_needed() {
+    #[tokio::test]
+    async fn checks_if_discovery_is_needed() {
         let mut registry = AssetRegistry::new();
         registry.register_poster(Arc::new(DummyGamePosterFetcher));
 
         let mut existing = HashMap::new();
-        assert!(registry.needs_discovery(&MediaType::Game, &existing, 1));
+        let searched = HashSet::new();
+
+        let (discovered, attempted) = registry
+            .discover_needed(
+                MediaType::Game,
+                Some(StorefrontId::Steam),
+                Some("123"),
+                "Test",
+                DiscoverOptions {
+                    existing_counts: &existing,
+                    searched_types: &searched,
+                    limit: Some(1),
+                    force: false,
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(discovered.len(), 1);
+        assert!(attempted.contains(&AssetType::Poster.id()));
 
         existing.insert(AssetType::Poster.id(), 1);
-        assert!(!registry.needs_discovery(&MediaType::Game, &existing, 1));
+        let (discovered, attempted) = registry
+            .discover_needed(
+                MediaType::Game,
+                Some(StorefrontId::Steam),
+                Some("123"),
+                "Test",
+                DiscoverOptions {
+                    existing_counts: &existing,
+                    searched_types: &searched,
+                    limit: Some(1),
+                    force: false,
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(discovered.len(), 0);
+        assert!(attempted.is_empty());
 
-        assert!(registry.needs_discovery(&MediaType::Game, &existing, 2));
-        assert!(!registry.needs_discovery(&MediaType::Movie, &existing, 1));
+        let (discovered, attempted) = registry
+            .discover_needed(
+                MediaType::Game,
+                Some(StorefrontId::Steam),
+                Some("123"),
+                "Test",
+                DiscoverOptions {
+                    existing_counts: &existing,
+                    searched_types: &searched,
+                    limit: Some(2),
+                    force: false,
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(discovered.len(), 1);
+        assert!(attempted.contains(&AssetType::Poster.id()));
+
+        let (discovered, _) = registry
+            .discover_needed(
+                MediaType::Movie,
+                Some(StorefrontId::Steam),
+                Some("123"),
+                "Test",
+                DiscoverOptions {
+                    existing_counts: &existing,
+                    searched_types: &searched,
+                    limit: Some(1),
+                    force: false,
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(discovered.len(), 0);
     }
 
     struct MultiAssetFetcher;
@@ -354,17 +425,48 @@ mod tests {
         }
     }
 
-    #[test]
-    fn checks_discovery_needed_for_multi_asset_fetcher() {
+    #[tokio::test]
+    async fn checks_discovery_needed_for_multi_asset_fetcher() {
         let mut registry = AssetRegistry::new();
         registry.register_poster(Arc::new(MultiAssetFetcher));
 
         let mut existing = HashMap::new();
+        let searched = HashSet::new();
         existing.insert(AssetType::Poster.id(), 1);
 
-        assert!(registry.needs_discovery(&MediaType::Game, &existing, 1));
+        let (discovered, _) = registry
+            .discover_needed(
+                MediaType::Game,
+                Some(StorefrontId::Steam),
+                Some("123"),
+                "Test",
+                DiscoverOptions {
+                    existing_counts: &existing,
+                    searched_types: &searched,
+                    limit: Some(1),
+                    force: false,
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(discovered.len(), 1);
 
         existing.insert(AssetType::Backdrop.id(), 1);
-        assert!(!registry.needs_discovery(&MediaType::Game, &existing, 1));
+        let (discovered, _) = registry
+            .discover_needed(
+                MediaType::Game,
+                Some(StorefrontId::Steam),
+                Some("123"),
+                "Test",
+                DiscoverOptions {
+                    existing_counts: &existing,
+                    searched_types: &searched,
+                    limit: Some(1),
+                    force: false,
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(discovered.len(), 0);
     }
 }

@@ -113,6 +113,7 @@ pub async fn refresh(
         .send(Job::Sync(SyncJob {
             id: job_id,
             storefront: request.storefront,
+            force: request.force,
         }))
         .await
         .map_err(|err| {

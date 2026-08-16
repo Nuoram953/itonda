@@ -121,3 +121,16 @@ pub struct PaginatedMediaRows {
     pub items: Vec<MediaRow>,
     pub total: u64,
 }
+
+#[derive(Debug, Clone, Serialize, FromRow)]
+pub struct MediaAssetSearchRow {
+    pub media_id: String,
+    pub asset_id: i64,
+    pub searched_at: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct MediaAssetSearchInsert {
+    pub media_id: String,
+    pub asset_id: i64,
+}

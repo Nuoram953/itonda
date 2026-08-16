@@ -8,5 +8,5 @@ pub fn sync_context() -> SyncContext {
 }
 
 pub fn sync_context_with_media(media: DiscoveredMedia) -> SyncContext {
-    SyncContext::new(media)
+    SyncContext::new(media, false)
 }

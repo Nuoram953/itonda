@@ -8,7 +8,7 @@ export const Refresh = () => {
   return (
     <Workspace.Action
       icon={RefreshCcw}
-      onClick={() => refreshMediaMutation.mutate({})}
+      onClick={() => refreshMediaMutation.mutate({ force: false })}
       disabled={refreshMediaMutation.isPending}
     >
       Refresh

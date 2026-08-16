@@ -1,13 +1,22 @@
-use std::{collections::HashMap, slice::from_ref};
+use std::{
+    collections::{HashMap, HashSet},
+    slice::from_ref,
+};
 
 use async_trait::async_trait;
 use sqlx::SqlitePool;
 
-use itonda_database::media::{MediaAssetInsert, find_assets_by_media_ids, insert_media_asset};
+use itonda_database::media::{
+    MediaAssetInsert, MediaAssetSearchInsert, find_asset_searches_by_media_ids,
+    find_assets_by_media_ids, insert_media_asset, insert_media_asset_search,
+};
 use uuid::Uuid;
 
 use crate::{
-    assets::{downloader::AssetDownloader, policy::AssetPolicy, registry::AssetRegistry},
+    assets::{
+        downloader::AssetDownloader, models::DiscoverOptions, policy::AssetPolicy,
+        registry::AssetRegistry,
+    },
     sync::{context::SyncContext, errors::SyncError, pipeline::SyncStep},
 };
 
@@ -57,6 +66,11 @@ impl SyncStep for AssetStep {
             *existing_counts.entry(asset.asset_id).or_default() += 1;
         }
 
+        let existing_searches =
+            find_asset_searches_by_media_ids(&self.pool, from_ref(&media.id)).await?;
+        let searched_types: HashSet<i64> =
+            existing_searches.into_iter().map(|s| s.asset_id).collect();
+
         let (media_type, storefront, external_id, title) = match &context.discovered {
             Some(discovered) => (
                 discovered.media_type.clone(),
@@ -67,29 +81,26 @@ impl SyncStep for AssetStep {
             None => (media.media_type.clone(), None, None, media.title.as_str()),
         };
 
-        if let Some(limit) = self.policy.max_items()
-            && !self
-                .registry
-                .needs_discovery(&media_type, &existing_counts, limit)
-        {
-            return Ok(());
-        }
-
         let limit = self.policy.max_items();
+        let force = context.force;
 
-        let discovered_assets = self
+        let (discovered_assets, attempted_types) = self
             .registry
             .discover_needed(
                 media_type,
                 storefront,
                 external_id,
                 title,
-                &existing_counts,
-                limit,
+                DiscoverOptions {
+                    existing_counts: &existing_counts,
+                    searched_types: &searched_types,
+                    limit,
+                    force,
+                },
             )
             .await?;
-        let mut assets_to_process = Vec::new();
 
+        let mut assets_to_process = Vec::new();
         for asset in discovered_assets {
             let asset_type_id = asset.asset_type.id();
             let count = existing_counts.entry(asset_type_id).or_default();
@@ -119,6 +130,17 @@ impl SyncStep for AssetStep {
                     media_id: media.id.clone(),
                     path: path.to_string_lossy().into_owned(),
                     asset_id: asset.asset_type.id(),
+                },
+            )
+            .await?;
+        }
+
+        for asset_type_id in attempted_types {
+            insert_media_asset_search(
+                &self.pool,
+                MediaAssetSearchInsert {
+                    media_id: media.id.clone(),
+                    asset_id: asset_type_id,
                 },
             )
             .await?;
@@ -287,7 +309,7 @@ mod tests {
         let media = Media::try_from(media_row).unwrap();
 
         let discovered = DiscoveredMediaBuilder::new().title("Test Game").build();
-        let mut context = SyncContext::new(discovered);
+        let mut context = SyncContext::new(discovered, false);
         context.media = Some(media.clone());
 
         step.execute(&mut context).await.unwrap();
@@ -390,7 +412,7 @@ mod tests {
         let media = Media::try_from(media_row).unwrap();
 
         let discovered = DiscoveredMediaBuilder::new().title("Test Game").build();
-        let mut context = SyncContext::new(discovered);
+        let mut context = SyncContext::new(discovered, false);
         context.media = Some(media.clone());
 
         step.execute(&mut context).await.unwrap();
@@ -437,7 +459,7 @@ mod tests {
         .unwrap();
 
         let discovered = DiscoveredMediaBuilder::new().title("Test Game").build();
-        let mut context = SyncContext::new(discovered);
+        let mut context = SyncContext::new(discovered, false);
         context.media = Some(media.clone());
 
         step.execute(&mut context).await.unwrap();

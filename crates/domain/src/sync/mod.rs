@@ -67,7 +67,7 @@ impl LibrarySyncService {
         Ok(())
     }
 
-    pub async fn sync_all(&self) -> Result<(), SyncError> {
+    pub async fn sync_all(&self, force: bool) -> Result<(), SyncError> {
         info!("Starting sync process for all");
 
         let scan_step = ScanStep::new(self.agents.clone());
@@ -87,7 +87,7 @@ impl LibrarySyncService {
             );
             for media in discovered_media {
                 debug!("Syncing {}", media.title);
-                let mut context = SyncContext::new(media);
+                let mut context = SyncContext::new(media, force);
 
                 self.pipeline.execute(&mut context).await?;
 

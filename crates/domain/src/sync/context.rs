@@ -7,14 +7,16 @@ pub struct SyncContext {
     pub discovered: Option<DiscoveredMedia>,
     pub media: Option<Media>,
     pub action: SyncAction,
+    pub force: bool,
 }
 
 impl SyncContext {
-    pub fn new(discovered: DiscoveredMedia) -> Self {
+    pub fn new(discovered: DiscoveredMedia, force: bool) -> Self {
         Self {
             discovered: Some(discovered),
             media: None,
             action: SyncAction::Unchanged,
+            force,
         }
     }
 
@@ -23,6 +25,7 @@ impl SyncContext {
             discovered: None,
             media: Some(media),
             action: SyncAction::Unchanged,
+            force: false,
         }
     }
 }
