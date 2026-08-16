@@ -30,6 +30,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { ServerAgentStatus } from "./ServerAgentStatus";
+import { NowPlaying } from "./NowPlaying";
 import { cn } from "@/lib/utils";
 
 export const Sidebar = ({
@@ -42,10 +43,10 @@ export const Sidebar = ({
   return (
     <ShadcnSidebar
       collapsible="icon"
-      className={cn("border-r border-white/10 select-none", className)}
+      className={cn("select-none", className)}
       {...props}
     >
-      <SidebarHeader className="h-16 justify-center border-b border-white/10 px-4 group-data-[collapsible=icon]:px-0">
+      <SidebarHeader className="h-16 justify-center px-4 group-data-[collapsible=icon]:px-0">
         <div className="flex items-center justify-between group-data-[collapsible=icon]:justify-center w-full">
           <div className="flex items-center gap-2 px-1 group-data-[collapsible=icon]:hidden">
             <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">
@@ -53,7 +54,7 @@ export const Sidebar = ({
             </span>
 
             <span className="rounded-md bg-white/5 border border-white/10 px-1.5 py-0.5 text-xs font-mono text-text-muted">
-              v1.0
+              v0.1.0
             </span>
           </div>
           <SidebarTrigger
@@ -246,7 +247,8 @@ export const Sidebar = ({
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-white/10 p-2">
+      <SidebarFooter className="bg-surface-raised border-t border-white/10 p-2 space-y-2">
+        <NowPlaying />
         <ServerAgentStatus />
       </SidebarFooter>
     </ShadcnSidebar>

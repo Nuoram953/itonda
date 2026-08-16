@@ -10,7 +10,7 @@ use crate::{
     media::{
         MediaAssetInsert, MediaAssetRow, MediaAssetSearchInsert, MediaAssetSearchRow,
         MediaGameDetailsRow, MediaGameDetailsUpsert, MediaInsert, MediaLaunchRow,
-        MediaLaunchUpsert, MediaStatusHistoryRow,
+        MediaLaunchSessionInsert, MediaLaunchSessionRow, MediaLaunchUpsert, MediaStatusHistoryRow,
     },
     models::{UpsertAction, UpsertResult},
 };
@@ -863,6 +863,41 @@ pub async fn insert_media_asset_search(
         "#,
         search.media_id,
         search.asset_id
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(DatabaseError::from)
+}
+
+pub async fn insert_media_launch_session(
+    pool: &SqlitePool,
+    session: MediaLaunchSessionInsert,
+) -> Result<MediaLaunchSessionRow, DatabaseError> {
+    let id = Uuid::new_v4().to_string();
+
+    sqlx::query_as!(
+        MediaLaunchSessionRow,
+        r#"
+        INSERT INTO media_launch_sessions (
+            id,
+            launch_id,
+            started_at,
+            completed_at,
+            duration_seconds
+        )
+        VALUES (?, ?, ?, ?, ?)
+        RETURNING
+            id,
+            launch_id,
+            started_at,
+            completed_at,
+            duration_seconds
+        "#,
+        id,
+        session.launch_id,
+        session.started_at,
+        session.completed_at,
+        session.duration_seconds,
     )
     .fetch_one(pool)
     .await

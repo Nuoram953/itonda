@@ -12,7 +12,7 @@ pub async fn get_launch_media_details(
     pool: &SqlitePool,
     launch_id: String,
 ) -> Result<(LaunchCommand, String), LaunchError> {
-    let launch = find_media_launch_by_id(pool, launch_id)
+    let launch = find_media_launch_by_id(pool, launch_id.clone())
         .await
         .map_err(|err| match err {
             DatabaseError::NotFound => LaunchError::NotFound,
@@ -34,6 +34,7 @@ pub async fn get_launch_media_details(
         working_directory: launch.working_directory,
         request_id: Uuid::new_v4(),
         media_id: launch.media_id,
+        launch_id,
     };
 
     Ok((command, agent_id))
@@ -43,7 +44,12 @@ pub fn launch_program_with_command(command: &LaunchCommand) -> std::io::Result<C
     let mut cmd = Command::new(&command.program);
     cmd.args(&command.args);
     if let Some(working_dir) = &command.working_directory {
-        cmd.current_dir(working_dir);
+        //TODO: get launch type instead of hardcoding storefront
+        let is_storefront =
+            command.program == "steam" || command.args.iter().any(|a| a.starts_with("steam://"));
+        if !is_storefront {
+            cmd.current_dir(working_dir);
+        }
     }
     cmd.spawn()
 }

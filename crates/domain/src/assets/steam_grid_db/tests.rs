@@ -102,8 +102,8 @@ fn converts_media_response_into_discovered_assets() {
         total: 2,
         limit: 50,
         data: vec![
-            media_fixture("https://cdn.steamgriddb.com/grid/poster1.png".into()),
-            media_fixture("https://cdn.steamgriddb.com/grid/poster2.png".into()),
+            media_fixture("https://cdn.steamgriddb.com/grid/poster1.png"),
+            media_fixture("https://cdn.steamgriddb.com/grid/poster2.png"),
         ],
     };
 

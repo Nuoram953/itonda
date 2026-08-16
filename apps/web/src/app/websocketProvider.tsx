@@ -1,4 +1,5 @@
 import { useNotification } from "@/hooks/use-notification";
+import { useActiveMedia } from "@/app/activeMediaContext";
 import { AppWebSocket } from "@/lib/websocket/client";
 import { useWebSocketHandlers } from "@/lib/websocket/use-websocket-handlers";
 import { useQueryClient } from "@tanstack/react-query";
@@ -7,6 +8,10 @@ import { createContext, useEffect, type PropsWithChildren } from "react";
 const WebSocketContext = createContext<AppWebSocket | null>(null);
 
 function getWebSocketUrl(): string {
+  if (import.meta.env.VITE_WS_URL) {
+    return import.meta.env.VITE_WS_URL;
+  }
+
   const serverUrl =
     import.meta.env.VITE_SERVER_URL ||
     `${window.location.protocol}//${window.location.hostname}:3005`;
@@ -30,9 +35,10 @@ function getAppWebSocket(): AppWebSocket {
 export function WebSocketProvider({ children }: PropsWithChildren) {
   const queryClient = useQueryClient();
   const { notify } = useNotification();
+  const { setActiveSession } = useActiveMedia();
   const websocket = getAppWebSocket();
 
-  useWebSocketHandlers(websocket, queryClient, notify);
+  useWebSocketHandlers(websocket, queryClient, notify, setActiveSession);
 
   useEffect(() => {
     websocket.connect();

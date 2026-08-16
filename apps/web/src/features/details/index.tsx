@@ -69,7 +69,7 @@ export const MediaDetails = () => {
         className="absolute top-0 inset-x-0 z-30 bg-transparent border-none text-foreground py-5 px-6 pointer-events-none *:pointer-events-auto"
       >
         <Workspace.Actions className="flex items-center gap-3">
-          <Launch profiles={media.launches} />
+          <Launch profiles={media.launches} mediaId={mediaId} />
           <Status mediaId={mediaId} currentStatus={media.status} />
           <HeaderActionButton
             icon={<Bookmark className="w-4 h-4" />}

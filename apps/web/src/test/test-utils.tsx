@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ErrorBoundary } from "react-error-boundary";
 
 import { NotificationProvider } from "@/app/notificationProvider";
+import { ActiveMediaProvider } from "@/app/activeMediaProvider";
 import { NotificationViewport } from "@/components/ui/notification/Viewport";
 import { AxiosInterceptor } from "@/lib/AxiosInterceptor";
 import { RootErrorFallback } from "@/app/routes/error";
@@ -54,13 +55,15 @@ function renderWithProviders(
         <ErrorBoundary FallbackComponent={RootErrorFallback} onReset={() => {}}>
           <QueryClientProvider client={testQueryClient}>
             <NotificationProvider>
-              <WebSocketContext.Provider value={mockWebSocket}>
-                <SidebarProvider>
-                  <AxiosInterceptor>{children}</AxiosInterceptor>
-                  <Toast.ToastViewport />
-                  <NotificationViewport />
-                </SidebarProvider>
-              </WebSocketContext.Provider>
+              <ActiveMediaProvider>
+                <WebSocketContext.Provider value={mockWebSocket}>
+                  <SidebarProvider>
+                    <AxiosInterceptor>{children}</AxiosInterceptor>
+                    <Toast.ToastViewport />
+                    <NotificationViewport />
+                  </SidebarProvider>
+                </WebSocketContext.Provider>
+              </ActiveMediaProvider>
             </NotificationProvider>
           </QueryClientProvider>
         </ErrorBoundary>

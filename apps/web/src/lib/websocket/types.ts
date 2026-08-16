@@ -1,6 +1,24 @@
 export type AppEvent =
   | { Job: JobEvent }
-  | { Agent: AgentEvent };
+  | { Agent: AgentEvent }
+  | { Media: MediaEvent };
+
+export type MediaEvent =
+  | {
+      Launched: {
+        media_id: string;
+        launch_id: string;
+        agent_id: string;
+      };
+    }
+  | {
+      Stopped: {
+        media_id: string;
+        launch_id: string;
+        agent_id: string;
+        duration_seconds: number;
+      };
+    };
 
 export type AgentEvent =
   | { Connected: { agent_id: string } }

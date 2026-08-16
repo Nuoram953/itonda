@@ -15,6 +15,7 @@ pub enum ServerToAgentMessage {
 pub struct LaunchCommand {
     pub request_id: Uuid,
     pub media_id: String,
+    pub launch_id: String,
     pub program: String,
     pub args: Vec<String>,
     pub working_directory: Option<String>,

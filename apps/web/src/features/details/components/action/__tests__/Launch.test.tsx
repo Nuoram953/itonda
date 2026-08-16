@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen } from "@/test/test-utils";
 import { Launch } from "../Launch";
 import type { components } from "@/api/generated.d";
+import { useActiveMedia } from "@/hooks/use-active-media";
 
 const mockMutate = vi.fn();
 
@@ -11,9 +12,26 @@ vi.mock("../../../api/post-media-launch", () => ({
   }),
 }));
 
+vi.mock("@/hooks/use-active-media", () => ({
+  useActiveMedia: vi.fn(() => ({
+    session: null,
+    isPlaying: false,
+    formattedElapsed: "00:00",
+  })),
+}));
+
 describe("Launch Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(useActiveMedia).mockReturnValue({
+      session: null,
+      isPlaying: false,
+      formattedElapsed: "00:00",
+      media: undefined,
+      isLoadingMedia: false,
+      elapsedSeconds: 0,
+      setActiveSession: vi.fn(),
+    });
   });
 
   const singleProfile: components["schemas"]["Launch"][] = [
@@ -99,5 +117,27 @@ describe("Launch Component", () => {
 
     expect(screen.queryByText("Select launch profile")).toBeNull();
     expect(mockMutate).not.toHaveBeenCalled();
+  });
+
+  it("renders active playing state when game is running", () => {
+    vi.mocked(useActiveMedia).mockReturnValue({
+      session: {
+        mediaId: "game-99",
+        launchId: "profile-1",
+        agentId: "agent-1",
+        startedAt: Date.now() - 30000,
+      },
+      isPlaying: true,
+      formattedElapsed: "00:30",
+      media: undefined,
+      isLoadingMedia: false,
+      elapsedSeconds: 30,
+      setActiveSession: vi.fn(),
+    });
+
+    render(<Launch profiles={singleProfile} mediaId="game-99" />);
+
+    expect(screen.getByRole("button", { name: "Now Playing" })).toBeDefined();
+    expect(screen.getByText("Playing (00:30)")).toBeDefined();
   });
 });

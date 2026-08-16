@@ -7,8 +7,8 @@ on:
       - main
 
 jobs:
-  server:
-    name: Server
+  core:
+    name: Core
     runs-on: ubuntu-latest
 
     steps:
@@ -18,29 +18,16 @@ jobs:
         with:
           components: rustfmt, clippy
 
+      - uses: Swatinem/rust-cache@v2
+
       - name: Format
         run: cargo fmt --all -- --check
 
       - name: Clippy
-        run: cargo clippy -p itonda-server --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
       - name: Test
-        run: cargo test -p itonda-server
-
-  cli:
-    name: CLI
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - name: Clippy
-        run: cargo clippy -p itonda-cli --all-targets -- -D warnings
-
-      - name: Test
-        run: cargo test -p itonda-cli
+        run: cargo test --workspace
 
   web:
     name: Web
