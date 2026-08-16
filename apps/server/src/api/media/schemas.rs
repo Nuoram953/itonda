@@ -35,6 +35,8 @@ pub struct MediaResponse {
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct MediaRefreshPayload {
     pub storefront: Option<StorefrontId>,
+    #[serde(default)]
+    pub force: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]

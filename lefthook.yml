@@ -7,3 +7,8 @@ pre-commit:
     lint:
       run: pnpm -r lint
 
+    generate-api:
+      root: "apps/web/"
+      run: pnpm generate-api
+      stage_fixed: true
+

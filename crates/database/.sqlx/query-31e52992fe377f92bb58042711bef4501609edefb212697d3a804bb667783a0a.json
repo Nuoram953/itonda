@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT\n            media_id,\n            asset_id,\n            searched_at\n        FROM media_asset_searches\n        WHERE media_id = ?\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "media_id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "asset_id",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "searched_at",
+        "ordinal": 2,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "31e52992fe377f92bb58042711bef4501609edefb212697d3a804bb667783a0a"
+}

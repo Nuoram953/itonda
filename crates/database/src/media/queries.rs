@@ -8,8 +8,9 @@ use super::models::{
 use crate::{
     error::DatabaseError,
     media::{
-        MediaAssetInsert, MediaAssetRow, MediaGameDetailsRow, MediaGameDetailsUpsert, MediaInsert,
-        MediaLaunchRow, MediaLaunchUpsert, MediaStatusHistoryRow,
+        MediaAssetInsert, MediaAssetRow, MediaAssetSearchInsert, MediaAssetSearchRow,
+        MediaGameDetailsRow, MediaGameDetailsUpsert, MediaInsert, MediaLaunchRow,
+        MediaLaunchUpsert, MediaStatusHistoryRow,
     },
     models::{UpsertAction, UpsertResult},
 };
@@ -793,4 +794,77 @@ pub async fn find_media_launches_by_media_id(
     .map_err(DatabaseError::from)?;
 
     Ok(row)
+}
+
+pub async fn find_asset_searches_by_media_ids(
+    pool: &SqlitePool,
+    ids: &[String],
+) -> Result<Vec<MediaAssetSearchRow>, DatabaseError> {
+    if ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut qb = QueryBuilder::<Sqlite>::new(
+        "SELECT media_id, asset_id, searched_at FROM media_asset_searches WHERE media_id IN (",
+    );
+
+    let mut separated = qb.separated(", ");
+
+    for id in ids {
+        separated.push_bind(id);
+    }
+
+    separated.push_unseparated(")");
+
+    qb.build_query_as::<MediaAssetSearchRow>()
+        .fetch_all(pool)
+        .await
+        .map_err(DatabaseError::from)
+}
+
+pub async fn find_asset_searches_by_media_id(
+    pool: &SqlitePool,
+    media_id: &str,
+) -> Result<Vec<MediaAssetSearchRow>, DatabaseError> {
+    sqlx::query_as!(
+        MediaAssetSearchRow,
+        r#"
+        SELECT
+            media_id,
+            asset_id,
+            searched_at
+        FROM media_asset_searches
+        WHERE media_id = ?
+        "#,
+        media_id
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(DatabaseError::from)
+}
+
+pub async fn insert_media_asset_search(
+    pool: &SqlitePool,
+    search: MediaAssetSearchInsert,
+) -> Result<MediaAssetSearchRow, DatabaseError> {
+    sqlx::query_as!(
+        MediaAssetSearchRow,
+        r#"
+        INSERT INTO media_asset_searches (
+            media_id,
+            asset_id
+        )
+        VALUES (?, ?)
+        ON CONFLICT(media_id, asset_id) DO UPDATE SET searched_at = CURRENT_TIMESTAMP
+        RETURNING
+            media_id,
+            asset_id,
+            searched_at
+        "#,
+        search.media_id,
+        search.asset_id
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(DatabaseError::from)
 }

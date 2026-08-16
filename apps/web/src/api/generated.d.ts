@@ -200,23 +200,62 @@ export interface components {
         MediaImportPayload: {
             items: components["schemas"]["MediaImportItem"][];
         };
+        MediaImportResponse: {
+            message: string;
+        };
+        MediaLaunchPayload: {
+            launch_id?: string | null;
+        };
+        MediaQueryParams: {
+            /** Format: int32 */
+            limit?: number | null;
+            /** Format: int32 */
+            page?: number | null;
+            search?: string | null;
+            sort_by?: null | components["schemas"]["MediaSortField"];
+            sort_order?: null | components["schemas"]["SortOrder"];
+            status?: null | components["schemas"]["MediaStatus"];
+            storefront?: string | null;
+            type?: null | components["schemas"]["MediaType"];
+        };
         MediaRefreshPayload: {
+            force?: boolean;
             storefront?: null | components["schemas"]["StorefrontId"];
         };
         MediaResponse: {
-            items: components["schemas"]["Media"][];
-            total: number;
-            page: number;
-            limit: number;
-            total_pages: number;
             has_next: boolean;
+            items: components["schemas"]["Media"][];
+            /** Format: int32 */
+            limit: number;
+            /** Format: int32 */
+            page: number;
+            /** Format: int64 */
+            total: number;
+            /** Format: int32 */
+            total_pages: number;
         };
+        /** @enum {string} */
         MediaSortField: "title" | "last_played_at";
-        SortOrder: "asc" | "desc";
+        /** @enum {string} */
+        MediaSource: "steam";
         /** @enum {string} */
         MediaStatus: "not_started" | "in_progress" | "completed" | "abandoned" | "paused";
         /** @enum {string} */
         MediaType: "game" | "movie" | "tv_show";
+        PaginatedMedia: {
+            has_next: boolean;
+            items: components["schemas"]["Media"][];
+            /** Format: int32 */
+            limit: number;
+            /** Format: int32 */
+            page: number;
+            /** Format: int64 */
+            total: number;
+            /** Format: int32 */
+            total_pages: number;
+        };
+        /** @enum {string} */
+        SortOrder: "asc" | "desc";
         /** @enum {string} */
         StorefrontId: "Steam";
     };
@@ -376,6 +415,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description Media ID */
                 media_id: string;
             };
             cookie?: never;

@@ -50,7 +50,7 @@ impl SyncHandler {
             self.assets.clone(),
         );
 
-        let _ = sync.sync_all().await;
+        let _ = sync.sync_all(job.force).await;
 
         self.events.publish_job(
             job.id,

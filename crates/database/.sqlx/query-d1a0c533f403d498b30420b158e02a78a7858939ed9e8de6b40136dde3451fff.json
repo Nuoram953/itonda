@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO media_asset_searches (\n            media_id,\n            asset_id\n        )\n        VALUES (?, ?)\n        ON CONFLICT(media_id, asset_id) DO UPDATE SET searched_at = CURRENT_TIMESTAMP\n        RETURNING\n            media_id,\n            asset_id,\n            searched_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "media_id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "asset_id",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "searched_at",
+        "ordinal": 2,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "d1a0c533f403d498b30420b158e02a78a7858939ed9e8de6b40136dde3451fff"
+}

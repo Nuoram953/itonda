@@ -90,7 +90,7 @@ async fn syncs_storefront_games() {
         assets,
     );
 
-    service.sync_all().await.unwrap();
+    service.sync_all(false).await.unwrap();
 
     let media = find_media_by_title(&pool, "Portal 2".into()).await.unwrap();
 
@@ -128,7 +128,7 @@ async fn syncs_existing_db_media_items() {
         assets,
     );
 
-    service.sync_all().await.unwrap();
+    service.sync_all(false).await.unwrap();
 
     let media = find_media_by_title(&pool, "Mr. Robot".into())
         .await
@@ -160,7 +160,7 @@ async fn sync_all_triggers_agent_scan() {
         assets,
     );
 
-    service.sync_all().await.unwrap();
+    service.sync_all(false).await.unwrap();
 
     let received = rx.recv().await;
     assert!(matches!(received, Some(ServerToAgentMessage::Scan(_))));

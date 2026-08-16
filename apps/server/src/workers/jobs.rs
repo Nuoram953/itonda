@@ -19,4 +19,5 @@ pub struct ImportItem {
 pub struct SyncJob {
     pub id: Uuid,
     pub storefront: Option<StorefrontId>,
+    pub force: bool,
 }
