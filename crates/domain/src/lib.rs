@@ -10,6 +10,7 @@ pub mod storage;
 pub mod store;
 pub mod storefronts;
 pub mod sync;
+pub mod tracker;
 
 #[cfg(test)]
 pub mod tests;

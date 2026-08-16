@@ -11,12 +11,13 @@ use itonda_database::{
         upsert_agent,
     },
     media::{
-        MediaInsert, MediaLaunchUpsert, find_media_by_title, insert_media, upsert_media_launch,
+        MediaInsert, MediaLaunchSessionInsert, MediaLaunchUpsert, find_media_by_title,
+        insert_media, insert_media_launch_session, upsert_media_launch,
     },
 };
 pub use itonda_domain::agents::AgentManager;
 use itonda_domain::{
-    events::{AgentEvent, AppEvent, EventBus},
+    events::{AgentEvent, AppEvent, EventBus, MediaEvent},
     media::types::MediaStatus,
     protocol::{AgentRegistration, AgentToServerMessage, ScanResult, ServerToAgentMessage},
 };
@@ -133,6 +134,20 @@ async fn run_agent_loop(
                                 }
                                 AgentToServerMessage::Pong => {
                                     debug!("Pong received from agent {}", agent_id);
+                                }
+                                AgentToServerMessage::MediaStarted(payload) => {
+                                    events.publish(AppEvent::Media(MediaEvent::Launched { media_id:payload.media_id, launch_id: payload.launch_id, agent_id:payload.agent_id }));
+                                }
+
+                                AgentToServerMessage::MediaStopped(payload) => {
+                                    events.publish(AppEvent::Media(MediaEvent::Stopped { media_id:payload.media_id, launch_id: payload.launch_id.clone(), agent_id:payload.agent_id, duration_seconds: payload.duration_seconds }));
+
+                                    insert_media_launch_session(pool, MediaLaunchSessionInsert{
+                                        launch_id: payload.launch_id,
+                                        started_at: payload.started_at.to_string(),
+                                        completed_at: payload.stopped_at.to_string(),
+                                        duration_seconds: payload.duration_seconds.to_string()
+                                    }).await?;
                                 }
                                 _ => {}
                             }

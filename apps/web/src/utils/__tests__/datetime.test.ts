@@ -9,7 +9,10 @@ import {
   formatPlaytimeHours,
   formatPlaytime,
   formatDuration,
+  formatElapsedSeconds,
+  formatDurationText,
 } from "../datetime";
+
 
 describe("datetime utilities", () => {
   describe("parseBackendTimestamp", () => {
@@ -206,4 +209,37 @@ describe("datetime utilities", () => {
       expect(formatDuration(125)).toBe("2h 5m");
     });
   });
+
+  describe("formatElapsedSeconds", () => {
+    it("formats seconds and minutes correctly", () => {
+      expect(formatElapsedSeconds(0)).toBe("00:00");
+      expect(formatElapsedSeconds(9)).toBe("00:09");
+      expect(formatElapsedSeconds(45)).toBe("00:45");
+      expect(formatElapsedSeconds(65)).toBe("01:05");
+      expect(formatElapsedSeconds(600)).toBe("10:00");
+    });
+
+    it("formats hours, minutes, and seconds correctly", () => {
+      expect(formatElapsedSeconds(3600)).toBe("1:00:00");
+      expect(formatElapsedSeconds(3665)).toBe("1:01:05");
+      expect(formatElapsedSeconds(7322)).toBe("2:02:02");
+    });
+
+    it("handles negative numbers safely", () => {
+      expect(formatElapsedSeconds(-5)).toBe("00:00");
+    });
+  });
+
+  describe("formatDurationText", () => {
+    it("formats seconds, minutes, and hours in human-readable strings", () => {
+      expect(formatDurationText(0)).toBe("0s");
+      expect(formatDurationText(45)).toBe("45s");
+      expect(formatDurationText(65)).toBe("1m 5s");
+      expect(formatDurationText(125)).toBe("2m 5s");
+      expect(formatDurationText(3600)).toBe("1h");
+      expect(formatDurationText(3665)).toBe("1h 1m");
+      expect(formatDurationText(7200)).toBe("2h");
+    });
+  });
 });
+

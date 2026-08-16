@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO media_launch_sessions (\n            id,\n            launch_id,\n            started_at,\n            completed_at,\n            duration_seconds\n        )\n        VALUES (?, ?, ?, ?, ?)\n        RETURNING\n            id,\n            launch_id,\n            started_at,\n            completed_at,\n            duration_seconds\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "launch_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "started_at",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "completed_at",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "duration_seconds",
+        "ordinal": 4,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "3054d8a179a91169acba1c34d0a454b46868853d5ed68f9ce0e5a25fa2d379d4"
+}
