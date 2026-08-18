@@ -11,6 +11,8 @@ const mockMedia: components["schemas"]["Media"] = {
   status: "in_progress",
   assets: [],
   launches: [],
+  storefronts: [],
+  installations: [],
 };
 
 describe("Card", () => {
@@ -131,9 +133,7 @@ describe("Card", () => {
 
     statuses.forEach(({ status, expectedClass }) => {
       it(`applies correct status accent for status "${status}"`, () => {
-        const { container } = render(
-          <Card media={{ ...mockMedia, status }} />,
-        );
+        const { container } = render(<Card media={{ ...mockMedia, status }} />);
 
         const accentBar = container.querySelector(".bg-linear-to-r");
         expect(accentBar?.className).toContain(expectedClass);
@@ -141,4 +141,3 @@ describe("Card", () => {
     });
   });
 });
-

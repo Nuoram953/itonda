@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT\n            m.id,\n            m.title,\n            m.media_type,\n            m.status_id\n        FROM media m\n        INNER JOIN media_storefronts ms ON ms.media_id = m.id\n        WHERE ms.storefront_id = ? AND ms.external_id = ?\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "title",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "media_type",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "status_id",
+        "ordinal": 3,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "5ad24466c47726c33dce38191a2f592c359b447e6d4f5efaf337cfce125cff3e"
+}

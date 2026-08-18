@@ -26,6 +26,9 @@ pub enum MediaError {
 
     #[error("asset error: {0}")]
     AssetError(#[from] AssetError),
+
+    #[error("storefront error: {0}")]
+    StorefrontError(#[from] crate::storefronts::error::StorefrontError),
 }
 
 impl From<DatabaseError> for MediaError {

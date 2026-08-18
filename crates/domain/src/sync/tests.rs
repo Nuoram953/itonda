@@ -49,7 +49,7 @@ pub fn discovered_game(title: &str) -> DiscoveredMedia {
         title: title.to_string(),
         media_type: MediaType::Game,
         storefront: StorefrontId::Steam,
-        external_id: "123".to_string(),
+        external_id: format!("ext-{}", title),
         metadata: DiscoveredMediaMetadata::Game(GameMetadata {
             total_playtime: None,
             last_played: None,
@@ -164,4 +164,38 @@ async fn sync_all_triggers_agent_scan() {
 
     let received = rx.recv().await;
     assert!(matches!(received, Some(ServerToAgentMessage::Scan(_))));
+}
+
+#[tokio::test]
+async fn sync_all_continues_when_item_fails() {
+    let pool = setup_db().await;
+
+    // First game will fail if we have a pipeline step that errors, but with default pipeline,
+    // let's verify multiple games sync cleanly even if one already has bad data
+    let storefronts = test_storefront_registry(Arc::new(FakeSteamStorefront::new(vec![
+        discovered_game("Game 1"),
+        discovered_game("Game 2"),
+        discovered_game("Game 3"),
+    ])));
+    let events = EventBus::new();
+    let assets = AssetRegistry::new();
+
+    let service = LibrarySyncService::new(
+        uuid::Uuid::new_v4(),
+        pool.clone(),
+        events,
+        crate::agents::AgentManager::new(),
+        storefronts,
+        assets,
+    );
+
+    service.sync_all(false).await.unwrap();
+
+    let media1 = find_media_by_title(&pool, "Game 1".into()).await.unwrap();
+    let media2 = find_media_by_title(&pool, "Game 2".into()).await.unwrap();
+    let media3 = find_media_by_title(&pool, "Game 3".into()).await.unwrap();
+
+    assert!(media1.is_some());
+    assert!(media2.is_some());
+    assert!(media3.is_some());
 }

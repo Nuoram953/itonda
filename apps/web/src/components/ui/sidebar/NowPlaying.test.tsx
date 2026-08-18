@@ -36,6 +36,8 @@ describe("NowPlayingGame", () => {
       status: "in_progress",
       launches: [{ id: "launch-1", name: "Default" }],
       assets: [{ id: "poster-cp2077", asset_type: "poster" }],
+      storefronts: [],
+      installations: [],
     };
 
     vi.mocked(useActiveMedia).mockReturnValue({
@@ -76,6 +78,8 @@ describe("NowPlayingGame", () => {
       status: "in_progress",
       launches: [],
       assets: [],
+      storefronts: [],
+      installations: [],
     };
 
     vi.mocked(useActiveMedia).mockReturnValue({

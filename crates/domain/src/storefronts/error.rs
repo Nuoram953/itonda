@@ -26,6 +26,9 @@ pub enum StorefrontError {
     #[error("storefront is unavailable")]
     Unavailable,
 
+    #[error("invalid storefront id: {0}")]
+    InvalidStorefrontId(String),
+
     #[error("{0}")]
     Other(String),
 }

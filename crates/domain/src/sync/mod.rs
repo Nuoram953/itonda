@@ -89,7 +89,17 @@ impl LibrarySyncService {
                 debug!("Syncing {}", media.title);
                 let mut context = SyncContext::new(media, force);
 
-                self.pipeline.execute(&mut context).await?;
+                if let Err(err) = self.pipeline.execute(&mut context).await {
+                    tracing::warn!(
+                        "Failed to sync media '{}': {err}",
+                        context
+                            .discovered
+                            .as_ref()
+                            .map(|d| d.title.as_str())
+                            .unwrap_or("unknown")
+                    );
+                    continue;
+                }
 
                 if let Some(media) = &context.media {
                     synced_ids.insert(media.id.clone());
@@ -119,9 +129,10 @@ impl LibrarySyncService {
             debug!("Syncing database media item {}", media.title);
             let mut context = SyncContext::from_media(media.clone());
 
-            info!("{:?}", context);
-
-            self.pipeline.execute(&mut context).await?;
+            if let Err(err) = self.pipeline.execute(&mut context).await {
+                tracing::warn!("Failed to sync database media '{}': {err}", media.title);
+                continue;
+            }
 
             if context.action != SyncAction::Unchanged {
                 self.events.publish_job(

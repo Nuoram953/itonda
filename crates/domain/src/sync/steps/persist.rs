@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use itonda_database::media::{
-    MediaGameDetailsUpsert, MediaInsert, find_media_by_title, insert_media,
-    upsert_media_game_details,
+    MediaGameDetailsUpsert, MediaInsert, MediaStorefrontUpsert, find_media_by_storefront,
+    find_media_by_title, insert_media, upsert_media_game_details, upsert_media_storefront,
 };
 use sqlx::SqlitePool;
 
@@ -45,7 +45,17 @@ impl SyncStep for PersistStep {
         let media = match &context.media {
             Some(media) => media.clone(),
             None => {
-                let existing = find_media_by_title(&self.pool, title.clone()).await?;
+                let existing = find_media_by_storefront(
+                    &self.pool,
+                    discovered.storefront.as_str(),
+                    &discovered.external_id,
+                )
+                .await?;
+
+                let existing = match existing {
+                    Some(row) => Some(row),
+                    None => find_media_by_title(&self.pool, title.clone()).await?,
+                };
 
                 let row = match existing {
                     Some(row) => row,
@@ -71,6 +81,20 @@ impl SyncStep for PersistStep {
         if let MediaType::Game = media_type {
             let DiscoveredMediaMetadata::Game(game) = metadata;
 
+            let result = upsert_media_storefront(
+                &self.pool,
+                MediaStorefrontUpsert {
+                    media_id: media.id.clone(),
+                    storefront_id: discovered.storefront.as_str().into(),
+                    external_id: discovered.external_id.clone(),
+                    playtime_minutes: game.total_playtime.map(|v| v as i64),
+                    last_played_at: game.last_played,
+                },
+            )
+            .await?;
+
+            context.action.merge(result.action.into());
+
             let result = upsert_media_game_details(
                 &self.pool,
                 MediaGameDetailsUpsert {
@@ -94,6 +118,7 @@ mod tests {
 
     use crate::{
         media::discovered::{DiscoveredMediaMetadata, GameMetadata},
+        storefronts::models::StorefrontId,
         tests::fixtures::{context::sync_context_with_media, media::DiscoveredMediaBuilder},
     };
 
@@ -135,23 +160,69 @@ mod tests {
 
         let step = PersistStep::new(pool.clone());
 
-        let media = DiscoveredMediaBuilder::new().title("Test 1").build();
+        let media = DiscoveredMediaBuilder::new().title("Portal 2").build();
 
         let mut context = sync_context_with_media(media);
 
         step.execute(&mut context).await.unwrap();
 
         assert!(context.media.is_some());
-        assert_eq!(context.media.unwrap().title, "Test 1");
+        assert_eq!(context.media.unwrap().title, "Portal 2");
     }
 
     #[tokio::test]
-    async fn creates_game_details_for_game() {
+    async fn uses_existing_media_by_storefront_id() {
+        let pool = setup_db().await;
+
+        let existing = insert_media(
+            &pool,
+            MediaInsert {
+                title: "Old Title".into(),
+                media_type: "game".into(),
+                status_id: MediaStatus::NotStarted.id(),
+            },
+        )
+        .await
+        .unwrap();
+
+        upsert_media_storefront(
+            &pool,
+            MediaStorefrontUpsert {
+                media_id: existing.id.clone(),
+                storefront_id: StorefrontId::Steam.as_str().into(),
+                external_id: "620".into(),
+                playtime_minutes: None,
+                last_played_at: None,
+            },
+        )
+        .await
+        .unwrap();
+
+        let step = PersistStep::new(pool.clone());
+
+        let media = DiscoveredMediaBuilder::new()
+            .title("New Title")
+            .external_id("620")
+            .storefront(StorefrontId::Steam)
+            .build();
+
+        let mut context = sync_context_with_media(media);
+
+        step.execute(&mut context).await.unwrap();
+
+        assert!(context.media.is_some());
+        assert_eq!(context.media.unwrap().id, existing.id);
+    }
+
+    #[tokio::test]
+    async fn creates_game_details_and_storefront_for_game() {
         let pool = setup_db().await;
 
         let step = PersistStep::new(pool.clone());
 
         let media = DiscoveredMediaBuilder::new()
+            .external_id("620")
+            .storefront(StorefrontId::Steam)
             .metadata(DiscoveredMediaMetadata::Game(GameMetadata {
                 total_playtime: Some(120),
                 last_played: None,
@@ -165,7 +236,12 @@ mod tests {
         let media = context.media.unwrap();
 
         let details = find_game_details(&pool, &media.id).await.unwrap().unwrap();
-
         assert_eq!(details.playtime_minutes, Some(120));
+
+        let storefront_media = find_media_by_storefront(&pool, StorefrontId::Steam.as_str(), "620")
+            .await
+            .unwrap();
+        assert!(storefront_media.is_some());
+        assert_eq!(storefront_media.unwrap().id, media.id);
     }
 }

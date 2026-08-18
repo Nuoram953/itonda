@@ -58,6 +58,8 @@ describe("media-assets utilities", () => {
       status: "not_started",
       assets: [],
       launches: [],
+      storefronts: [],
+      installations: [],
     };
 
     expect(hasMediaBeenPlayed(baseMedia)).toBe(false);

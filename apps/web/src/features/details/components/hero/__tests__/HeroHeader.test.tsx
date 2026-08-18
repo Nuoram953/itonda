@@ -21,6 +21,8 @@ describe("HeroHeader Component", () => {
       playtime_minutes: 180,
       last_played_at: 1700000000,
     },
+    storefronts: [],
+    installations: [],
   };
 
   it("renders media title, playtime, and last played metadata", () => {
