@@ -119,6 +119,49 @@ describe("Launch Component", () => {
     expect(mockMutate).not.toHaveBeenCalled();
   });
 
+  it("enters loading state when launch is clicked", () => {
+    render(<Launch profiles={singleProfile} mediaId="game-1" />);
+
+    const playButton = screen.getByRole("button", {
+      name: "Play",
+    }) as HTMLButtonElement;
+    fireEvent.click(playButton);
+
+    expect(playButton.disabled).toBe(true);
+    expect(playButton.querySelector(".animate-spin")).toBeDefined();
+  });
+
+  it("does not enter loading state when opening dialog for multiple profiles", () => {
+    render(<Launch profiles={multipleProfiles} mediaId="game-1" />);
+
+    const playButton = screen.getByRole("button", {
+      name: "Play",
+    }) as HTMLButtonElement;
+    fireEvent.click(playButton);
+
+    expect(screen.getByText("Select launch profile")).toBeDefined();
+    // Play button remains enabled until a profile is actually launched
+    expect(playButton.disabled).toBe(false);
+  });
+
+  it("resets loading state if launch mutation encounters an error", () => {
+    mockMutate.mockImplementation(
+      (_id: string, options?: { onError?: () => void }) => {
+        options?.onError?.();
+      },
+    );
+
+    render(<Launch profiles={singleProfile} mediaId="game-1" />);
+
+    const playButton = screen.getByRole("button", {
+      name: "Play",
+    }) as HTMLButtonElement;
+    fireEvent.click(playButton);
+
+    expect(playButton.disabled).toBe(false);
+    expect(playButton.querySelector(".animate-spin")).toBeNull();
+  });
+
   it("renders active playing state when game is running", () => {
     vi.mocked(useActiveMedia).mockReturnValue({
       session: {
