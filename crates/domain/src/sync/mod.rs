@@ -12,7 +12,7 @@ use crate::{
         context::{SyncAction, SyncContext},
         errors::SyncError,
         pipeline::{MediaSyncPipeline, SyncStep},
-        steps::{assets::AssetStep, identify::IdentifyStep, persist::PersistStep, scan::ScanStep},
+        steps::{assets::AssetStep, identify::IdentifyStep, persist::PersistStep},
     },
 };
 
@@ -69,11 +69,6 @@ impl LibrarySyncService {
 
     pub async fn sync_all(&self, force: bool) -> Result<(), SyncError> {
         info!("Starting sync process for all");
-
-        let scan_step = ScanStep::new(self.agents.clone());
-        if let Err(err) = scan_step.scan().await {
-            tracing::warn!("Agent scan step encountered an error: {err}");
-        }
 
         let mut synced_ids = std::collections::HashSet::new();
 
@@ -142,6 +137,8 @@ impl LibrarySyncService {
                 );
             }
         }
+
+        self.agents.scan_all().await?;
 
         info!("Sync completed");
 
