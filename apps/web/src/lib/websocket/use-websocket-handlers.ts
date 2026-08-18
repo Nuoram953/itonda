@@ -9,7 +9,6 @@ import type { ActiveMediaSession } from "@/app/activeMediaContext";
 import { formatDurationText } from "@/utils/datetime";
 import { getAgentsQueryOptions } from "@/api/get-agents";
 
-
 type Notify = NotificationContextValue["notify"];
 
 export function useWebSocketHandlers(
@@ -133,11 +132,6 @@ export function handleMediaEvent(
     });
 
     invalidateMediaQuery(queryClient, media_id);
-
-    notify.info({
-      title: "Game Launched",
-      description: "Game session started",
-    });
     return;
   }
 
