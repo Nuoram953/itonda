@@ -63,10 +63,7 @@ describe("use-websocket-handlers", () => {
         queryKey: ["media"],
       });
 
-      expect(mockNotify.info).toHaveBeenCalledWith({
-        title: "Game Launched",
-        description: "Game session started",
-      });
+      expect(mockNotify.info).not.toHaveBeenCalled();
     });
 
     it("handles Stopped event with duration formatting", () => {
@@ -153,8 +150,8 @@ describe("use-websocket-handlers", () => {
 
       expect(mockNotify.loading).toHaveBeenCalledWith({
         sourceId: "job-1",
-        title: "Syncing",
-        description: "Currently syncing",
+        title: "Syncing Library",
+        description: "Scanning and updating media...",
       });
     });
 
@@ -180,7 +177,7 @@ describe("use-websocket-handlers", () => {
       });
       expect(mockNotify.updateBySourceId).toHaveBeenCalledWith("job-2", {
         sourceId: "job-2",
-        description: "media-99",
+        description: "Syncing media-99...",
       });
     });
 
@@ -199,6 +196,35 @@ describe("use-websocket-handlers", () => {
       handleJobEvent(jobEvent, mockQueryClient, mockNotify as never);
 
       expect(mockNotify.updateBySourceId).toHaveBeenCalledWith("job-3", {
+        severity: "success",
+        title: "Sync Completed",
+        description: "Library synchronization finished",
+        duration: 5000,
+      });
+    });
+
+    it("handles Sync MediaSyncFailed event", () => {
+      const jobEvent: JobEvent = {
+        job_id: "job-4",
+        job_type: { type: "Sync" },
+        event: {
+          type: "Sync",
+          payload: {
+            type: "MediaSyncFailed",
+            payload: {
+              media_id: "media-99",
+              error: "Connection timeout",
+            },
+          },
+        },
+      };
+
+      handleJobEvent(jobEvent, mockQueryClient, mockNotify as never);
+
+      expect(mockNotify.updateBySourceId).toHaveBeenCalledWith("job-4", {
+        severity: "error",
+        title: "Sync Failed",
+        description: "Failed to sync media-99: Connection timeout",
         duration: 8000,
       });
     });

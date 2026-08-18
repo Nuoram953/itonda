@@ -63,8 +63,8 @@ export function handleJobEvent(
   if (event.type === "Sync" && event.payload.type === "Started") {
     notify.loading({
       sourceId: job.job_id,
-      title: "Syncing",
-      description: "Currently syncing",
+      title: "Syncing Library",
+      description: "Scanning and updating media...",
     });
     return;
   }
@@ -76,13 +76,26 @@ export function handleJobEvent(
 
     notify.updateBySourceId(job.job_id, {
       sourceId: job.job_id,
-      description: event.payload.payload.media_id,
+      description: `Syncing ${event.payload.payload.media_id}...`,
     });
     return;
   }
 
   if (event.type === "Sync" && event.payload.type === "Completed") {
     notify.updateBySourceId(job.job_id, {
+      severity: "success",
+      title: "Sync Completed",
+      description: "Library synchronization finished",
+      duration: 5000,
+    });
+    return;
+  }
+
+  if (event.type === "Sync" && event.payload.type === "MediaSyncFailed") {
+    notify.updateBySourceId(job.job_id, {
+      severity: "error",
+      title: "Sync Failed",
+      description: `Failed to sync ${event.payload.payload.media_id}: ${event.payload.payload.error}`,
       duration: 8000,
     });
   }

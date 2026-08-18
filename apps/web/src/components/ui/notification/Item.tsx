@@ -115,6 +115,16 @@ export function NotificationItem({ notification }: Props) {
           </Toast.Description>
         )}
 
+        {notification.severity === "loading" && (
+          <div
+            role="progressbar"
+            aria-label="Loading"
+            className="mt-2.5 h-1 w-full overflow-hidden rounded-full bg-white/10"
+          >
+            <div className="h-full w-1/3 rounded-full bg-slate-300 animate-indeterminate" />
+          </div>
+        )}
+
         {notification.action && (
           <div className="pt-2">
             <Toast.Action asChild altText={notification.action.label}>

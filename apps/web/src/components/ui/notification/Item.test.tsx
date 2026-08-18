@@ -39,4 +39,39 @@ describe("NotificationItem", () => {
 
     expect(mockActionClick).toHaveBeenCalledOnce();
   });
+
+  it("renders an indeterminate loading progress bar when severity is loading", () => {
+    render(
+      <NotificationItem
+        notification={{
+          id: "test-loading",
+          title: "Syncing Library",
+          description: "Scanning and updating media...",
+          severity: "loading",
+        }}
+      />,
+    );
+
+    const progressBar = screen.getByRole("progressbar", { name: "Loading" });
+    expect(progressBar).toBeDefined();
+    expect(progressBar.firstElementChild?.className).toContain(
+      "animate-indeterminate",
+    );
+  });
+
+  it("does not render a progress bar for non-loading notifications", () => {
+    render(
+      <NotificationItem
+        notification={{
+          id: "test-info",
+          title: "Notice",
+          description: "Everything is fine.",
+          severity: "info",
+        }}
+      />,
+    );
+
+    expect(screen.queryByRole("progressbar")).toBeNull();
+  });
 });
+
