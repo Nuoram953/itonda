@@ -2,7 +2,10 @@ use itonda_domain::{
     agents::models::Agent,
     assets::types::AssetType,
     media::{
-        models::{Asset, Launch, Media, MediaDetails, MediaGameDetails, PaginatedMedia},
+        models::{
+            Asset, Launch, Media, MediaDetails, MediaGameDetails, MediaInstallation,
+            MediaStorefront, PaginatedMedia,
+        },
         types::{MediaSortField, MediaSource, MediaStatus, MediaType, SortOrder},
     },
     storefronts::models::StorefrontId,
@@ -49,6 +52,8 @@ use crate::api::{
             Asset,
             AssetType,
             Launch,
+            MediaStorefront,
+            MediaInstallation,
             MediaDetails,
             MediaGameDetails,
             MediaType,

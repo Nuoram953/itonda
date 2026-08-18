@@ -20,6 +20,8 @@ describe("OverviewTab Component", () => {
       playtime_minutes: 120,
       last_played_at: 1700000000,
     },
+    storefronts: [],
+    installations: [],
   };
 
   it("renders all overview sections", () => {

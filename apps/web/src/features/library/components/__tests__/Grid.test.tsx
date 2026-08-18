@@ -14,6 +14,8 @@ const mockMediaItems: Media[] = [
     status: "in_progress",
     assets: [],
     launches: [],
+    storefronts: [],
+    installations: [],
   },
   {
     id: "media-2",
@@ -22,6 +24,8 @@ const mockMediaItems: Media[] = [
     status: "completed",
     assets: [],
     launches: [],
+    storefronts: [],
+    installations: [],
   },
 ];
 

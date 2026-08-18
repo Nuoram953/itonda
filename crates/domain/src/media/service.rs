@@ -5,7 +5,9 @@ use sqlx::SqlitePool;
 
 use crate::media::{
     errors::MediaError,
-    models::{Asset, Launch, Media, MediaDetails, PaginatedMedia},
+    models::{
+        Asset, Launch, Media, MediaDetails, MediaInstallation, MediaStorefront, PaginatedMedia,
+    },
     types::{MediaSortField, MediaStatus, MediaType, SortOrder},
 };
 
@@ -19,6 +21,22 @@ pub async fn get_media_by_id(pool: &SqlitePool, id: String) -> Result<Media, Med
     media.assets = assets
         .into_iter()
         .map(Asset::try_from)
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let storefronts =
+        MediaQueries::find_storefronts_by_media_ids(pool, &[media.id.clone()]).await?;
+
+    media.storefronts = storefronts
+        .into_iter()
+        .map(MediaStorefront::try_from)
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let installations =
+        MediaQueries::find_installations_by_media_ids(pool, &[media.id.clone()]).await?;
+
+    media.installations = installations
+        .into_iter()
+        .map(MediaInstallation::try_from)
         .collect::<Result<Vec<_>, _>>()?;
 
     let launches = MediaQueries::find_media_launches_by_media_id(pool, &media.id).await?;
@@ -91,6 +109,8 @@ pub async fn get_paginated_media(
         .collect::<Vec<_>>();
 
     let assets = MediaQueries::find_assets_by_media_ids(pool, &ids).await?;
+    let storefronts = MediaQueries::find_storefronts_by_media_ids(pool, &ids).await?;
+    let installations = MediaQueries::find_installations_by_media_ids(pool, &ids).await?;
     let launches = MediaQueries::find_media_launches_by_media_ids(pool, &ids).await?;
 
     let assets_by_media = assets.into_iter().fold(HashMap::new(), |mut map, asset| {
@@ -99,6 +119,22 @@ pub async fn get_paginated_media(
             .push(asset);
         map
     });
+
+    let storefronts_by_media = storefronts.into_iter().fold(HashMap::new(), |mut map, sf| {
+        map.entry(sf.media_id.clone())
+            .or_insert_with(Vec::new)
+            .push(sf);
+        map
+    });
+
+    let installations_by_media = installations
+        .into_iter()
+        .fold(HashMap::new(), |mut map, inst| {
+            map.entry(inst.media_id.clone())
+                .or_insert_with(Vec::new)
+                .push(inst);
+            map
+        });
 
     let launches_by_media = launches
         .into_iter()
@@ -120,6 +156,22 @@ pub async fn get_paginated_media(
             .unwrap_or_default()
             .into_iter()
             .map(Asset::try_from)
+            .collect::<Result<Vec<_>, _>>()?;
+
+        media.storefronts = storefronts_by_media
+            .get(&media.id)
+            .cloned()
+            .unwrap_or_default()
+            .into_iter()
+            .map(MediaStorefront::try_from)
+            .collect::<Result<Vec<_>, _>>()?;
+
+        media.installations = installations_by_media
+            .get(&media.id)
+            .cloned()
+            .unwrap_or_default()
+            .into_iter()
+            .map(MediaInstallation::try_from)
             .collect::<Result<Vec<_>, _>>()?;
 
         media.launches = launches_by_media

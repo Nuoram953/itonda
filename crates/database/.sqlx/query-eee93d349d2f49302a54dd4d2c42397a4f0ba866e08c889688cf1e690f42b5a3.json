@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        UPDATE media_storefronts \n        SET\n            playtime_minutes = ?,\n            last_played_at = ?,\n            is_installed = ?,\n            updated_at = CURRENT_TIMESTAMP\n        WHERE media_id = ? AND storefront_id = ?\n        RETURNING\n            media_id,\n            storefront_id,\n            external_id,\n            playtime_minutes,\n            last_played_at,\n            is_installed AS \"is_installed: bool\",\n            created_at,\n            updated_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "media_id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "storefront_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "external_id",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "playtime_minutes",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "last_played_at",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "is_installed: bool",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 7,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "eee93d349d2f49302a54dd4d2c42397a4f0ba866e08c889688cf1e690f42b5a3"
+}

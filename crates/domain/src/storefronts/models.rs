@@ -6,6 +6,12 @@ pub enum StorefrontId {
     Steam,
 }
 
+impl StorefrontId {
+    pub fn id(&self) -> i64 {
+        *self as i64
+    }
+}
+
 impl From<StorefrontId> for u32 {
     fn from(value: StorefrontId) -> Self {
         match value {
@@ -15,10 +21,37 @@ impl From<StorefrontId> for u32 {
 }
 
 impl StorefrontId {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            StorefrontId::Steam => "0",
+        }
+    }
+
     pub fn as_steam_grid_db_platform(&self) -> &'static str {
         match self {
             StorefrontId::Steam => "steam",
         }
+    }
+}
+
+impl TryFrom<&str> for StorefrontId {
+    type Error = crate::storefronts::error::StorefrontError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value.to_lowercase().as_str() {
+            "steam" | "0" => Ok(StorefrontId::Steam),
+            _ => Err(
+                crate::storefronts::error::StorefrontError::InvalidStorefrontId(value.to_string()),
+            ),
+        }
+    }
+}
+
+impl TryFrom<String> for StorefrontId {
+    type Error = crate::storefronts::error::StorefrontError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::try_from(value.as_str())
     }
 }
 

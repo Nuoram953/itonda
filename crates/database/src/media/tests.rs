@@ -606,3 +606,149 @@ async fn find_assets_by_media_ids_returns_assets() {
 
     assert_eq!(assets.len(), 1);
 }
+
+#[tokio::test]
+async fn upsert_media_storefront_creates_and_updates() {
+    let pool = setup_db().await;
+
+    let media = MediaQueries::insert_media(
+        &pool,
+        MediaQueries::MediaInsert {
+            title: "Portal 2".into(),
+            media_type: "game".into(),
+            status_id: 1,
+        },
+    )
+    .await
+    .unwrap();
+
+    let insert_res = MediaQueries::upsert_media_storefront(
+        &pool,
+        MediaQueries::MediaStorefrontUpsert {
+            media_id: media.id.clone(),
+            storefront_id: "0".into(),
+            external_id: "620".into(),
+            playtime_minutes: Some(60),
+            last_played_at: Some(12345),
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(insert_res.action, UpsertAction::Created);
+    assert_eq!(insert_res.value.external_id, "620");
+
+    let unchanged_res = MediaQueries::upsert_media_storefront(
+        &pool,
+        MediaQueries::MediaStorefrontUpsert {
+            media_id: media.id.clone(),
+            storefront_id: "0".into(),
+            external_id: "620".into(),
+            playtime_minutes: Some(60),
+            last_played_at: Some(12345),
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(unchanged_res.action, UpsertAction::Unchanged);
+
+    let update_res = MediaQueries::upsert_media_storefront(
+        &pool,
+        MediaQueries::MediaStorefrontUpsert {
+            media_id: media.id.clone(),
+            storefront_id: "0".into(),
+            external_id: "620_updated".into(),
+            playtime_minutes: Some(120),
+            last_played_at: Some(12346),
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(update_res.action, UpsertAction::Updated);
+    assert_eq!(update_res.value.playtime_minutes, Some(120));
+}
+
+#[tokio::test]
+async fn find_media_by_storefront_returns_correct_media() {
+    let pool = setup_db().await;
+
+    let media = MediaQueries::insert_media(
+        &pool,
+        MediaQueries::MediaInsert {
+            title: "Half-Life 2".into(),
+            media_type: "game".into(),
+            status_id: 1,
+        },
+    )
+    .await
+    .unwrap();
+
+    MediaQueries::upsert_media_storefront(
+        &pool,
+        MediaQueries::MediaStorefrontUpsert {
+            media_id: media.id.clone(),
+            storefront_id: "0".into(),
+            external_id: "220".into(),
+            playtime_minutes: Some(120),
+            last_played_at: Some(1723900000),
+        },
+    )
+    .await
+    .unwrap();
+
+    let found = MediaQueries::find_media_by_storefront(&pool, "0", "220")
+        .await
+        .unwrap();
+    assert!(found.is_some());
+    assert_eq!(found.unwrap().id, media.id);
+
+    let not_found = MediaQueries::find_media_by_storefront(&pool, "0", "999999")
+        .await
+        .unwrap();
+    assert!(not_found.is_none());
+
+    let storefronts = MediaQueries::find_storefronts_by_media_id(&pool, &media.id)
+        .await
+        .unwrap();
+    assert_eq!(storefronts.len(), 1);
+    assert_eq!(storefronts[0].storefront_id, "0");
+    assert_eq!(storefronts[0].external_id, "220");
+    assert_eq!(storefronts[0].playtime_minutes, Some(120));
+
+    // Test installations
+    use crate::agent::{AgentsInsert, upsert_agent};
+    upsert_agent(
+        &pool,
+        AgentsInsert {
+            id: "agent-1".into(),
+            name: "Test Agent".into(),
+            hostname: "desktop".into(),
+            platform: "linux".into(),
+            agent_version: "1.0.0".into(),
+        },
+    )
+    .await
+    .unwrap();
+
+    MediaQueries::upsert_media_installation(
+        &pool,
+        MediaQueries::MediaInstallationUpsert {
+            media_id: media.id.clone(),
+            agent_id: "agent-1".into(),
+            storefront_id: Some("0".into()),
+            external_id: Some("220".into()),
+            path: Some("/games/hl2".into()),
+        },
+    )
+    .await
+    .unwrap();
+
+    let installations = MediaQueries::find_installations_by_media_id(&pool, &media.id)
+        .await
+        .unwrap();
+    assert_eq!(installations.len(), 1);
+    assert_eq!(installations[0].agent_id, "agent-1");
+    assert_eq!(installations[0].path, Some("/games/hl2".into()));
+}

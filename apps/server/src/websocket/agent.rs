@@ -11,8 +11,9 @@ use itonda_database::{
         upsert_agent,
     },
     media::{
-        MediaInsert, MediaLaunchSessionInsert, MediaLaunchUpsert, find_media_by_title,
-        insert_media, insert_media_launch_session, upsert_media_launch,
+        MediaInsert, MediaInstallationUpsert, MediaLaunchSessionInsert, MediaLaunchUpsert,
+        find_media_by_storefront, find_media_by_title, insert_media, insert_media_launch_session,
+        upsert_media_installation, upsert_media_launch,
     },
 };
 pub use itonda_domain::agents::AgentManager;
@@ -188,7 +189,25 @@ pub async fn handle_agent_scan_result(
     }
 
     for item in scan_result.items {
-        let media_row = match find_media_by_title(pool, item.title.clone()).await? {
+        let storefront_id =
+            itonda_domain::storefronts::models::StorefrontId::try_from(item.source.as_str()).ok();
+        let storefront_db_id = storefront_id
+            .as_ref()
+            .map(|sf| sf.as_str())
+            .unwrap_or(item.source.as_str());
+
+        let existing = if let Some(ref external_id) = item.external_id {
+            find_media_by_storefront(pool, storefront_db_id, external_id).await?
+        } else {
+            None
+        };
+
+        let existing = match existing {
+            Some(row) => Some(row),
+            None => find_media_by_title(pool, item.title.clone()).await?,
+        };
+
+        let media_row = match existing {
             Some(row) => row,
             None => {
                 insert_media(
@@ -202,6 +221,28 @@ pub async fn handle_agent_scan_result(
                 .await?
             }
         };
+
+        let install_path = item.working_directory.clone().or_else(|| {
+            item.launch
+                .as_ref()
+                .and_then(|l| l.working_directory.clone())
+        });
+
+        upsert_media_installation(
+            pool,
+            MediaInstallationUpsert {
+                media_id: media_row.id.clone(),
+                agent_id: scan_result.agent_id.clone(),
+                storefront_id: if item.source.is_empty() {
+                    None
+                } else {
+                    Some(storefront_db_id.to_string())
+                },
+                external_id: item.external_id.clone(),
+                path: install_path,
+            },
+        )
+        .await?;
 
         if let Some(launch) = item.launch {
             upsert_media_launch(

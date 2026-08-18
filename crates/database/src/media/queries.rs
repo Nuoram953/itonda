@@ -9,8 +9,9 @@ use crate::{
     error::DatabaseError,
     media::{
         MediaAssetInsert, MediaAssetRow, MediaAssetSearchInsert, MediaAssetSearchRow,
-        MediaGameDetailsRow, MediaGameDetailsUpsert, MediaInsert, MediaLaunchRow,
-        MediaLaunchSessionInsert, MediaLaunchSessionRow, MediaLaunchUpsert, MediaStatusHistoryRow,
+        MediaGameDetailsRow, MediaGameDetailsUpsert, MediaInsert, MediaInstallationRow,
+        MediaInstallationUpsert, MediaLaunchRow, MediaLaunchSessionInsert, MediaLaunchSessionRow,
+        MediaLaunchUpsert, MediaStatusHistoryRow, MediaStorefrontRow, MediaStorefrontUpsert,
     },
     models::{UpsertAction, UpsertResult},
 };
@@ -75,8 +76,7 @@ pub async fn find_paginated(
     let mut count_qb = QueryBuilder::<Sqlite>::new("SELECT COUNT(DISTINCT media.id) FROM media");
 
     if needs_storefront_join {
-        count_qb
-            .push(" INNER JOIN media_game_storefront ON media_game_storefront.media_id = media.id");
+        count_qb.push(" INNER JOIN media_storefronts ON media_storefronts.media_id = media.id");
     }
 
     let mut has_where = false;
@@ -116,7 +116,7 @@ pub async fn find_paginated(
         } else {
             count_qb.push(" WHERE ");
         }
-        count_qb.push("media_game_storefront.storefront_id = ");
+        count_qb.push("media_storefronts.storefront_id = ");
         count_qb.push_bind(storefront_id);
     }
 
@@ -136,7 +136,7 @@ pub async fn find_paginated(
     }
 
     if needs_storefront_join {
-        qb.push(" INNER JOIN media_game_storefront ON media_game_storefront.media_id = media.id");
+        qb.push(" INNER JOIN media_storefronts ON media_storefronts.media_id = media.id");
     }
 
     let mut has_where = false;
@@ -176,7 +176,7 @@ pub async fn find_paginated(
         } else {
             qb.push(" WHERE ");
         }
-        qb.push("media_game_storefront.storefront_id = ");
+        qb.push("media_storefronts.storefront_id = ");
         qb.push_bind(storefront_id);
     }
 
@@ -900,6 +900,347 @@ pub async fn insert_media_launch_session(
         session.duration_seconds,
     )
     .fetch_one(pool)
+    .await
+    .map_err(DatabaseError::from)
+}
+
+pub async fn upsert_media_storefront(
+    pool: &SqlitePool,
+    details: MediaStorefrontUpsert,
+) -> Result<UpsertResult<MediaStorefrontRow>, DatabaseError> {
+    let existing = sqlx::query_as::<Sqlite, MediaStorefrontRow>(
+        r#"
+        SELECT
+            media_id,
+            storefront_id,
+            external_id,
+            playtime_minutes,
+            last_played_at
+        FROM media_storefronts 
+        WHERE media_id = ? AND storefront_id = ?
+        "#,
+    )
+    .bind(&details.media_id)
+    .bind(&details.storefront_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(DatabaseError::from)?;
+
+    let Some(existing) = existing else {
+        let row = sqlx::query_as::<Sqlite, MediaStorefrontRow>(
+            r#"
+            INSERT INTO media_storefronts (
+                media_id,
+                storefront_id,
+                external_id,
+                playtime_minutes,
+                last_played_at
+            )
+            VALUES (?, ?, ?, ?, ?)
+            RETURNING
+                media_id,
+                storefront_id,
+                external_id,
+                playtime_minutes,
+                last_played_at
+            "#,
+        )
+        .bind(&details.media_id)
+        .bind(&details.storefront_id)
+        .bind(&details.external_id)
+        .bind(details.playtime_minutes)
+        .bind(details.last_played_at)
+        .fetch_one(pool)
+        .await
+        .map_err(DatabaseError::from)?;
+
+        return Ok(UpsertResult {
+            value: row,
+            action: UpsertAction::Created,
+        });
+    };
+
+    if existing.playtime_minutes == details.playtime_minutes
+        && existing.last_played_at == details.last_played_at
+    {
+        return Ok(UpsertResult {
+            value: existing,
+            action: UpsertAction::Unchanged,
+        });
+    }
+
+    let row = sqlx::query_as::<Sqlite, MediaStorefrontRow>(
+        r#"
+        UPDATE media_storefronts 
+        SET
+            playtime_minutes = ?,
+            last_played_at = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE media_id = ? AND storefront_id = ?
+        RETURNING
+            media_id,
+            storefront_id,
+            external_id,
+            playtime_minutes,
+            last_played_at
+        "#,
+    )
+    .bind(details.playtime_minutes)
+    .bind(details.last_played_at)
+    .bind(&details.media_id)
+    .bind(&details.storefront_id)
+    .fetch_one(pool)
+    .await
+    .map_err(DatabaseError::from)?;
+
+    Ok(UpsertResult {
+        value: row,
+        action: UpsertAction::Updated,
+    })
+}
+
+pub async fn find_storefronts_by_media_ids(
+    pool: &SqlitePool,
+    ids: &[String],
+) -> Result<Vec<MediaStorefrontRow>, DatabaseError> {
+    if ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut qb = QueryBuilder::<Sqlite>::new(
+        "SELECT media_id, storefront_id, external_id, playtime_minutes, last_played_at FROM media_storefronts WHERE media_id IN (",
+    );
+
+    let mut separated = qb.separated(", ");
+
+    for id in ids {
+        separated.push_bind(id);
+    }
+
+    separated.push_unseparated(")");
+
+    qb.build_query_as::<MediaStorefrontRow>()
+        .fetch_all(pool)
+        .await
+        .map_err(DatabaseError::from)
+}
+
+pub async fn find_storefronts_by_media_id(
+    pool: &SqlitePool,
+    media_id: &str,
+) -> Result<Vec<MediaStorefrontRow>, DatabaseError> {
+    sqlx::query_as::<Sqlite, MediaStorefrontRow>(
+        r#"
+        SELECT
+            media_id,
+            storefront_id,
+            external_id,
+            playtime_minutes,
+            last_played_at
+        FROM media_storefronts
+        WHERE media_id = ?
+        "#,
+    )
+    .bind(media_id)
+    .fetch_all(pool)
+    .await
+    .map_err(DatabaseError::from)
+}
+
+pub async fn find_media_by_storefront(
+    pool: &SqlitePool,
+    storefront_id: &str,
+    external_id: &str,
+) -> Result<Option<MediaRow>, DatabaseError> {
+    sqlx::query_as::<Sqlite, MediaRow>(
+        r#"
+        SELECT
+            m.id,
+            m.title,
+            m.media_type,
+            m.status_id
+        FROM media m
+        INNER JOIN media_storefronts ms ON ms.media_id = m.id
+        WHERE ms.storefront_id = ? AND ms.external_id = ?
+        "#,
+    )
+    .bind(storefront_id)
+    .bind(external_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(DatabaseError::from)
+}
+
+pub async fn upsert_media_installation(
+    pool: &SqlitePool,
+    installation: MediaInstallationUpsert,
+) -> Result<UpsertResult<MediaInstallationRow>, DatabaseError> {
+    let existing = sqlx::query_as::<Sqlite, MediaInstallationRow>(
+        r#"
+        SELECT
+            id,
+            media_id,
+            agent_id,
+            storefront_id,
+            external_id,
+            path
+        FROM media_installations
+        WHERE media_id = ?
+          AND agent_id = ?
+          AND storefront_id IS ?
+        "#,
+    )
+    .bind(&installation.media_id)
+    .bind(&installation.agent_id)
+    .bind(&installation.storefront_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(DatabaseError::from)?;
+
+    let Some(existing) = existing else {
+        let id = Uuid::new_v4().to_string();
+        let row = sqlx::query_as::<Sqlite, MediaInstallationRow>(
+            r#"
+            INSERT INTO media_installations (
+                id,
+                media_id,
+                agent_id,
+                storefront_id,
+                external_id,
+                path
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+            RETURNING
+                id,
+                media_id,
+                agent_id,
+                storefront_id,
+                external_id,
+                path
+            "#,
+        )
+        .bind(id)
+        .bind(&installation.media_id)
+        .bind(&installation.agent_id)
+        .bind(&installation.storefront_id)
+        .bind(&installation.external_id)
+        .bind(&installation.path)
+        .fetch_one(pool)
+        .await
+        .map_err(DatabaseError::from)?;
+
+        return Ok(UpsertResult {
+            value: row,
+            action: UpsertAction::Created,
+        });
+    };
+
+    if existing.external_id == installation.external_id && existing.path == installation.path {
+        return Ok(UpsertResult {
+            value: existing,
+            action: UpsertAction::Unchanged,
+        });
+    }
+
+    let row = sqlx::query_as::<Sqlite, MediaInstallationRow>(
+        r#"
+        UPDATE media_installations
+        SET
+            external_id = ?,
+            path = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        RETURNING
+            id,
+            media_id,
+            agent_id,
+            storefront_id,
+            external_id,
+            path
+        "#,
+    )
+    .bind(&installation.external_id)
+    .bind(&installation.path)
+    .bind(&existing.id)
+    .fetch_one(pool)
+    .await
+    .map_err(DatabaseError::from)?;
+
+    Ok(UpsertResult {
+        value: row,
+        action: UpsertAction::Updated,
+    })
+}
+
+pub async fn delete_media_installation(
+    pool: &SqlitePool,
+    agent_id: &str,
+    media_id: &str,
+    storefront_id: Option<&str>,
+) -> Result<(), DatabaseError> {
+    sqlx::query(
+        r#"
+        DELETE FROM media_installations
+        WHERE agent_id = ?
+          AND media_id = ?
+          AND storefront_id IS ?
+        "#,
+    )
+    .bind(agent_id)
+    .bind(media_id)
+    .bind(storefront_id)
+    .execute(pool)
+    .await
+    .map_err(DatabaseError::from)?;
+
+    Ok(())
+}
+
+pub async fn find_installations_by_media_ids(
+    pool: &SqlitePool,
+    ids: &[String],
+) -> Result<Vec<MediaInstallationRow>, DatabaseError> {
+    if ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut qb = QueryBuilder::<Sqlite>::new(
+        "SELECT id, media_id, agent_id, storefront_id, external_id, path FROM media_installations WHERE media_id IN (",
+    );
+
+    let mut separated = qb.separated(", ");
+
+    for id in ids {
+        separated.push_bind(id);
+    }
+
+    separated.push_unseparated(")");
+
+    qb.build_query_as::<MediaInstallationRow>()
+        .fetch_all(pool)
+        .await
+        .map_err(DatabaseError::from)
+}
+
+pub async fn find_installations_by_media_id(
+    pool: &SqlitePool,
+    media_id: &str,
+) -> Result<Vec<MediaInstallationRow>, DatabaseError> {
+    sqlx::query_as::<Sqlite, MediaInstallationRow>(
+        r#"
+        SELECT
+            id,
+            media_id,
+            agent_id,
+            storefront_id,
+            external_id,
+            path
+        FROM media_installations
+        WHERE media_id = ?
+        "#,
+    )
+    .bind(media_id)
+    .fetch_all(pool)
     .await
     .map_err(DatabaseError::from)
 }

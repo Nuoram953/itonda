@@ -25,11 +25,41 @@ pub struct MediaStatusHistoryRow {
     pub created_at: String,
 }
 
-#[derive(Debug, Serialize)]
-pub struct MediaGameStorefrontRow {
+#[derive(Debug, Clone, Serialize, FromRow)]
+pub struct MediaStorefrontRow {
     pub media_id: String,
     pub storefront_id: String,
-    pub internal_id: String,
+    pub external_id: String,
+    pub playtime_minutes: Option<i64>,
+    pub last_played_at: Option<i64>,
+}
+
+#[derive(Debug, Clone)]
+pub struct MediaStorefrontUpsert {
+    pub media_id: String,
+    pub storefront_id: String,
+    pub external_id: String,
+    pub playtime_minutes: Option<i64>,
+    pub last_played_at: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, FromRow)]
+pub struct MediaInstallationRow {
+    pub id: String,
+    pub media_id: String,
+    pub agent_id: String,
+    pub storefront_id: Option<String>,
+    pub external_id: Option<String>,
+    pub path: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct MediaInstallationUpsert {
+    pub media_id: String,
+    pub agent_id: String,
+    pub storefront_id: Option<String>,
+    pub external_id: Option<String>,
+    pub path: Option<String>,
 }
 
 #[derive(Debug)]
@@ -44,13 +74,6 @@ pub struct MediaAssetInsert {
     pub media_id: String,
     pub asset_id: i64,
     pub path: String,
-}
-
-#[derive(Debug)]
-pub struct MediaGameStorefrontUpsert {
-    pub media_id: String,
-    pub storefront_id: u32,
-    pub internal_id: String,
 }
 
 #[derive(Debug, Clone, Serialize, FromRow)]

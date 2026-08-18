@@ -174,6 +174,7 @@ export interface components {
         /** @enum {string} */
         JobStatus: "queued" | "running" | "completed" | "failed";
         Launch: {
+            agent_id?: string | null;
             id: string;
             name: string;
         };
@@ -181,9 +182,11 @@ export interface components {
             assets: components["schemas"]["Asset"][];
             details?: null | components["schemas"]["MediaDetails"];
             id: string;
+            installations: components["schemas"]["MediaInstallation"][];
             launches: components["schemas"]["Launch"][];
             media_type: components["schemas"]["MediaType"];
             status: components["schemas"]["MediaStatus"];
+            storefronts: components["schemas"]["MediaStorefront"][];
             title: string;
         };
         MediaDetails: components["schemas"]["MediaGameDetails"];
@@ -202,6 +205,13 @@ export interface components {
         };
         MediaImportResponse: {
             message: string;
+        };
+        MediaInstallation: {
+            agent_id: string;
+            external_id?: string | null;
+            id: string;
+            path?: string | null;
+            storefront_id?: null | components["schemas"]["StorefrontId"];
         };
         MediaLaunchPayload: {
             launch_id?: string | null;
@@ -240,6 +250,14 @@ export interface components {
         MediaSource: "steam";
         /** @enum {string} */
         MediaStatus: "not_started" | "in_progress" | "completed" | "abandoned" | "paused";
+        MediaStorefront: {
+            external_id: string;
+            /** Format: int64 */
+            last_played_at?: number | null;
+            /** Format: int64 */
+            playtime_minutes?: number | null;
+            storefront_id: components["schemas"]["StorefrontId"];
+        };
         /** @enum {string} */
         MediaType: "game" | "movie" | "tv_show";
         PaginatedMedia: {
