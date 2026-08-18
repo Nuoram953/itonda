@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Play } from "lucide-react";
+import { LoaderCircle, Play } from "lucide-react";
 import { useState } from "react";
 import { useLaunchMedia } from "../../api/post-media-launch";
 import { useActiveMedia } from "@/hooks/use-active-media";
@@ -21,6 +21,7 @@ type LaunchProps = {
 
 export const Launch = ({ profiles = [], mediaId }: LaunchProps) => {
   const [open, setOpen] = useState(false);
+  const [isLaunching, setIsLaunching] = useState(false);
   const launchMediaMutation = useLaunchMedia({});
   const { session, isPlaying, formattedElapsed } = useActiveMedia();
 
@@ -28,9 +29,17 @@ export const Launch = ({ profiles = [], mediaId }: LaunchProps) => {
     isPlaying && mediaId && session?.mediaId === mediaId,
   );
 
+  if (isLaunching && isCurrentMediaPlaying) {
+    setIsLaunching(false);
+  }
+
+  const isLoading = isLaunching || launchMediaMutation.isPending;
+
   function launch(id: string) {
+    setIsLaunching(true);
     launchMediaMutation.mutate(id, {
       onSuccess: () => setOpen(false),
+      onError: () => setIsLaunching(false),
     });
   }
 
@@ -51,7 +60,7 @@ export const Launch = ({ profiles = [], mediaId }: LaunchProps) => {
     <>
       <button
         type="button"
-        disabled={!profiles.length}
+        disabled={!profiles.length || isLoading}
         onClick={handleClick}
         aria-label={isCurrentMediaPlaying ? "Now Playing" : "Play"}
         className={cn(
@@ -62,15 +71,14 @@ export const Launch = ({ profiles = [], mediaId }: LaunchProps) => {
         )}
       >
         {isCurrentMediaPlaying ? (
-          <>
-            <span className="relative flex h-2 w-2">
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-black" />
-            </span>
-            <span>Playing ({formattedElapsed})</span>
-          </>
+          <span>Playing ({formattedElapsed})</span>
         ) : (
           <>
-            <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+            {isLoading ? (
+              <LoaderCircle className="w-3.5 h-3.5 ml-0.5 animate-spin" />
+            ) : (
+              <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+            )}
             <span>Launch</span>
           </>
         )}
@@ -90,6 +98,7 @@ export const Launch = ({ profiles = [], mediaId }: LaunchProps) => {
               <Button
                 key={profile.id}
                 variant="outline"
+                disabled={isLoading}
                 onClick={() => launch(profile.id)}
               >
                 {profile.name}

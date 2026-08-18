@@ -13,8 +13,9 @@ import { AxiosInterceptor } from "./lib/AxiosInterceptor";
 import { router } from "./app/router";
 import { WebSocketProvider } from "./app/websocketProvider";
 import { ThemeProvider } from "./components/theme-provider";
+import { queryConfig } from "./lib/react-query";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({ defaultOptions: queryConfig });
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
