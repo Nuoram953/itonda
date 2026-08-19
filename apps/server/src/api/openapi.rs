@@ -31,8 +31,11 @@ use crate::api::{
         crate::api::media::handlers::launch_media,
         crate::api::media::handlers::update_status,
         crate::api::assets::handlers::get_asset,
-        crate::api::agents::handlers::get_connected_agents
+        crate::api::agents::handlers::get_connected_agents,
+        crate::api::config::handlers::get_config,
+        crate::api::config::handlers::update_config,
     ),
+
     components(
         schemas(
             MediaResponse,
@@ -63,6 +66,29 @@ use crate::api::{
             MediaSource,
             StorefrontId,
             Agent,
+            crate::config::CombinedConfig,
+            crate::config::PatchConfigPayload,
+            crate::config::Settings,
+            crate::config::PatchSettings,
+            crate::config::settings::MetadataSettings,
+            crate::config::settings::PatchMetadataSettings,
+            crate::config::settings::SteamSettings,
+            crate::config::settings::PatchSteamSettings,
+            crate::config::Secrets,
+            crate::config::PatchSecrets,
+            crate::config::secrets::StorefrontsSettings,
+            crate::config::secrets::PatchStorefrontsSettings,
+            crate::config::secrets::AssetStoreSettings,
+            crate::config::secrets::PatchAssetStoreSettings,
+            crate::config::secrets::SteamSettings,
+            crate::config::secrets::SteamGridDbSettings,
+            crate::config::secrets::PatchSteamGridDbSettings,
+            crate::config::secrets::TheMovieDatabaseSettings,
+            crate::config::secrets::PatchTheMovieDatabaseSettings,
+            crate::config::AppConfig,
+            crate::config::PatchAppConfig,
+            crate::config::app::ServerConfig,
+            crate::config::app::PatchServerConfig,
         )
     ),
     servers(

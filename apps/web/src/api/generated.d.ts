@@ -36,6 +36,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_config"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["update_config"];
+        trace?: never;
+    };
     "/media": {
         parameters: {
             query?: never;
@@ -151,12 +167,77 @@ export interface components {
             name: string;
             platform?: string | null;
         };
+        AppConfig: {
+            /**
+             * @default {
+             *       "host": "0.0.0.0",
+             *       "port": 3005
+             *     }
+             */
+            server: components["schemas"]["ServerConfig"];
+        };
         Asset: {
             asset_type: components["schemas"]["AssetType"];
             id: string;
         };
+        AssetStoreSettings: {
+            /**
+             * @default {
+             *       "api_key": ""
+             *     }
+             */
+            steam_grid_db: components["schemas"]["SteamGridDbSettings"];
+            /**
+             * @default {
+             *       "api_key": ""
+             *     }
+             */
+            tmdb: components["schemas"]["TheMovieDatabaseSettings"];
+        };
         /** @enum {string} */
         AssetType: "poster" | "backdrop" | "logo" | "banner" | "thumbnail" | "icon" | "trailer" | "screenshot";
+        CombinedConfig: {
+            /**
+             * @default {
+             *       "server": {
+             *         "host": "0.0.0.0",
+             *         "port": 3005
+             *       }
+             *     }
+             */
+            app: components["schemas"]["AppConfig"];
+            /**
+             * @default {
+             *       "asset_store": {
+             *         "steam_grid_db": {
+             *           "api_key": ""
+             *         },
+             *         "tmdb": {
+             *           "api_key": ""
+             *         }
+             *       },
+             *       "storefronts": {
+             *         "steam": {
+             *           "api_key": "",
+             *           "steam_id": 0
+             *         }
+             *       }
+             *     }
+             */
+            secrets: components["schemas"]["Secrets"];
+            /**
+             * @default {
+             *       "metadata": {
+             *         "steam": {
+             *           "enabled": true,
+             *           "fetch_achievements": true,
+             *           "fetch_playtime": true
+             *         }
+             *       }
+             *     }
+             */
+            settings: components["schemas"]["Settings"];
+        };
         CommandResponse: {
             command: string;
             id: string;
@@ -260,6 +341,16 @@ export interface components {
         };
         /** @enum {string} */
         MediaType: "game" | "movie" | "tv_show";
+        MetadataSettings: {
+            /**
+             * @default {
+             *       "enabled": true,
+             *       "fetch_achievements": true,
+             *       "fetch_playtime": true
+             *     }
+             */
+            steam: components["schemas"]["SteamSettings"];
+        };
         PaginatedMedia: {
             has_next: boolean;
             items: components["schemas"]["Media"][];
@@ -272,10 +363,132 @@ export interface components {
             /** Format: int32 */
             total_pages: number;
         };
+        PatchAppConfig: {
+            server?: null | components["schemas"]["PatchServerConfig"];
+        };
+        PatchAssetStoreSettings: {
+            steam_grid_db?: null | components["schemas"]["PatchSteamGridDbSettings"];
+            tmdb?: null | components["schemas"]["PatchTheMovieDatabaseSettings"];
+        };
+        PatchConfigPayload: {
+            /** @default null */
+            app: null | components["schemas"]["PatchAppConfig"];
+            /** @default null */
+            secrets: null | components["schemas"]["PatchSecrets"];
+            /** @default null */
+            settings: null | components["schemas"]["PatchSettings"];
+        };
+        PatchMetadataSettings: {
+            steam?: null | components["schemas"]["PatchSteamSettings"];
+        };
+        PatchSecrets: {
+            asset_store?: null | components["schemas"]["PatchAssetStoreSettings"];
+            storefronts?: null | components["schemas"]["PatchStorefrontsSettings"];
+        };
+        PatchServerConfig: {
+            host?: string | null;
+            port?: number | null;
+        };
+        PatchSettings: {
+            metadata?: null | components["schemas"]["PatchMetadataSettings"];
+        };
+        PatchSteamGridDbSettings: {
+            api_key?: string | null;
+        };
+        PatchSteamSecrets: {
+            api_key?: string | null;
+            /** Format: int64 */
+            steam_id?: number | null;
+        };
+        PatchSteamSettings: {
+            enabled?: boolean | null;
+            fetch_achievements?: boolean | null;
+            fetch_playtime?: boolean | null;
+        };
+        PatchStorefrontsSettings: {
+            steam?: null | components["schemas"]["PatchSteamSecrets"];
+        };
+        PatchTheMovieDatabaseSettings: {
+            api_key?: string | null;
+        };
+        Secrets: {
+            /**
+             * @default {
+             *       "steam_grid_db": {
+             *         "api_key": ""
+             *       },
+             *       "tmdb": {
+             *         "api_key": ""
+             *       }
+             *     }
+             */
+            asset_store: components["schemas"]["AssetStoreSettings"];
+            /**
+             * @default {
+             *       "steam": {
+             *         "api_key": "",
+             *         "steam_id": 0
+             *       }
+             *     }
+             */
+            storefronts: components["schemas"]["StorefrontsSettings"];
+        };
+        ServerConfig: {
+            /** @default 0.0.0.0 */
+            host: string;
+            /** @default 3005 */
+            port: number;
+        };
+        Settings: {
+            /**
+             * @default {
+             *       "steam": {
+             *         "enabled": true,
+             *         "fetch_achievements": true,
+             *         "fetch_playtime": true
+             *       }
+             *     }
+             */
+            metadata: components["schemas"]["MetadataSettings"];
+        };
         /** @enum {string} */
         SortOrder: "asc" | "desc";
+        SteamGridDbSettings: {
+            /** @default  */
+            api_key: string;
+        };
+        SteamSecrets: {
+            /** @default  */
+            api_key: string;
+            /**
+             * Format: int64
+             * @default 0
+             */
+            steam_id: number;
+        };
+        SteamSettings: {
+            /** @default true */
+            enabled: boolean;
+            /** @default true */
+            fetch_achievements: boolean;
+            /** @default true */
+            fetch_playtime: boolean;
+        };
         /** @enum {string} */
         StorefrontId: "Steam";
+        StorefrontsSettings: {
+            /**
+             * @default {
+             *       "api_key": "",
+             *       "steam_id": 0
+             *     }
+             */
+            steam: components["schemas"]["SteamSecrets"];
+        };
+        TheMovieDatabaseSettings: {
+            /** @default  */
+            api_key: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -329,6 +542,50 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    get_config: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Get entire combined configuration */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CombinedConfig"];
+                };
+            };
+        };
+    };
+    update_config: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PatchConfigPayload"];
+            };
+        };
+        responses: {
+            /** @description Update configuration partially and return updated combined configuration */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CombinedConfig"];
+                };
             };
         };
     };
