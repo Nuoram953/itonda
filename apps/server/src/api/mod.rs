@@ -1,5 +1,6 @@
 pub mod agents;
 pub mod assets;
+pub mod config;
 pub mod error;
 pub mod extractor;
 pub mod media;
@@ -16,6 +17,7 @@ pub fn router() -> Router<AppState> {
         .merge(media::routes::router())
         .merge(assets::routes::router())
         .merge(agents::routes::router())
+        .merge(config::routes::router())
         .layer(axum::middleware::from_fn(
             middleware::api_logging_middleware,
         ))

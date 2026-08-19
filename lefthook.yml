@@ -1,6 +1,7 @@
 pre-commit:
   commands:
     fmt:
+      glob: "*.rs"
       run: cargo fmt --all
       stage_fixed: true
 
@@ -8,7 +9,7 @@ pre-commit:
       run: pnpm -r lint
 
     generate-api:
-      root: "apps/web/"
-      run: pnpm generate-api
+      run: pnpm --filter @itonda/web generate-api
+      glob: "*.{ts}"
       stage_fixed: true
 

@@ -24,6 +24,7 @@ pub struct TestApp {
     pub jobs: Receiver<Job>,
     pub db: SqlitePool,
     pub agent_messages: Receiver<ServerToAgentMessage>,
+    pub _temp: tempfile::TempDir,
 }
 
 pub async fn test_app() -> TestApp {
@@ -63,6 +64,7 @@ pub async fn test_app() -> TestApp {
         jobs: receiver,
         agent_messages: agent_rx,
         db,
+        _temp: temp,
     }
 }
 

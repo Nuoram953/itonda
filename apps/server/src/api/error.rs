@@ -154,3 +154,9 @@ impl From<AgentsError> for ApiError {
         }
     }
 }
+
+impl From<itonda_domain::store::error::StoreError> for ApiError {
+    fn from(_err: itonda_domain::store::error::StoreError) -> Self {
+        ApiError::InternalServer
+    }
+}
