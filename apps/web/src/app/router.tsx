@@ -13,6 +13,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Sidebar } from "@/components/ui/sidebar/Sidebar";
 import { Libary } from "@/features/library";
 import { MediaDetails } from "@/features/details";
+import { Settings as SettingsPage } from "@/features/settings";
 
 function MediaLayout() {
   return (
@@ -71,9 +72,16 @@ const mediaDetailsRoute = createRoute({
   component: () => <MediaDetails />,
 });
 
+const settingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "settings",
+  component: () => <SettingsPage />,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   mediaRoute.addChildren([mediaIndexRoute, mediaDetailsRoute]),
+  settingsRoute,
 ]);
 
 export const router = createRouter({

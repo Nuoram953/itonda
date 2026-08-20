@@ -219,7 +219,7 @@ export interface components {
              *       "storefronts": {
              *         "steam": {
              *           "api_key": "",
-             *           "steam_id": 0
+             *           "steam_id": ""
              *         }
              *       }
              *     }
@@ -397,8 +397,7 @@ export interface components {
         };
         PatchSteamSecrets: {
             api_key?: string | null;
-            /** Format: int64 */
-            steam_id?: number | null;
+            steam_id?: string | null;
         };
         PatchSteamSettings: {
             enabled?: boolean | null;
@@ -427,7 +426,7 @@ export interface components {
              * @default {
              *       "steam": {
              *         "api_key": "",
-             *         "steam_id": 0
+             *         "steam_id": ""
              *       }
              *     }
              */
@@ -460,11 +459,8 @@ export interface components {
         SteamSecrets: {
             /** @default  */
             api_key: string;
-            /**
-             * Format: int64
-             * @default 0
-             */
-            steam_id: number;
+            /** @default  */
+            steam_id: string;
         };
         SteamSettings: {
             /** @default true */
@@ -480,7 +476,7 @@ export interface components {
             /**
              * @default {
              *       "api_key": "",
-             *       "steam_id": 0
+             *       "steam_id": ""
              *     }
              */
             steam: components["schemas"]["SteamSecrets"];

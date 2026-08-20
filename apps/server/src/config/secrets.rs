@@ -27,7 +27,7 @@ pub struct AssetStoreSettings {
 #[serde(default)]
 pub struct SteamSettings {
     pub api_key: String,
-    pub steam_id: u64,
+    pub steam_id: String,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
@@ -72,9 +72,7 @@ impl StorefrontsSettings {
 impl SteamSettings {
     pub fn apply_patch(&mut self, patch: PatchSteamSecrets) {
         apply_secret_string(&mut self.api_key, patch.api_key);
-        if let Some(steam_id) = patch.steam_id {
-            self.steam_id = steam_id;
-        }
+        apply_secret_string(&mut self.steam_id, patch.steam_id);
     }
 }
 
@@ -116,7 +114,7 @@ pub struct PatchStorefrontsSettings {
 #[schema(as = PatchSteamSecrets)]
 pub struct PatchSteamSecrets {
     pub api_key: Option<String>,
-    pub steam_id: Option<u64>,
+    pub steam_id: Option<String>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
