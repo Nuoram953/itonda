@@ -52,7 +52,7 @@ async fn patch_config_updates_secrets() {
             "storefronts": {
                 "steam": {
                     "api_key": "my-secret-token",
-                    "steam_id": 12345678
+                    "steam_id": "12345678"
                 }
             },
             "asset_store": {
@@ -84,7 +84,7 @@ async fn patch_config_updates_secrets() {
     let body: CombinedConfig = json(response).await;
 
     assert_eq!(body.secrets.storefronts.steam.api_key, "my-secret-token");
-    assert_eq!(body.secrets.storefronts.steam.steam_id, 12345678);
+    assert_eq!(body.secrets.storefronts.steam.steam_id, "12345678");
     assert_eq!(body.secrets.asset_store.steam_grid_db.api_key, "sgdb-key");
     assert_eq!(body.secrets.asset_store.tmdb.api_key, "tmdb-key");
 }
@@ -143,7 +143,7 @@ async fn patch_config_updates_multiple_sections_simultaneously() {
         "secrets": {
             "storefronts": {
                 "steam": {
-                    "steam_id": 42
+                    "steam_id": "42"
                 }
             }
         }
@@ -171,5 +171,5 @@ async fn patch_config_updates_multiple_sections_simultaneously() {
     assert_eq!(body.app.server.host, "127.0.0.1");
 
     assert_eq!(body.app.server.port, 9000);
-    assert_eq!(body.secrets.storefronts.steam.steam_id, 42);
+    assert_eq!(body.secrets.storefronts.steam.steam_id, "42");
 }

@@ -22,7 +22,7 @@ impl SteamClient {
 
     pub async fn get_owned_games(
         &self,
-        steam_id: u64,
+        steam_id: &str,
     ) -> Result<GetOwnedGamesResponse, StorefrontError> {
         let response = self
             .client
@@ -32,7 +32,7 @@ impl SteamClient {
             ))
             .query(&[
                 ("key", self.api_key.as_str()),
-                ("steamid", &steam_id.to_string()),
+                ("steamid", steam_id),
                 ("include_appinfo", "true"),
             ])
             .send()

@@ -19,11 +19,11 @@ mod tests;
 
 pub struct SteamStorefront {
     client: SteamClient,
-    steam_id: u64,
+    steam_id: String,
 }
 
 impl SteamStorefront {
-    pub fn new(api_key: String, steam_id: u64) -> Self {
+    pub fn new(api_key: String, steam_id: String) -> Self {
         Self {
             client: SteamClient::new(api_key),
             steam_id,
@@ -44,7 +44,7 @@ impl Storefront for SteamStorefront {
 #[async_trait]
 impl GameLibraryProvider for SteamStorefront {
     async fn owned_games(&self) -> Result<Vec<DiscoveredMedia>, StorefrontError> {
-        let response = self.client.get_owned_games(self.steam_id).await?;
+        let response = self.client.get_owned_games(&self.steam_id).await?;
 
         Ok(response
             .response
