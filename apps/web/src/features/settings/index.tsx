@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Gamepad2 } from "lucide-react";
 import { Workspace } from "@/components/workspace/Workspace";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,6 +8,8 @@ import { SteamDrawer } from "./components/drawers/SteamDrawer";
 import type { SettingsCategoryFilter } from "./types/settings";
 import { useConfig } from "./api/get-config";
 import { usePatchConfig } from "./api/patch-config";
+import { useNotification } from "@/hooks/use-notification";
+import { useQueryClient } from "@tanstack/react-query";
 
 const SETTINGS_CATEGORIES: Array<{
   id: SettingsCategoryFilter;
@@ -20,11 +22,44 @@ const SETTINGS_CATEGORIES: Array<{
 ];
 
 export const Settings = () => {
+  const { notify } = useNotification();
+  const queryClient = useQueryClient();
   const [filter, setFilter] = useState<SettingsCategoryFilter>("storefronts");
   const [steamDrawerOpen, setSteamDrawerOpen] = useState(false);
 
   const { data: config, isPending } = useConfig();
   const patchMutation = usePatchConfig();
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const authStatus = searchParams.get("auth");
+    const drawer = searchParams.get("drawer");
+    const errorMessage = searchParams.get("error");
+
+    if (drawer === "steam") {
+      setSteamDrawerOpen(true);
+    }
+
+    if (authStatus === "success") {
+      notify.success({
+        title: "Steam Connected",
+        description: "Your Steam account was linked successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["config"] });
+      queryClient.invalidateQueries({ queryKey: ["auth", "steam", "status"] });
+    } else if (authStatus === "error") {
+      notify.error({
+        title: "Steam Authentication Failed",
+        description:
+          errorMessage || "Could not complete Steam login. Please try again.",
+      });
+    }
+
+    if (authStatus || drawer) {
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+  }, [notify, queryClient]);
 
   if (isPending || !config) {
     return <LoadingState message="Loading settings..." />;
