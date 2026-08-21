@@ -17,8 +17,7 @@ use tracing::instrument;
 use crate::{
     api::{
         auth::schemas::{
-            AuthActionResponse, AuthUrlResponse, SteamCallbackPayload,
-            StorefrontAuthStatusResponse,
+            AuthActionResponse, AuthUrlResponse, SteamCallbackPayload, StorefrontAuthStatusResponse,
         },
         error::ApiError,
     },
@@ -45,7 +44,6 @@ pub async fn steam_login(
     headers: HeaderMap,
     Query(query): Query<LoginQuery>,
 ) -> Response {
-    // Determine frontend origin from referer/origin or fallback to localhost
     let default_origin = headers
         .get("origin")
         .or_else(|| headers.get("referer"))
@@ -92,7 +90,6 @@ pub async fn steam_callback(
     let profile = authenticator.verify_callback(&payload.params).await?;
     let steam_id = profile.external_id;
 
-    // Fetch player summary (persona name & avatar)
     let secrets = state.secrets.get().await;
     let steam_client = SteamClient::new(&secrets.storefronts.steam.api_key);
     let summary = steam_client
