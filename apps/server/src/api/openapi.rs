@@ -45,6 +45,7 @@ use crate::api::{
             crate::api::auth::schemas::StorefrontAuthStatusResponse,
             crate::api::auth::schemas::AuthUrlResponse,
             crate::api::auth::schemas::AuthActionResponse,
+            crate::api::auth::schemas::SteamCallbackPayload,
             MediaResponse,
             MediaQueryParams,
             MediaRefreshPayload,

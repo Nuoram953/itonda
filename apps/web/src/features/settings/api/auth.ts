@@ -15,8 +15,18 @@ export type AuthActionResponse = {
   message: string;
 };
 
+export type SteamCallbackPayload = {
+  params: Array<[string, string]>;
+};
+
 export const getSteamAuthStatus = (): Promise<StorefrontAuthStatus> => {
   return api.get(`/auth/steam/status`);
+};
+
+export const verifySteamCallback = (
+  payload: SteamCallbackPayload
+): Promise<StorefrontAuthStatus> => {
+  return api.post(`/auth/steam/callback`, payload);
 };
 
 export const getSteamAuthStatusQueryOptions = () => {

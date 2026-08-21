@@ -21,3 +21,8 @@ pub struct AuthActionResponse {
     pub success: bool,
     pub message: String,
 }
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct SteamCallbackPayload {
+    pub params: Vec<(String, String)>,
+}

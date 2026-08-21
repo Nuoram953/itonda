@@ -14,6 +14,7 @@ import { Sidebar } from "@/components/ui/sidebar/Sidebar";
 import { Libary } from "@/features/library";
 import { MediaDetails } from "@/features/details";
 import { Settings as SettingsPage } from "@/features/settings";
+import { SteamCallback } from "@/features/auth/components/SteamCallback";
 
 function MediaLayout() {
   return (
@@ -24,18 +25,29 @@ function MediaLayout() {
 }
 
 const rootRoute = createRootRoute({
-  component: () => (
-    <SidebarProvider>
-      <Sidebar />
-      <SidebarInset className="flex h-svh flex-col overflow-hidden">
-        <Header />
-
-        <main className="flex-1 overflow-auto">
+  component: () => {
+    const isAuthCallback = typeof window !== "undefined" && window.location.pathname.startsWith("/auth/callback");
+    if (isAuthCallback) {
+      return (
+        <main className="h-svh overflow-hidden bg-surface">
           <Outlet />
         </main>
-      </SidebarInset>
-    </SidebarProvider>
-  ),
+      );
+    }
+
+    return (
+      <SidebarProvider>
+        <Sidebar />
+        <SidebarInset className="flex h-svh flex-col overflow-hidden">
+          <Header />
+
+          <main className="flex-1 overflow-auto">
+            <Outlet />
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
+    );
+  },
   notFoundComponent: () => NotFoundRoute(),
 });
 
@@ -78,10 +90,17 @@ const settingsRoute = createRoute({
   component: () => <SettingsPage />,
 });
 
+const steamCallbackRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "auth/callback/steam",
+  component: () => <SteamCallback />,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   mediaRoute.addChildren([mediaIndexRoute, mediaDetailsRoute]),
   settingsRoute,
+  steamCallbackRoute,
 ]);
 
 export const router = createRouter({

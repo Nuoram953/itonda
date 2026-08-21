@@ -161,3 +161,27 @@ async fn steam_status_and_disconnect() {
     assert_eq!(post_disconnect_body.account_name, None);
     assert_eq!(post_disconnect_body.avatar_url, None);
 }
+
+#[tokio::test]
+async fn steam_callback_rejects_invalid_params() {
+    let app = test_app().await;
+
+    let payload = itonda_server::api::auth::schemas::SteamCallbackPayload {
+        params: vec![("openid.mode".into(), "cancel".into())],
+    };
+
+    let response = app
+        .router
+        .oneshot(
+            Request::builder()
+                .uri("/auth/steam/callback")
+                .method("POST")
+                .header("Content-Type", "application/json")
+                .body(Body::from(serde_json::to_vec(&payload).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+}

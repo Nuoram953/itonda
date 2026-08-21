@@ -4,7 +4,7 @@ use axum::{
     Json,
     extract::{Query, State},
     http::HeaderMap,
-    response::{Html, IntoResponse, Redirect, Response},
+    response::{IntoResponse, Redirect, Response},
 };
 use itonda_domain::storefronts::{
     auth::{StorefrontAuthenticator, steam::SteamAuthenticator},
@@ -16,7 +16,10 @@ use tracing::instrument;
 
 use crate::{
     api::{
-        auth::schemas::{AuthActionResponse, AuthUrlResponse, StorefrontAuthStatusResponse},
+        auth::schemas::{
+            AuthActionResponse, AuthUrlResponse, SteamCallbackPayload,
+            StorefrontAuthStatusResponse,
+        },
         error::ApiError,
     },
     state::AppState,
@@ -25,6 +28,7 @@ use crate::{
 #[derive(Debug, Deserialize)]
 pub struct LoginQuery {
     pub redirect: Option<bool>,
+    pub return_url: Option<String>,
 }
 
 #[utoipa::path(
@@ -41,22 +45,24 @@ pub async fn steam_login(
     headers: HeaderMap,
     Query(query): Query<LoginQuery>,
 ) -> Response {
-    let host = headers
-        .get("host")
+    // Determine frontend origin from referer/origin or fallback to localhost
+    let default_origin = headers
+        .get("origin")
+        .or_else(|| headers.get("referer"))
         .and_then(|h| h.to_str().ok())
-        .unwrap_or("localhost:3005");
+        .and_then(|url_str| url::Url::parse(url_str).ok())
+        .map(|u| u.origin().ascii_serialization())
+        .unwrap_or_else(|| "http://localhost:5173".to_string());
 
-    let protocol = if headers.contains_key("x-forwarded-proto") {
-        headers
-            .get("x-forwarded-proto")
-            .and_then(|p| p.to_str().ok())
-            .unwrap_or("http")
+    let return_to = query
+        .return_url
+        .unwrap_or_else(|| format!("{default_origin}/auth/callback/steam"));
+
+    let realm = if let Ok(u) = url::Url::parse(&return_to) {
+        format!("{}/", u.origin().ascii_serialization())
     } else {
-        "http"
+        format!("{default_origin}/")
     };
-
-    let realm = format!("{protocol}://{host}/");
-    let return_to = format!("{protocol}://{host}/api/v1/auth/steam/callback");
 
     let authenticator = SteamAuthenticator::new();
     let auth_url = authenticator.generate_auth_url(&return_to, &realm);
@@ -69,97 +75,57 @@ pub async fn steam_login(
 }
 
 #[utoipa::path(
-    get,
+    post,
     path = "/auth/steam/callback",
+    request_body = SteamCallbackPayload,
     responses(
-        (status = 200, description = "Sends message to opener and closes popup"),
+        (status = 200, body = StorefrontAuthStatusResponse),
+        (status = 400, description = "OpenID signature validation failed"),
     )
 )]
 #[instrument(skip(state))]
 pub async fn steam_callback(
     State(state): State<AppState>,
-    Query(params): Query<Vec<(String, String)>>,
-) -> Response {
+    Json(payload): Json<SteamCallbackPayload>,
+) -> Result<Json<StorefrontAuthStatusResponse>, ApiError> {
     let authenticator = SteamAuthenticator::new();
+    let profile = authenticator.verify_callback(&payload.params).await?;
+    let steam_id = profile.external_id;
 
-    match authenticator.verify_callback(&params).await {
-        Ok(profile) => {
-            let steam_id = profile.external_id;
+    // Fetch player summary (persona name & avatar)
+    let secrets = state.secrets.get().await;
+    let steam_client = SteamClient::new(&secrets.storefronts.steam.api_key);
+    let summary = steam_client
+        .get_player_summary(&steam_id)
+        .await
+        .unwrap_or(None);
 
-            // Fetch player summary (persona name & avatar)
-            let secrets = state.secrets.get().await;
-            let steam_client = SteamClient::new(&secrets.storefronts.steam.api_key);
-            let summary = steam_client
-                .get_player_summary(&steam_id)
-                .await
-                .unwrap_or(None);
+    let account_name = summary.as_ref().and_then(|s| s.personaname.clone());
+    let avatar_url = summary
+        .as_ref()
+        .and_then(|s| s.avatarfull.clone().or_else(|| s.avatar.clone()));
 
-            let account_name = summary.as_ref().and_then(|s| s.personaname.clone());
-            let avatar_url = summary
-                .as_ref()
-                .and_then(|s| s.avatarfull.clone().or_else(|| s.avatar.clone()));
+    state
+        .secrets
+        .update(|s| {
+            s.storefronts.steam.steam_id = steam_id.clone();
+            s.storefronts.steam.account_name = account_name.clone();
+            s.storefronts.steam.avatar_url = avatar_url.clone();
+        })
+        .await?;
 
-            if let Err(e) = state
-                .secrets
-                .update(|s| {
-                    s.storefronts.steam.steam_id = steam_id.clone();
-                    s.storefronts.steam.account_name = account_name.clone();
-                    s.storefronts.steam.avatar_url = avatar_url.clone();
-                })
-                .await
-            {
-                tracing::error!("Failed to update secrets with Steam ID: {e}");
-                let html = r#"<!DOCTYPE html><html><head><meta charset="utf-8"><title>Steam Auth</title></head><body><script>
-if (window.opener) {
-  window.opener.postMessage({ type: 'STEAM_AUTH_ERROR', error: 'Failed to save Steam credentials' }, '*');
-}
-window.close();
-</script></body></html>"#;
-                return Html(html).into_response();
-            }
+    state.storefronts.register(Arc::new(SteamStorefront::new(
+        secrets.storefronts.steam.api_key,
+        steam_id.clone(),
+    )));
 
-            state.storefronts.register(Arc::new(SteamStorefront::new(
-                secrets.storefronts.steam.api_key,
-                steam_id.clone(),
-            )));
-
-            let js_name = account_name.as_deref().unwrap_or("").replace('\'', "\\'");
-            let js_avatar = avatar_url.as_deref().unwrap_or("").replace('\'', "\\'");
-
-            let html = format!(
-                r#"<!DOCTYPE html><html><head><meta charset="utf-8"><title>Steam Auth</title></head><body><script>
-if (window.opener) {{
-  window.opener.postMessage({{
-    type: 'STEAM_AUTH_SUCCESS',
-    steamId: '{steam_id}',
-    accountName: '{js_name}',
-    avatarUrl: '{js_avatar}'
-  }}, '*');
-}}
-window.close();
-</script></body></html>"#
-            );
-
-            Html(html).into_response()
-        }
-        Err(e) => {
-            tracing::warn!("Steam OpenID verification failed: {e}");
-            let error_msg = e.to_string().replace('\'', "\\'");
-            let html = format!(
-                r#"<!DOCTYPE html><html><head><meta charset="utf-8"><title>Steam Auth</title></head><body><script>
-if (window.opener) {{
-  window.opener.postMessage({{
-    type: 'STEAM_AUTH_ERROR',
-    error: '{error_msg}'
-  }}, '*');
-}}
-window.close();
-</script></body></html>"#
-            );
-
-            Html(html).into_response()
-        }
-    }
+    Ok(Json(StorefrontAuthStatusResponse {
+        storefront: StorefrontId::Steam,
+        connected: true,
+        steam_id: Some(steam_id),
+        account_name,
+        avatar_url,
+    }))
 }
 
 #[utoipa::path(
