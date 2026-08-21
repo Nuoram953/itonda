@@ -10,9 +10,10 @@ use crate::{
     },
 };
 
-mod client;
+pub mod auth;
+pub mod client;
 mod mapper;
-mod models;
+pub mod models;
 
 #[cfg(test)]
 mod tests;

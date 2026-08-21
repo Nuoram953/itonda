@@ -22,6 +22,7 @@ async-trait = {workspace=true}
 http = {workspace=true}
 sysinfo = { workspace = true }
 
+url = "2"
 reqwest = { workspace=true, features = ["json"] }
 reqwest-middleware = {workspace=true}
 reqwest-tracing ={workspace=true}

@@ -59,7 +59,7 @@ pub fn discovered_game(title: &str) -> DiscoveredMedia {
 }
 
 fn test_storefront_registry(storefront: Arc<dyn GameLibraryProvider>) -> StorefrontRegistry {
-    let mut registry = StorefrontRegistry::new();
+    let registry = StorefrontRegistry::new();
 
     registry.register(storefront);
 
