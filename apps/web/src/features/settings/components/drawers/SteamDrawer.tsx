@@ -1,5 +1,11 @@
 import { useEffect } from "react";
-import { Gamepad2, ExternalLink } from "lucide-react";
+import {
+  Gamepad2,
+  ExternalLink,
+  CheckCircle2,
+  LogIn,
+  Unlink,
+} from "lucide-react";
 import { useForm } from "@tanstack/react-form";
 import {
   Sheet,
@@ -12,12 +18,14 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { SettingRow } from "../cards/SettingRow";
 import { SecretInput } from "../forms/SecretInput";
 import { useConfig } from "../../api/get-config";
 import { usePatchConfig } from "../../api/patch-config";
 import { useAutoSave } from "../../hooks/use-auto-save";
+import { useDisconnectSteam } from "../../api/auth";
 
 type SteamDrawerProps = {
   open: boolean;
@@ -27,6 +35,7 @@ type SteamDrawerProps = {
 export function SteamDrawer({ open, onOpenChange }: SteamDrawerProps) {
   const { data: config } = useConfig();
   const patchMutation = usePatchConfig();
+  const disconnectMutation = useDisconnectSteam();
 
   const steamSettings = config?.settings?.metadata?.steam;
   const steamSecrets = config?.secrets?.storefronts?.steam;
@@ -79,6 +88,42 @@ export function SteamDrawer({ open, onOpenChange }: SteamDrawerProps) {
     }
   }, [config, form]);
 
+  // OpenID Message listener from popup
+  useEffect(() => {
+    const handleAuthMessage = (event: MessageEvent) => {
+      if (event.data?.type === "STEAM_AUTH_SUCCESS" && event.data?.steamId) {
+        form.setFieldValue("steamId", event.data.steamId);
+        triggerSave(true);
+      }
+    };
+
+    window.addEventListener("message", handleAuthMessage);
+    return () => window.removeEventListener("message", handleAuthMessage);
+  }, [form, triggerSave]);
+
+  const handleSteamOpenIdLogin = () => {
+    const width = 800;
+    const height = 600;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+
+    const serverUrl =
+      import.meta.env.VITE_SERVER_URL ||
+      `${window.location.protocol}//${window.location.hostname}:3005`;
+
+    window.open(
+      `${serverUrl}/auth/steam/login`,
+      "steam_openid_login",
+      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`,
+    );
+  };
+
+  const handleDisconnect = async () => {
+    await disconnectMutation.mutateAsync();
+    form.setFieldValue("steamId", "");
+    triggerSave(true);
+  };
+
   return (
     <Sheet
       open={open}
@@ -103,7 +148,7 @@ export function SteamDrawer({ open, onOpenChange }: SteamDrawerProps) {
                 Steam Integration
               </SheetTitle>
               <SheetDescription className="text-xs text-text-muted mt-0.5">
-                Configure your Steam Web API credentials and synchronization
+                Configure your Steam OpenID authentication and synchronization
                 preferences.
               </SheetDescription>
             </div>
@@ -111,160 +156,227 @@ export function SteamDrawer({ open, onOpenChange }: SteamDrawerProps) {
         </SheetHeader>
 
         <form.Subscribe
-          selector={(state) => ({ enabled: state.values.enabled })}
-          children={({ enabled }) => (
-            <div className="flex-1 overflow-y-auto p-6 space-y-5">
-              <form.Field
-                name="enabled"
-                children={(field) => (
-                  <SettingRow
-                    label="Enable Steam Integration"
-                    description="Allow Itonda to communicate with Steam and index owned games."
-                  >
-                    <Switch
-                      checked={field.state.value}
-                      onCheckedChange={(checked) => {
-                        field.handleChange(checked);
-                        triggerSave(true);
-                      }}
-                      aria-label="Toggle Steam Enabled"
-                    />
-                  </SettingRow>
-                )}
-              />
+          selector={(state) => ({
+            enabled: state.values.enabled,
+            steamId: state.values.steamId,
+          })}
+          children={({ enabled, steamId }) => {
+            const isConnected = !!steamId && steamId !== "0";
 
-              <Separator className="bg-white/5" />
-
-              <div className="space-y-3 pt-2">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-text-muted/70">
-                  Auth
-                </h4>
-
-                <form.Field
-                  name="apiKey"
-                  children={(field) => (
-                    <SettingRow
-                      label="Steam Web API Key"
-                      description="Required to query storefront details, owned games, and player achievements."
-                      layout="vertical"
-                      htmlFor="drawer-steam-api-key"
-                    >
-                      <SecretInput
-                        id="drawer-steam-api-key"
-                        value={field.state.value}
-                        onChange={(apiKey) => {
-                          field.handleChange(apiKey);
-                          triggerSave(false);
+            return (
+              <div className="flex-1 overflow-y-auto p-6 space-y-5">
+                <SettingRow
+                  label="Enable Steam Integration"
+                  description="Allow Itonda to communicate with Steam and index owned games."
+                >
+                  <form.Field
+                    name="enabled"
+                    children={(field) => (
+                      <Switch
+                        checked={field.state.value}
+                        onCheckedChange={(checked) => {
+                          field.handleChange(checked);
+                          triggerSave(true);
                         }}
-                        placeholder="e.g. 4B8A9C123..."
-                        portalUrl="https://steamcommunity.com/dev/apikey"
-                        portalLabel="Get Steam API key"
-                        disabled={!enabled}
+                        aria-label="Toggle Steam Enabled"
                       />
-                    </SettingRow>
-                  )}
-                />
+                    )}
+                  />
+                </SettingRow>
 
-                <form.Field
-                  name="steamId"
-                  validators={{
-                    onChange: ({ value }) => {
-                      if (value && !/^\d+$/.test(value.trim())) {
-                        return "Steam ID must contain numbers only";
-                      }
-                      return undefined;
-                    },
-                  }}
-                  children={(field) => (
-                    <SettingRow
-                      label="Steam ID (64-bit)"
-                      description="Your 17-digit Steam community ID (e.g. 76561198000000000)."
-                      layout="vertical"
-                      htmlFor="drawer-steam-id"
-                    >
-                      <div className="space-y-1.5 w-full">
-                        <Input
-                          id="drawer-steam-id"
+                <Separator className="bg-white/5" />
+
+                {/* Steam OpenID Authentication Box */}
+                <div className="rounded-xl border border-white/10 bg-surface-raised/40 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-semibold text-foreground">
+                        Steam OpenID Authentication
+                      </h4>
+                      <p className="text-xs text-text-muted mt-0.5">
+                        Authenticate securely via Steam to automatically detect
+                        your SteamID.
+                      </p>
+                    </div>
+
+                    {isConnected ? (
+                      <Badge
+                        variant="outline"
+                        className="border-success/30 bg-success/10 text-success text-[11px] gap-1 px-2.5 py-0.5"
+                      >
+                        <CheckCircle2 className="w-3 h-3" />
+                        Connected
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="outline"
+                        className="border-white/10 bg-white/5 text-text-muted text-[11px]"
+                      >
+                        Not Connected
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="pt-1 flex items-center gap-3">
+                    {isConnected ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleDisconnect}
+                        disabled={!enabled || disconnectMutation.isPending}
+                        className="text-xs gap-1.5 border-destructive/30 text-destructive hover:bg-destructive/10 cursor-pointer"
+                      >
+                        <Unlink className="w-3.5 h-3.5" />
+                        <span>Disconnect Steam</span>
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="default"
+                        size="sm"
+                        onClick={handleSteamOpenIdLogin}
+                        disabled={!enabled}
+                        className="text-xs gap-1.5 shadow-md cursor-pointer bg-[#171a21] hover:bg-[#2a475e] text-white border border-white/10"
+                      >
+                        <LogIn className="w-3.5 h-3.5" />
+                        <span>Sign in with Steam</span>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-2">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-text-muted/70">
+                    Credentials & Advanced Config
+                  </h4>
+
+                  <form.Field
+                    name="steamId"
+                    validators={{
+                      onChange: ({ value }) => {
+                        if (value && !/^\d+$/.test(value.trim())) {
+                          return "Steam ID must contain numbers only";
+                        }
+                        return undefined;
+                      },
+                    }}
+                    children={(field) => (
+                      <SettingRow
+                        label="Steam ID (64-bit)"
+                        description="Your 17-digit Steam community ID (automatically filled via OpenID)."
+                        layout="vertical"
+                        htmlFor="drawer-steam-id"
+                      >
+                        <div className="space-y-1.5 w-full">
+                          <Input
+                            id="drawer-steam-id"
+                            value={field.state.value}
+                            onChange={(e) => {
+                              field.handleChange(e.target.value);
+                              triggerSave(false);
+                            }}
+                            placeholder="76561198..."
+                            disabled={!enabled}
+                            className="font-mono text-xs bg-surface/80 border-white/10 text-foreground focus-visible:border-primary/50"
+                          />
+                          {field.state.meta.errors?.length ? (
+                            <p className="text-[11px] text-destructive">
+                              {field.state.meta.errors.join(", ")}
+                            </p>
+                          ) : null}
+                          <div className="flex items-center justify-between gap-2 text-xs">
+                            <a
+                              href="https://steamid.io/"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-primary hover:text-primary-hover hover:underline transition-colors cursor-pointer"
+                            >
+                              <span>Find your SteamID64</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </div>
+                        </div>
+                      </SettingRow>
+                    )}
+                  />
+
+                  <form.Field
+                    name="apiKey"
+                    children={(field) => (
+                      <SettingRow
+                        label="Steam Web API Key"
+                        description="Optional key for querying private libraries and extended playtime/achievements data."
+                        layout="vertical"
+                        htmlFor="drawer-steam-api-key"
+                      >
+                        <SecretInput
+                          id="drawer-steam-api-key"
                           value={field.state.value}
-                          onChange={(e) => {
-                            field.handleChange(e.target.value);
+                          onChange={(apiKey) => {
+                            field.handleChange(apiKey);
                             triggerSave(false);
                           }}
-                          placeholder="76561198..."
+                          placeholder="e.g. 4B8A9C123..."
+                          portalUrl="https://steamcommunity.com/dev/apikey"
+                          portalLabel="Get Steam API key"
                           disabled={!enabled}
-                          className="font-mono text-xs bg-surface/80 border-white/10 text-foreground focus-visible:border-primary/50"
                         />
-                        {field.state.meta.errors?.length ? (
-                          <p className="text-[11px] text-destructive">
-                            {field.state.meta.errors.join(", ")}
-                          </p>
-                        ) : null}
-                        <div className="flex items-center justify-between gap-2 text-xs">
-                          <a
-                            href="https://steamid.io/"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-primary hover:text-primary-hover hover:underline transition-colors cursor-pointer"
-                          >
-                            <span>Find your SteamID64</span>
-                            <ExternalLink className="w-3 h-3" />
-                          </a>
-                        </div>
-                      </div>
-                    </SettingRow>
-                  )}
-                />
+                      </SettingRow>
+                    )}
+                  />
+                </div>
+
+                <Separator className="bg-white/5" />
+
+                <div className="space-y-3 pt-2">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-text-muted/70">
+                    Sync Preferences
+                  </h4>
+
+                  <form.Field
+                    name="fetchPlaytime"
+                    children={(field) => (
+                      <SettingRow
+                        label="Sync Playtime & Last Played"
+                        description="Update played duration and recent session timestamps."
+                      >
+                        <Switch
+                          checked={field.state.value}
+                          disabled={!enabled}
+                          onCheckedChange={(checked) => {
+                            field.handleChange(checked);
+                            triggerSave(true);
+                          }}
+                          aria-label="Toggle Sync Playtime"
+                        />
+                      </SettingRow>
+                    )}
+                  />
+
+                  <form.Field
+                    name="fetchAchievements"
+                    children={(field) => (
+                      <SettingRow
+                        label="Fetch Achievements"
+                        description="Query unlocked achievements count for each game in library."
+                      >
+                        <Switch
+                          checked={field.state.value}
+                          disabled={!enabled}
+                          onCheckedChange={(checked) => {
+                            field.handleChange(checked);
+                            triggerSave(true);
+                          }}
+                          aria-label="Toggle Fetch Achievements"
+                        />
+                      </SettingRow>
+                    )}
+                  />
+                </div>
               </div>
-
-              <Separator className="bg-white/5" />
-
-              <div className="space-y-3 pt-2">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-text-muted/70">
-                  Sync Preferences
-                </h4>
-
-                <form.Field
-                  name="fetchPlaytime"
-                  children={(field) => (
-                    <SettingRow
-                      label="Sync Playtime & Last Played"
-                      description="Update played duration and recent session timestamps."
-                    >
-                      <Switch
-                        checked={field.state.value}
-                        disabled={!enabled}
-                        onCheckedChange={(checked) => {
-                          field.handleChange(checked);
-                          triggerSave(true);
-                        }}
-                        aria-label="Toggle Sync Playtime"
-                      />
-                    </SettingRow>
-                  )}
-                />
-
-                <form.Field
-                  name="fetchAchievements"
-                  children={(field) => (
-                    <SettingRow
-                      label="Fetch Achievements"
-                      description="Query unlocked achievements count for each game in library."
-                    >
-                      <Switch
-                        checked={field.state.value}
-                        disabled={!enabled}
-                        onCheckedChange={(checked) => {
-                          field.handleChange(checked);
-                          triggerSave(true);
-                        }}
-                        aria-label="Toggle Fetch Achievements"
-                      />
-                    </SettingRow>
-                  )}
-                />
-              </div>
-            </div>
-          )}
+            );
+          }}
         />
 
         <SheetFooter className="p-4 border-t border-white/10 bg-surface-raised/40 flex items-center justify-end gap-3">
@@ -285,5 +397,3 @@ export function SteamDrawer({ open, onOpenChange }: SteamDrawerProps) {
     </Sheet>
   );
 }
-
-

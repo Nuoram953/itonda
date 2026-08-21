@@ -160,3 +160,9 @@ impl From<itonda_domain::store::error::StoreError> for ApiError {
         ApiError::InternalServer
     }
 }
+
+impl From<itonda_domain::storefronts::auth::AuthError> for ApiError {
+    fn from(err: itonda_domain::storefronts::auth::AuthError) -> Self {
+        ApiError::Validation(err.to_string())
+    }
+}

@@ -34,10 +34,17 @@ use crate::api::{
         crate::api::agents::handlers::get_connected_agents,
         crate::api::config::handlers::get_config,
         crate::api::config::handlers::update_config,
+        crate::api::auth::handlers::steam_login,
+        crate::api::auth::handlers::steam_callback,
+        crate::api::auth::handlers::steam_status,
+        crate::api::auth::handlers::steam_disconnect,
     ),
 
     components(
         schemas(
+            crate::api::auth::schemas::StorefrontAuthStatusResponse,
+            crate::api::auth::schemas::AuthUrlResponse,
+            crate::api::auth::schemas::AuthActionResponse,
             MediaResponse,
             MediaQueryParams,
             MediaRefreshPayload,

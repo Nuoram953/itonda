@@ -1,10 +1,13 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 
 use crate::storefronts::{models::StorefrontId, traits::GameLibraryProvider};
 
 #[derive(Clone)]
 pub struct StorefrontRegistry {
-    providers: HashMap<StorefrontId, Arc<dyn GameLibraryProvider>>,
+    providers: Arc<RwLock<HashMap<StorefrontId, Arc<dyn GameLibraryProvider>>>>,
 }
 
 impl Default for StorefrontRegistry {
@@ -16,23 +19,30 @@ impl Default for StorefrontRegistry {
 impl StorefrontRegistry {
     pub fn new() -> Self {
         Self {
-            providers: HashMap::new(),
+            providers: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
-    pub fn register(&mut self, provider: Arc<dyn GameLibraryProvider>) {
-        self.providers.insert(provider.id(), provider);
+    pub fn register(&self, provider: Arc<dyn GameLibraryProvider>) {
+        self.providers
+            .write()
+            .unwrap()
+            .insert(provider.id(), provider);
+    }
+
+    pub fn remove(&self, id: StorefrontId) -> Option<Arc<dyn GameLibraryProvider>> {
+        self.providers.write().unwrap().remove(&id)
     }
 
     pub fn get(&self, id: StorefrontId) -> Option<Arc<dyn GameLibraryProvider>> {
-        self.providers.get(&id).cloned()
+        self.providers.read().unwrap().get(&id).cloned()
     }
 
     pub fn get_all(&self) -> HashMap<StorefrontId, Arc<dyn GameLibraryProvider>> {
-        self.providers.clone()
+        self.providers.read().unwrap().clone()
     }
 
     pub fn available(&self) -> Vec<StorefrontId> {
-        self.providers.keys().copied().collect()
+        self.providers.read().unwrap().keys().copied().collect()
     }
 }

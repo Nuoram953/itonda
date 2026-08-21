@@ -1281,6 +1281,7 @@ dependencies = [
  "tokio",
  "toml",
  "tracing",
+ "url",
  "utoipa",
  "uuid",
  "wiremock",

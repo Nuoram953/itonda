@@ -173,12 +173,14 @@ async fn init_server(state: AppState) -> anyhow::Result<()> {
 async fn init_storefronts(secrets: &SecretsManager) -> anyhow::Result<StorefrontRegistry> {
     let secrets = secrets.get().await;
 
-    let mut registry = StorefrontRegistry::new();
+    let registry = StorefrontRegistry::new();
 
-    registry.register(Arc::new(SteamStorefront::new(
-        secrets.storefronts.steam.api_key,
-        secrets.storefronts.steam.steam_id,
-    )));
+    if !secrets.storefronts.steam.steam_id.is_empty() && secrets.storefronts.steam.steam_id != "0" {
+        registry.register(Arc::new(SteamStorefront::new(
+            secrets.storefronts.steam.api_key,
+            secrets.storefronts.steam.steam_id,
+        )));
+    }
 
     Ok(registry)
 }
