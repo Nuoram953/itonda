@@ -9,7 +9,7 @@ use axum::{
 use itonda_domain::storefronts::{
     auth::{StorefrontAuthenticator, steam::SteamAuthenticator},
     models::StorefrontId,
-    steam::SteamStorefront,
+    steam::{SteamStorefront, client::SteamClient},
 };
 use serde::Deserialize;
 use tracing::instrument;
@@ -25,7 +25,6 @@ use crate::{
 #[derive(Debug, Deserialize)]
 pub struct LoginQuery {
     pub redirect: Option<bool>,
-    pub return_url: Option<String>,
 }
 
 #[utoipa::path(
@@ -57,23 +56,7 @@ pub async fn steam_login(
     };
 
     let realm = format!("{protocol}://{host}/");
-
-    let client_redirect = query
-        .return_url
-        .or_else(|| {
-            headers
-                .get("referer")
-                .and_then(|r| r.to_str().ok())
-                .map(|s| s.to_string())
-        })
-        .unwrap_or_else(|| "/settings".to_string());
-
-    let callback_base = format!("{protocol}://{host}/api/v1/auth/steam/callback");
-    let return_to = format!(
-        "{}?client_redirect={}",
-        callback_base,
-        url::form_urlencoded::byte_serialize(client_redirect.as_bytes()).collect::<String>()
-    );
+    let return_to = format!("{protocol}://{host}/api/v1/auth/steam/callback");
 
     let authenticator = SteamAuthenticator::new();
     let auth_url = authenticator.generate_auth_url(&return_to, &realm);
@@ -97,55 +80,63 @@ pub async fn steam_callback(
     State(state): State<AppState>,
     Query(params): Query<Vec<(String, String)>>,
 ) -> Response {
-    let client_redirect = params
-        .iter()
-        .find(|(k, _)| k == "client_redirect")
-        .map(|(_, v)| v.clone())
-        .unwrap_or_else(|| "/settings".to_string());
-
-    let target_base = client_redirect.split('?').next().unwrap_or("/settings");
-
     let authenticator = SteamAuthenticator::new();
 
     match authenticator.verify_callback(&params).await {
         Ok(profile) => {
             let steam_id = profile.external_id;
 
+            // Fetch player summary (persona name & avatar)
+            let secrets = state.secrets.get().await;
+            let steam_client = SteamClient::new(&secrets.storefronts.steam.api_key);
+            let summary = steam_client
+                .get_player_summary(&steam_id)
+                .await
+                .unwrap_or(None);
+
+            let account_name = summary.as_ref().and_then(|s| s.personaname.clone());
+            let avatar_url = summary
+                .as_ref()
+                .and_then(|s| s.avatarfull.clone().or_else(|| s.avatar.clone()));
+
             if let Err(e) = state
                 .secrets
                 .update(|s| {
                     s.storefronts.steam.steam_id = steam_id.clone();
+                    s.storefronts.steam.account_name = account_name.clone();
+                    s.storefronts.steam.avatar_url = avatar_url.clone();
                 })
                 .await
             {
                 tracing::error!("Failed to update secrets with Steam ID: {e}");
-                let html = format!(
-                    r#"<!DOCTYPE html><html><head><meta charset="utf-8"><title>Steam Auth</title></head><body><script>
-if (window.opener) {{
-  window.opener.postMessage({{ type: 'STEAM_AUTH_ERROR', error: 'Failed to save Steam credentials' }}, '*');
-  window.close();
-}} else {{
-  window.location.href = '{target_base}?auth=error&drawer=steam&error=Failed+to+save+credentials';
-}}
-</script></body></html>"#
-                );
+                let html = r#"<!DOCTYPE html><html><head><meta charset="utf-8"><title>Steam Auth</title></head><body><script>
+if (window.opener) {
+  window.opener.postMessage({ type: 'STEAM_AUTH_ERROR', error: 'Failed to save Steam credentials' }, '*');
+}
+window.close();
+</script></body></html>"#;
                 return Html(html).into_response();
             }
 
-            let secrets = state.secrets.get().await;
             state.storefronts.register(Arc::new(SteamStorefront::new(
                 secrets.storefronts.steam.api_key,
                 steam_id.clone(),
             )));
 
+            let js_name = account_name.as_deref().unwrap_or("").replace('\'', "\\'");
+            let js_avatar = avatar_url.as_deref().unwrap_or("").replace('\'', "\\'");
+
             let html = format!(
                 r#"<!DOCTYPE html><html><head><meta charset="utf-8"><title>Steam Auth</title></head><body><script>
 if (window.opener) {{
-  window.opener.postMessage({{ type: 'STEAM_AUTH_SUCCESS', steamId: '{steam_id}' }}, '*');
-  window.close();
-}} else {{
-  window.location.href = '{target_base}?auth=success&drawer=steam';
+  window.opener.postMessage({{
+    type: 'STEAM_AUTH_SUCCESS',
+    steamId: '{steam_id}',
+    accountName: '{js_name}',
+    avatarUrl: '{js_avatar}'
+  }}, '*');
 }}
+window.close();
 </script></body></html>"#
             );
 
@@ -157,11 +148,12 @@ if (window.opener) {{
             let html = format!(
                 r#"<!DOCTYPE html><html><head><meta charset="utf-8"><title>Steam Auth</title></head><body><script>
 if (window.opener) {{
-  window.opener.postMessage({{ type: 'STEAM_AUTH_ERROR', error: '{error_msg}' }}, '*');
-  window.close();
-}} else {{
-  window.location.href = '{target_base}?auth=error&drawer=steam';
+  window.opener.postMessage({{
+    type: 'STEAM_AUTH_ERROR',
+    error: '{error_msg}'
+  }}, '*');
 }}
+window.close();
 </script></body></html>"#
             );
 
@@ -185,12 +177,44 @@ pub async fn steam_status(
     let steam_id = secrets.storefronts.steam.steam_id;
     let connected = !steam_id.is_empty() && steam_id != "0";
 
+    let (account_name, avatar_url) = if connected {
+        if secrets.storefronts.steam.account_name.is_none()
+            || secrets.storefronts.steam.avatar_url.is_none()
+        {
+            let steam_client = SteamClient::new(&secrets.storefronts.steam.api_key);
+            if let Ok(Some(summary)) = steam_client.get_player_summary(&steam_id).await {
+                let name = summary.personaname;
+                let avatar = summary.avatarfull.or(summary.avatar);
+                let _ = state
+                    .secrets
+                    .update(|s| {
+                        s.storefronts.steam.account_name = name.clone();
+                        s.storefronts.steam.avatar_url = avatar.clone();
+                    })
+                    .await;
+                (name, avatar)
+            } else {
+                (
+                    secrets.storefronts.steam.account_name,
+                    secrets.storefronts.steam.avatar_url,
+                )
+            }
+        } else {
+            (
+                secrets.storefronts.steam.account_name,
+                secrets.storefronts.steam.avatar_url,
+            )
+        }
+    } else {
+        (None, None)
+    };
+
     Ok(Json(StorefrontAuthStatusResponse {
         storefront: StorefrontId::Steam,
         connected,
         steam_id: if connected { Some(steam_id) } else { None },
-        account_name: None,
-        avatar_url: None,
+        account_name,
+        avatar_url,
     }))
 }
 
@@ -209,6 +233,8 @@ pub async fn steam_disconnect(
         .secrets
         .update(|s| {
             s.storefronts.steam.steam_id = String::new();
+            s.storefronts.steam.account_name = None;
+            s.storefronts.steam.avatar_url = None;
         })
         .await?;
 

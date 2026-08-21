@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   LogIn,
   Unlink,
+  User,
 } from "lucide-react";
 import { useForm } from "@tanstack/react-form";
 import {
@@ -25,8 +26,9 @@ import { SecretInput } from "../forms/SecretInput";
 import { useConfig } from "../../api/get-config";
 import { usePatchConfig } from "../../api/patch-config";
 import { useAutoSave } from "../../hooks/use-auto-save";
-import { useDisconnectSteam } from "../../api/auth";
+import { useDisconnectSteam, useSteamAuthStatus } from "../../api/auth";
 import { useNotification } from "@/hooks/use-notification";
+import { useQueryClient } from "@tanstack/react-query";
 
 type SteamDrawerProps = {
   open: boolean;
@@ -35,9 +37,11 @@ type SteamDrawerProps = {
 
 export function SteamDrawer({ open, onOpenChange }: SteamDrawerProps) {
   const { notify } = useNotification();
+  const queryClient = useQueryClient();
   const { data: config } = useConfig();
   const patchMutation = usePatchConfig();
   const disconnectMutation = useDisconnectSteam();
+  const { data: authStatus } = useSteamAuthStatus();
 
   const steamSettings = config?.settings?.metadata?.steam;
   const steamSecrets = config?.secrets?.storefronts?.steam;
@@ -96,9 +100,15 @@ export function SteamDrawer({ open, onOpenChange }: SteamDrawerProps) {
       if (event.data?.type === "STEAM_AUTH_SUCCESS" && event.data?.steamId) {
         form.setFieldValue("steamId", event.data.steamId);
         triggerSave(true);
+        queryClient.invalidateQueries({
+          queryKey: ["auth", "steam", "status"],
+        });
+        queryClient.invalidateQueries({ queryKey: ["config"] });
         notify.success({
           title: "Steam Connected",
-          description: "Successfully authenticated with Steam.",
+          description: event.data.accountName
+            ? `Welcome, ${event.data.accountName}!`
+            : "Successfully authenticated with Steam.",
         });
       } else if (event.data?.type === "STEAM_AUTH_ERROR") {
         notify.error({
@@ -111,7 +121,7 @@ export function SteamDrawer({ open, onOpenChange }: SteamDrawerProps) {
 
     window.addEventListener("message", handleAuthMessage);
     return () => window.removeEventListener("message", handleAuthMessage);
-  }, [form, notify, triggerSave]);
+  }, [form, notify, queryClient, triggerSave]);
 
   const handleSteamOpenIdLogin = () => {
     const width = 800;
@@ -148,6 +158,9 @@ export function SteamDrawer({ open, onOpenChange }: SteamDrawerProps) {
       });
     }
   };
+
+  const accountName = authStatus?.account_name ?? steamSecrets?.account_name;
+  const avatarUrl = authStatus?.avatar_url ?? steamSecrets?.avatar_url;
 
   return (
     <Sheet
@@ -211,64 +224,85 @@ export function SteamDrawer({ open, onOpenChange }: SteamDrawerProps) {
 
                 <Separator className="bg-white/5" />
 
-                {/* Steam OpenID Authentication Box */}
+                {/* Steam OpenID Authentication & Profile Card */}
                 <div className="rounded-xl border border-white/10 bg-surface-raised/40 p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-sm font-semibold text-foreground">
-                        Steam OpenID Authentication
-                      </h4>
-                      <p className="text-xs text-text-muted mt-0.5">
-                        Authenticate securely via Steam to automatically detect
-                        your SteamID.
-                      </p>
-                    </div>
+                  {isConnected ? (
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-3.5">
+                        {avatarUrl ? (
+                          <img
+                            src={avatarUrl}
+                            alt={accountName || "Steam Avatar"}
+                            className="size-12 rounded-full border-2 border-primary/30 object-cover shadow-md"
+                          />
+                        ) : (
+                          <div className="size-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-inner">
+                            <User className="w-6 h-6" />
+                          </div>
+                        )}
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-foreground">
+                              {accountName || "Steam User"}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-text-muted">
+                            <span className="font-mono text-[11px]">
+                              {steamId}
+                            </span>
+                            <span>•</span>
+                            <a
+                              href={`https://steamcommunity.com/profiles/${steamId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-0.5 text-primary hover:text-primary-hover hover:underline transition-colors cursor-pointer"
+                            >
+                              <span>Profile</span>
+                              <ExternalLink className="w-2.5 h-2.5" />
+                            </a>
+                          </div>
+                        </div>
+                      </div>
 
-                    {isConnected ? (
-                      <Badge
-                        variant="outline"
-                        className="border-success/30 bg-success/10 text-success text-[11px] gap-1 px-2.5 py-0.5"
-                      >
-                        <CheckCircle2 className="w-3 h-3" />
-                        Connected
-                      </Badge>
-                    ) : (
-                      <Badge
-                        variant="outline"
-                        className="border-white/10 bg-white/5 text-text-muted text-[11px]"
-                      >
-                        Not Connected
-                      </Badge>
-                    )}
-                  </div>
-
-                  <div className="pt-1 flex items-center gap-3">
-                    {isConnected ? (
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         onClick={handleDisconnect}
                         disabled={!enabled || disconnectMutation.isPending}
-                        className="text-xs gap-1.5 border-destructive/30 text-destructive hover:bg-destructive/10 cursor-pointer"
+                        className="text-xs gap-1.5 border-destructive/30 text-destructive hover:bg-destructive/10 cursor-pointer self-start sm:self-auto"
                       >
                         <Unlink className="w-3.5 h-3.5" />
-                        <span>Disconnect Steam</span>
+                        <span>Disconnect</span>
                       </Button>
-                    ) : (
+                    </div>
+                  ) : (
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-semibold text-foreground">
+                            Steam OpenID Authentication
+                          </h4>
+                        </div>
+                        <p className="text-xs text-text-muted mt-0.5">
+                          Authenticate securely via Steam to automatically
+                          detect your SteamID and profile.
+                        </p>
+                      </div>
+
                       <Button
                         type="button"
                         variant="default"
                         size="sm"
                         onClick={handleSteamOpenIdLogin}
                         disabled={!enabled}
-                        className="text-xs gap-1.5 shadow-md cursor-pointer bg-[#171a21] hover:bg-[#2a475e] text-white border border-white/10"
+                        className="text-xs gap-1.5 shadow-md cursor-pointer bg-[#171a21] hover:bg-[#2a475e] text-white border border-white/10 whitespace-nowrap self-start sm:self-auto"
                       >
                         <LogIn className="w-3.5 h-3.5" />
                         <span>Sign in with Steam</span>
                       </Button>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-3 pt-2">

@@ -28,6 +28,8 @@ pub struct AssetStoreSettings {
 pub struct SteamSettings {
     pub api_key: String,
     pub steam_id: String,
+    pub account_name: Option<String>,
+    pub avatar_url: Option<String>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
@@ -73,6 +75,12 @@ impl SteamSettings {
     pub fn apply_patch(&mut self, patch: PatchSteamSecrets) {
         apply_secret_string(&mut self.api_key, patch.api_key);
         apply_secret_string(&mut self.steam_id, patch.steam_id);
+        if let Some(account_name) = patch.account_name {
+            self.account_name = Some(account_name);
+        }
+        if let Some(avatar_url) = patch.avatar_url {
+            self.avatar_url = Some(avatar_url);
+        }
     }
 }
 
@@ -115,6 +123,8 @@ pub struct PatchStorefrontsSettings {
 pub struct PatchSteamSecrets {
     pub api_key: Option<String>,
     pub steam_id: Option<String>,
+    pub account_name: Option<String>,
+    pub avatar_url: Option<String>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
