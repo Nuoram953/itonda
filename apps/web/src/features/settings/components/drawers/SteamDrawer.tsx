@@ -26,6 +26,7 @@ import { useConfig } from "../../api/get-config";
 import { usePatchConfig } from "../../api/patch-config";
 import { useAutoSave } from "../../hooks/use-auto-save";
 import { useDisconnectSteam } from "../../api/auth";
+import { useNotification } from "@/hooks/use-notification";
 
 type SteamDrawerProps = {
   open: boolean;
@@ -33,6 +34,7 @@ type SteamDrawerProps = {
 };
 
 export function SteamDrawer({ open, onOpenChange }: SteamDrawerProps) {
+  const { notify } = useNotification();
   const { data: config } = useConfig();
   const patchMutation = usePatchConfig();
   const disconnectMutation = useDisconnectSteam();
@@ -88,18 +90,28 @@ export function SteamDrawer({ open, onOpenChange }: SteamDrawerProps) {
     }
   }, [config, form]);
 
-  // OpenID Message listener from popup
+  // OpenID Popup Message listener
   useEffect(() => {
     const handleAuthMessage = (event: MessageEvent) => {
       if (event.data?.type === "STEAM_AUTH_SUCCESS" && event.data?.steamId) {
         form.setFieldValue("steamId", event.data.steamId);
         triggerSave(true);
+        notify.success({
+          title: "Steam Connected",
+          description: "Successfully authenticated with Steam.",
+        });
+      } else if (event.data?.type === "STEAM_AUTH_ERROR") {
+        notify.error({
+          title: "Steam Authentication Failed",
+          description:
+            event.data.error || "Could not verify Steam credentials.",
+        });
       }
     };
 
     window.addEventListener("message", handleAuthMessage);
     return () => window.removeEventListener("message", handleAuthMessage);
-  }, [form, triggerSave]);
+  }, [form, notify, triggerSave]);
 
   const handleSteamOpenIdLogin = () => {
     const width = 800;
@@ -119,9 +131,22 @@ export function SteamDrawer({ open, onOpenChange }: SteamDrawerProps) {
   };
 
   const handleDisconnect = async () => {
-    await disconnectMutation.mutateAsync();
-    form.setFieldValue("steamId", "");
-    triggerSave(true);
+    try {
+      await disconnectMutation.mutateAsync();
+      form.setFieldValue("steamId", "");
+      triggerSave(true);
+      notify.info({
+        title: "Steam Disconnected",
+        description: "Your Steam account has been unlinked.",
+      });
+    } catch (e: unknown) {
+      const msg =
+        e instanceof Error ? e.message : "Could not unlink Steam account.";
+      notify.error({
+        title: "Disconnect Failed",
+        description: msg,
+      });
+    }
   };
 
   return (

@@ -3,14 +3,11 @@ use std::sync::Arc;
 use axum::{
     Json,
     extract::{Query, State},
-    http::{HeaderMap, StatusCode},
+    http::HeaderMap,
     response::{Html, IntoResponse, Redirect, Response},
 };
 use itonda_domain::storefronts::{
-    auth::{
-        StorefrontAuthenticator,
-        steam::SteamAuthenticator,
-    },
+    auth::{StorefrontAuthenticator, steam::SteamAuthenticator},
     models::StorefrontId,
     steam::SteamStorefront,
 };
@@ -28,6 +25,7 @@ use crate::{
 #[derive(Debug, Deserialize)]
 pub struct LoginQuery {
     pub redirect: Option<bool>,
+    pub return_url: Option<String>,
 }
 
 #[utoipa::path(
@@ -59,7 +57,23 @@ pub async fn steam_login(
     };
 
     let realm = format!("{protocol}://{host}/");
-    let return_to = format!("{protocol}://{host}/api/v1/auth/steam/callback");
+
+    let client_redirect = query
+        .return_url
+        .or_else(|| {
+            headers
+                .get("referer")
+                .and_then(|r| r.to_str().ok())
+                .map(|s| s.to_string())
+        })
+        .unwrap_or_else(|| "/settings".to_string());
+
+    let callback_base = format!("{protocol}://{host}/api/v1/auth/steam/callback");
+    let return_to = format!(
+        "{}?client_redirect={}",
+        callback_base,
+        url::form_urlencoded::byte_serialize(client_redirect.as_bytes()).collect::<String>()
+    );
 
     let authenticator = SteamAuthenticator::new();
     let auth_url = authenticator.generate_auth_url(&return_to, &realm);
@@ -75,8 +89,7 @@ pub async fn steam_login(
     get,
     path = "/auth/steam/callback",
     responses(
-        (status = 200, description = "Returns HTML completion script"),
-        (status = 400, description = "Authentication validation failed"),
+        (status = 200, description = "Sends message to opener and closes popup"),
     )
 )]
 #[instrument(skip(state))]
@@ -84,13 +97,20 @@ pub async fn steam_callback(
     State(state): State<AppState>,
     Query(params): Query<Vec<(String, String)>>,
 ) -> Response {
+    let client_redirect = params
+        .iter()
+        .find(|(k, _)| k == "client_redirect")
+        .map(|(_, v)| v.clone())
+        .unwrap_or_else(|| "/settings".to_string());
+
+    let target_base = client_redirect.split('?').next().unwrap_or("/settings");
+
     let authenticator = SteamAuthenticator::new();
 
     match authenticator.verify_callback(&params).await {
         Ok(profile) => {
             let steam_id = profile.external_id;
 
-            // Update configuration in secrets.toml
             if let Err(e) = state
                 .secrets
                 .update(|s| {
@@ -99,14 +119,19 @@ pub async fn steam_callback(
                 .await
             {
                 tracing::error!("Failed to update secrets with Steam ID: {e}");
-                return (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Html("<h2>Failed to save Steam credentials</h2>"),
-                )
-                    .into_response();
+                let html = format!(
+                    r#"<!DOCTYPE html><html><head><meta charset="utf-8"><title>Steam Auth</title></head><body><script>
+if (window.opener) {{
+  window.opener.postMessage({{ type: 'STEAM_AUTH_ERROR', error: 'Failed to save Steam credentials' }}, '*');
+  window.close();
+}} else {{
+  window.location.href = '{target_base}?auth=error&drawer=steam&error=Failed+to+save+credentials';
+}}
+</script></body></html>"#
+                );
+                return Html(html).into_response();
             }
 
-            // Register updated provider in StorefrontRegistry
             let secrets = state.secrets.get().await;
             state.storefronts.register(Arc::new(SteamStorefront::new(
                 secrets.storefronts.steam.api_key,
@@ -114,100 +139,33 @@ pub async fn steam_callback(
             )));
 
             let html = format!(
-                r#"<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Steam Authentication</title>
-  <style>
-    body {{
-      background-color: #0f172a;
-      color: #f8fafc;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
-    }}
-    .card {{
-      text-align: center;
-      background: #1e293b;
-      padding: 2rem;
-      border-radius: 1rem;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-      border: 1px solid rgba(255,255,255,0.1);
-    }}
-    h2 {{ margin-top: 0; color: #38bdf8; }}
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h2>Steam Connected!</h2>
-    <p>SteamID: {steam_id}</p>
-    <p>Closing window...</p>
-  </div>
-  <script>
-    try {{
-      if (window.opener) {{
-        window.opener.postMessage({{
-          type: 'STEAM_AUTH_SUCCESS',
-          storefront: 'steam',
-          steamId: '{steam_id}'
-        }}, '*');
-        setTimeout(() => window.close(), 600);
-      }} else {{
-        setTimeout(() => {{ window.location.href = '/settings?connected=steam'; }}, 1000);
-      }}
-    }} catch (e) {{
-      window.location.href = '/settings?connected=steam';
-    }}
-  </script>
-</body>
-</html>"#
+                r#"<!DOCTYPE html><html><head><meta charset="utf-8"><title>Steam Auth</title></head><body><script>
+if (window.opener) {{
+  window.opener.postMessage({{ type: 'STEAM_AUTH_SUCCESS', steamId: '{steam_id}' }}, '*');
+  window.close();
+}} else {{
+  window.location.href = '{target_base}?auth=success&drawer=steam';
+}}
+</script></body></html>"#
             );
 
             Html(html).into_response()
         }
         Err(e) => {
             tracing::warn!("Steam OpenID verification failed: {e}");
+            let error_msg = e.to_string().replace('\'', "\\'");
             let html = format!(
-                r#"<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Steam Authentication Failed</title>
-  <style>
-    body {{
-      background-color: #0f172a;
-      color: #f8fafc;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
-    }}
-    .card {{
-      text-align: center;
-      background: #1e293b;
-      padding: 2rem;
-      border-radius: 1rem;
-      border: 1px solid #ef4444;
-    }}
-    h2 {{ margin-top: 0; color: #ef4444; }}
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h2>Authentication Failed</h2>
-    <p>{e}</p>
-  </div>
-</body>
-</html>"#
+                r#"<!DOCTYPE html><html><head><meta charset="utf-8"><title>Steam Auth</title></head><body><script>
+if (window.opener) {{
+  window.opener.postMessage({{ type: 'STEAM_AUTH_ERROR', error: '{error_msg}' }}, '*');
+  window.close();
+}} else {{
+  window.location.href = '{target_base}?auth=error&drawer=steam';
+}}
+</script></body></html>"#
             );
 
-            (StatusCode::BAD_REQUEST, Html(html)).into_response()
+            Html(html).into_response()
         }
     }
 }
@@ -230,11 +188,7 @@ pub async fn steam_status(
     Ok(Json(StorefrontAuthStatusResponse {
         storefront: StorefrontId::Steam,
         connected,
-        steam_id: if connected {
-            Some(steam_id)
-        } else {
-            None
-        },
+        steam_id: if connected { Some(steam_id) } else { None },
         account_name: None,
         avatar_url: None,
     }))
