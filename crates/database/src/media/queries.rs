@@ -904,6 +904,29 @@ pub async fn insert_media_launch_session(
     .map_err(DatabaseError::from)
 }
 
+pub async fn find_launch_sessions_by_media_id(
+    pool: &SqlitePool,
+    media_id: &str,
+) -> Result<Vec<MediaLaunchSessionRow>, DatabaseError> {
+    sqlx::query_as::<Sqlite, MediaLaunchSessionRow>(
+        r#"
+        SELECT
+            s.id,
+            s.launch_id,
+            s.started_at,
+            s.completed_at,
+            s.duration_seconds
+        FROM media_launch_sessions s
+        INNER JOIN media_launches l ON l.id = s.launch_id
+        WHERE l.media_id = ?
+        "#,
+    )
+    .bind(media_id)
+    .fetch_all(pool)
+    .await
+    .map_err(DatabaseError::from)
+}
+
 pub async fn upsert_media_storefront(
     pool: &SqlitePool,
     details: MediaStorefrontUpsert,

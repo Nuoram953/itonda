@@ -18,6 +18,8 @@ const mockConfigData: components["schemas"]["CombinedConfig"] = {
       steam: {
         api_key: "test-steam-api-key",
         steam_id: "76561198000000000",
+        account_name: null,
+        avatar_url: null,
       },
     },
     asset_store: {
@@ -68,9 +70,7 @@ describe("SteamDrawer", () => {
 
     expect(screen.getByText("Steam Integration")).toBeDefined();
     expect(screen.getByDisplayValue("test-steam-api-key")).toBeDefined();
-    expect(
-      screen.getByDisplayValue("76561198000000000"),
-    ).toBeDefined();
+    expect(screen.getByDisplayValue("76561198000000000")).toBeDefined();
     expect(screen.getByText("Sync Playtime & Last Played")).toBeDefined();
     expect(screen.getByText("Fetch Achievements")).toBeDefined();
   });
@@ -99,6 +99,3 @@ describe("SteamDrawer", () => {
     expect(onOpenChangeMock).toHaveBeenCalledWith(false);
   });
 });
-
-
-

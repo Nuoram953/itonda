@@ -11,6 +11,7 @@ pub mod store;
 pub mod storefronts;
 pub mod sync;
 pub mod tracker;
+pub mod utils;
 
 #[cfg(test)]
 pub mod tests;

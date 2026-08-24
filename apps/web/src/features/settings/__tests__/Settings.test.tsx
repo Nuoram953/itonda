@@ -18,6 +18,8 @@ const mockConfigData: components["schemas"]["CombinedConfig"] = {
       steam: {
         api_key: "steam-api-key-xyz",
         steam_id: "76561198000000000",
+        account_name: null,
+        avatar_url: null,
       },
     },
     asset_store: {
@@ -148,4 +150,3 @@ describe("Settings Page with TanStack Form & Auto-Save", () => {
     );
   });
 });
-

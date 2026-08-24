@@ -37,8 +37,5 @@ pub struct AuthProfile {
 pub trait StorefrontAuthenticator: Send + Sync {
     fn storefront_id(&self) -> StorefrontId;
     fn generate_auth_url(&self, return_to: &str, realm: &str) -> String;
-    async fn verify_callback(
-        &self,
-        params: &[(String, String)],
-    ) -> Result<AuthProfile, AuthError>;
+    async fn verify_callback(&self, params: &[(String, String)]) -> Result<AuthProfile, AuthError>;
 }
