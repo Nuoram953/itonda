@@ -12,14 +12,14 @@ use itonda_database::{
     },
     media::{
         MediaInsert, MediaInstallationUpsert, MediaLaunchSessionInsert, MediaLaunchUpsert,
-        find_media_by_storefront, find_media_by_title, insert_media, insert_media_launch_session,
-        upsert_media_installation, upsert_media_launch,
+        find_media_by_storefront, find_media_by_title, insert_media, upsert_media_installation,
+        upsert_media_launch,
     },
 };
 pub use itonda_domain::agents::AgentManager;
 use itonda_domain::{
     events::{AgentEvent, AppEvent, EventBus, MediaEvent},
-    media::types::MediaStatus,
+    media::{service::update_playtime, types::MediaStatus},
     protocol::{AgentRegistration, AgentToServerMessage, ScanResult, ServerToAgentMessage},
 };
 use sqlx::SqlitePool;
@@ -143,7 +143,7 @@ async fn run_agent_loop(
                                 AgentToServerMessage::MediaStopped(payload) => {
                                     events.publish(AppEvent::Media(MediaEvent::Stopped { media_id:payload.media_id, launch_id: payload.launch_id.clone(), agent_id:payload.agent_id, duration_seconds: payload.duration_seconds }));
 
-                                    insert_media_launch_session(pool, MediaLaunchSessionInsert{
+                                    update_playtime(pool, MediaLaunchSessionInsert{
                                         launch_id: payload.launch_id,
                                         started_at: payload.started_at.to_string(),
                                         completed_at: payload.stopped_at.to_string(),

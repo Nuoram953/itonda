@@ -24,6 +24,9 @@ pub enum MediaError {
     #[error("invalid media status")]
     InvalidMediaStatus,
 
+    #[error("invalid launch type")]
+    InvalidLaunchType,
+
     #[error("asset error: {0}")]
     AssetError(#[from] AssetError),
 

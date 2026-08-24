@@ -3,14 +3,18 @@ import { LoadingState } from "@/components/feedback/LoadingState";
 import { verifySteamCallback } from "@/features/settings/api/auth";
 
 export function SteamCallback() {
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    return Array.from(searchParams.entries()).length === 0
+      ? "No authentication parameters found"
+      : null;
+  });
 
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const params: Array<[string, string]> = Array.from(searchParams.entries());
 
     if (params.length === 0) {
-      setError("No authentication parameters found");
       return;
     }
 

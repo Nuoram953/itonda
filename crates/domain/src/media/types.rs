@@ -84,6 +84,27 @@ impl MediaLaunchType {
     }
 }
 
+impl TryFrom<&str> for MediaLaunchType {
+    type Error = MediaError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value.to_lowercase().as_str() {
+            "storefront" | "steam" => Ok(Self::Storefront),
+            "emulator" => Ok(Self::Emulator),
+            "custom" => Ok(Self::Custom),
+            _ => Err(MediaError::InvalidLaunchType),
+        }
+    }
+}
+
+impl TryFrom<String> for MediaLaunchType {
+    type Error = MediaError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::try_from(value.as_str())
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum MediaSource {

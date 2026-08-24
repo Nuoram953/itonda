@@ -25,7 +25,10 @@ export const Settings = () => {
   const { notify } = useNotification();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<SettingsCategoryFilter>("storefronts");
-  const [steamDrawerOpen, setSteamDrawerOpen] = useState(false);
+  const [steamDrawerOpen, setSteamDrawerOpen] = useState(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    return searchParams.get("drawer") === "steam";
+  });
 
   const { data: config, isPending } = useConfig();
   const patchMutation = usePatchConfig();
@@ -35,10 +38,6 @@ export const Settings = () => {
     const authStatus = searchParams.get("auth");
     const drawer = searchParams.get("drawer");
     const errorMessage = searchParams.get("error");
-
-    if (drawer === "steam") {
-      setSteamDrawerOpen(true);
-    }
 
     if (authStatus === "success") {
       notify.success({

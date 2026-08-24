@@ -2,13 +2,17 @@ use itonda_database::error::DatabaseError;
 use thiserror::Error;
 
 use crate::{
-    agents::errors::AgentsError, assets::error::AssetError, storefronts::error::StorefrontError,
+    agents::errors::AgentsError, assets::error::AssetError, media::errors::MediaError,
+    storefronts::error::StorefrontError,
 };
 
 #[derive(Debug, Error)]
 pub enum SyncError {
     #[error("database error: {0}")]
     Database(#[from] DatabaseError),
+
+    #[error("media error: {0}")]
+    Media(#[from] MediaError),
 
     #[error("storefront error: {0}")]
     Storefront(#[from] StorefrontError),

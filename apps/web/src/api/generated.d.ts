@@ -36,6 +36,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/steam/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["steam_callback"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/steam/disconnect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["steam_disconnect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/steam/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["steam_login"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/steam/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["steam_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/config": {
         parameters: {
             query?: never;
@@ -196,6 +260,13 @@ export interface components {
         };
         /** @enum {string} */
         AssetType: "poster" | "backdrop" | "logo" | "banner" | "thumbnail" | "icon" | "trailer" | "screenshot";
+        AuthActionResponse: {
+            message: string;
+            success: boolean;
+        };
+        AuthUrlResponse: {
+            url: string;
+        };
         CombinedConfig: {
             /**
              * @default {
@@ -218,7 +289,9 @@ export interface components {
              *       },
              *       "storefronts": {
              *         "steam": {
+             *           "account_name": null,
              *           "api_key": "",
+             *           "avatar_url": null,
              *           "steam_id": ""
              *         }
              *       }
@@ -396,7 +469,9 @@ export interface components {
             api_key?: string | null;
         };
         PatchSteamSecrets: {
+            account_name?: string | null;
             api_key?: string | null;
+            avatar_url?: string | null;
             steam_id?: string | null;
         };
         PatchSteamSettings: {
@@ -425,7 +500,9 @@ export interface components {
             /**
              * @default {
              *       "steam": {
+             *         "account_name": null,
              *         "api_key": "",
+             *         "avatar_url": null,
              *         "steam_id": ""
              *       }
              *     }
@@ -452,13 +529,23 @@ export interface components {
         };
         /** @enum {string} */
         SortOrder: "asc" | "desc";
+        SteamCallbackPayload: {
+            params: [
+                string,
+                string
+            ][];
+        };
         SteamGridDbSettings: {
             /** @default  */
             api_key: string;
         };
         SteamSecrets: {
+            /** @default null */
+            account_name: string | null;
             /** @default  */
             api_key: string;
+            /** @default null */
+            avatar_url: string | null;
             /** @default  */
             steam_id: string;
         };
@@ -470,12 +557,21 @@ export interface components {
             /** @default true */
             fetch_playtime: boolean;
         };
+        StorefrontAuthStatusResponse: {
+            account_name?: string | null;
+            avatar_url?: string | null;
+            connected: boolean;
+            steam_id?: string | null;
+            storefront: components["schemas"]["StorefrontId"];
+        };
         /** @enum {string} */
         StorefrontId: "Steam";
         StorefrontsSettings: {
             /**
              * @default {
+             *       "account_name": null,
              *       "api_key": "",
+             *       "avatar_url": null,
              *       "steam_id": ""
              *     }
              */
@@ -538,6 +634,100 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    steam_callback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SteamCallbackPayload"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorefrontAuthStatusResponse"];
+                };
+            };
+            /** @description OpenID signature validation failed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    steam_disconnect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthActionResponse"];
+                };
+            };
+        };
+    };
+    steam_login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthUrlResponse"];
+                };
+            };
+            /** @description Redirects to Steam OpenID authentication */
+            307: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    steam_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorefrontAuthStatusResponse"];
+                };
             };
         };
     };

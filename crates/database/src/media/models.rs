@@ -158,7 +158,7 @@ pub struct MediaAssetSearchInsert {
     pub asset_id: i64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, FromRow)]
 pub struct MediaLaunchSessionRow {
     pub id: String,
     pub launch_id: String,

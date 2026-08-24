@@ -1,12 +1,5 @@
 import { useEffect } from "react";
-import {
-  Gamepad2,
-  ExternalLink,
-  CheckCircle2,
-  LogIn,
-  Unlink,
-  User,
-} from "lucide-react";
+import { Gamepad2, ExternalLink, LogIn, Unlink, User } from "lucide-react";
 import { useForm } from "@tanstack/react-form";
 import {
   Sheet,
@@ -19,7 +12,6 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { SettingRow } from "../cards/SettingRow";
 import { SecretInput } from "../forms/SecretInput";
@@ -40,7 +32,7 @@ export function SteamDrawer({ open, onOpenChange }: SteamDrawerProps) {
   const queryClient = useQueryClient();
   const { data: config } = useConfig();
   const patchMutation = usePatchConfig();
-  const disconnectMutation = useDisconnectSteam();
+  const disconnectMutation = useDisconnectSteam({});
   const { data: authStatus } = useSteamAuthStatus();
 
   const steamSettings = config?.settings?.metadata?.steam;
@@ -142,7 +134,7 @@ export function SteamDrawer({ open, onOpenChange }: SteamDrawerProps) {
 
   const handleDisconnect = async () => {
     try {
-      await disconnectMutation.mutateAsync();
+      await disconnectMutation.mutateAsync(undefined);
       form.setFieldValue("steamId", "");
       triggerSave(true);
       notify.info({

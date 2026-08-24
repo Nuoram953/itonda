@@ -1,14 +1,15 @@
 use async_trait::async_trait;
 use itonda_database::media::{
-    MediaGameDetailsUpsert, MediaInsert, MediaStorefrontUpsert, find_media_by_storefront,
-    find_media_by_title, insert_media, upsert_media_game_details, upsert_media_storefront,
+    MediaInsert, MediaStorefrontUpsert, find_media_by_storefront, find_media_by_title,
+    insert_media, upsert_media_storefront,
 };
 use sqlx::SqlitePool;
 
 use crate::{
     media::{
-        discovered::{DiscoveredMedia, DiscoveredMediaMetadata},
+        discovered::DiscoveredMediaMetadata,
         models::Media,
+        service::recalculate_media_game_details,
         types::{MediaStatus, MediaType},
     },
     sync::{context::SyncContext, errors::SyncError, pipeline::SyncStep},
@@ -31,16 +32,14 @@ impl SyncStep for PersistStep {
     }
 
     async fn execute(&self, context: &mut SyncContext) -> Result<(), SyncError> {
-        let Some(discovered) = &context.discovered else {
-            return Ok(());
-        };
+        let discovered = context
+            .discovered
+            .as_ref()
+            .ok_or(SyncError::MissingDiscoveredMedia)?;
 
-        let DiscoveredMedia {
-            title,
-            media_type,
-            metadata,
-            ..
-        } = discovered;
+        let media_type = discovered.media_type.clone();
+        let metadata = discovered.metadata.clone();
+        let title = discovered.title.clone();
 
         let media = match &context.media {
             Some(media) => media.clone(),
@@ -95,17 +94,9 @@ impl SyncStep for PersistStep {
 
             context.action.merge(result.action.into());
 
-            let result = upsert_media_game_details(
-                &self.pool,
-                MediaGameDetailsUpsert {
-                    media_id: media.id.clone(),
-                    playtime_minutes: game.total_playtime.map(|v| v as i64),
-                    last_played_at: game.last_played,
-                },
-            )
-            .await?;
+            let details_result = recalculate_media_game_details(&self.pool, &media.id).await?;
 
-            context.action.merge(result.action.into());
+            context.action.merge(details_result.action.into());
         }
 
         Ok(())

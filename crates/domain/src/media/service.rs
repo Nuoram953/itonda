@@ -1,14 +1,24 @@
 use std::collections::HashMap;
 
-use itonda_database::media as MediaQueries;
+use itonda_database::{
+    media::{
+        self as MediaQueries, MediaGameDetailsRow, MediaGameDetailsUpsert,
+        MediaLaunchSessionInsert, MediaStorefrontUpsert,
+    },
+    models::UpsertResult,
+};
 use sqlx::SqlitePool;
 
-use crate::media::{
-    errors::MediaError,
-    models::{
-        Asset, Launch, Media, MediaDetails, MediaInstallation, MediaStorefront, PaginatedMedia,
+use crate::{
+    media::{
+        errors::MediaError,
+        models::{
+            Asset, Launch, Media, MediaDetails, MediaInstallation, MediaStorefront, PaginatedMedia,
+        },
+        types::{MediaLaunchType, MediaSortField, MediaStatus, MediaType, SortOrder},
     },
-    types::{MediaSortField, MediaStatus, MediaType, SortOrder},
+    storefronts::models::StorefrontId,
+    utils::datetime::parse_timestamp,
 };
 
 pub async fn get_media_by_id(pool: &SqlitePool, id: String) -> Result<Media, MediaError> {
@@ -239,6 +249,129 @@ pub async fn update_status(
     status_id: MediaStatus,
 ) -> Result<(), MediaError> {
     MediaQueries::update_media_status(pool, &media_id, status_id.id()).await?;
+
+    Ok(())
+}
+
+pub async fn recalculate_media_game_details(
+    pool: &SqlitePool,
+    media_id: &str,
+) -> Result<UpsertResult<MediaGameDetailsRow>, MediaError> {
+    let storefronts = MediaQueries::find_storefronts_by_media_id(pool, media_id).await?;
+    let launches = MediaQueries::find_media_launches_by_media_id(pool, media_id).await?;
+    let sessions = MediaQueries::find_launch_sessions_by_media_id(pool, media_id).await?;
+
+    let mut total_playtime_minutes = 0i64;
+    let mut latest_last_played_at: Option<i64> = None;
+
+    for sf in &storefronts {
+        if let Some(minutes) = sf.playtime_minutes {
+            total_playtime_minutes += minutes;
+        }
+        if let Some(ts) = sf.last_played_at {
+            latest_last_played_at = Some(latest_last_played_at.map_or(ts, |curr| curr.max(ts)));
+        }
+    }
+
+    let storefront_launch_ids: std::collections::HashSet<&str> = if storefronts.is_empty() {
+        std::collections::HashSet::new()
+    } else {
+        launches
+            .iter()
+            .filter(|l| {
+                let lt = l.launch_type.to_lowercase();
+                lt == MediaLaunchType::Storefront.as_str()
+            })
+            .map(|l| l.id.as_str())
+            .collect()
+    };
+
+    for s in &sessions {
+        if !storefront_launch_ids.contains(s.launch_id.as_str()) {
+            let dur: i64 = s.duration_seconds.parse().unwrap_or(0);
+            total_playtime_minutes += dur / 60;
+        }
+
+        let session_ts =
+            parse_timestamp(&s.completed_at).or_else(|| parse_timestamp(&s.started_at));
+        if let Some(ts) = session_ts {
+            latest_last_played_at = Some(latest_last_played_at.map_or(ts, |curr| curr.max(ts)));
+        }
+    }
+
+    let res = MediaQueries::upsert_media_game_details(
+        pool,
+        MediaGameDetailsUpsert {
+            media_id: media_id.to_string(),
+            playtime_minutes: Some(total_playtime_minutes),
+            last_played_at: latest_last_played_at,
+        },
+    )
+    .await?;
+
+    Ok(res)
+}
+
+pub async fn update_playtime(
+    pool: &SqlitePool,
+    session: MediaLaunchSessionInsert,
+) -> Result<(), MediaError> {
+    let launch = MediaQueries::find_media_launch_by_id(pool, session.launch_id.clone()).await?;
+
+    let session_duration_seconds: i64 = session.duration_seconds.parse().unwrap_or(0);
+    let session_minutes = session_duration_seconds / 60;
+
+    let last_played_at = parse_timestamp(&session.completed_at)
+        .or_else(|| parse_timestamp(&session.started_at))
+        .unwrap_or_else(|| chrono::Utc::now().timestamp());
+
+    let lt = launch.launch_type.to_lowercase();
+    let is_storefront = lt == MediaLaunchType::Storefront.as_str();
+
+    if is_storefront {
+        let storefronts =
+            MediaQueries::find_storefronts_by_media_id(pool, &launch.media_id).await?;
+
+        let matched = storefronts
+            .iter()
+            .find(|sf| {
+                if let Ok(sf_id) = StorefrontId::try_from(launch.name.as_str()) {
+                    sf.storefront_id == sf_id.as_str()
+                } else if let Ok(sf_id) = StorefrontId::try_from(launch.launch_type.as_str()) {
+                    sf.storefront_id == sf_id.as_str()
+                } else {
+                    false
+                }
+            })
+            .or_else(|| {
+                if storefronts.len() == 1 {
+                    storefronts.first()
+                } else {
+                    None
+                }
+            });
+
+        if let Some(sf) = matched {
+            let current_playtime = sf.playtime_minutes.unwrap_or(0);
+            let new_playtime = current_playtime + session_minutes;
+
+            MediaQueries::upsert_media_storefront(
+                pool,
+                MediaStorefrontUpsert {
+                    media_id: sf.media_id.clone(),
+                    storefront_id: sf.storefront_id.clone(),
+                    external_id: sf.external_id.clone(),
+                    playtime_minutes: Some(new_playtime),
+                    last_played_at: Some(last_played_at),
+                },
+            )
+            .await?;
+        }
+    }
+
+    MediaQueries::insert_media_launch_session(pool, session).await?;
+
+    recalculate_media_game_details(pool, &launch.media_id).await?;
 
     Ok(())
 }
