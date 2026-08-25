@@ -23,19 +23,23 @@ use itonda_domain::{
     protocol::{AgentRegistration, AgentToServerMessage, ScanResult, ServerToAgentMessage},
 };
 use sqlx::SqlitePool;
-use tokio::sync::mpsc;
+use tokio::sync::mpsc::{self, Sender};
 use tracing::{debug, info, warn};
 use uuid::Uuid;
 
-use crate::state::AppState;
+use crate::{
+    state::AppState,
+    workers::jobs::{Job, SyncJob},
+};
 
 pub async fn agent_ws(ws: WebSocketUpgrade, State(state): State<AppState>) -> Response {
     let manager = state.agent_manager.clone();
     let events = state.events.clone();
     let pool = state.db.clone();
+    let jobs = state.jobs.clone();
 
     ws.on_upgrade(move |socket| async move {
-        if let Err(err) = handle_agent(socket, &pool, manager, events).await {
+        if let Err(err) = handle_agent(socket, &pool, manager, events, jobs).await {
             tracing::error!("Agent connection error: {err}");
         }
     })
@@ -46,6 +50,7 @@ async fn handle_agent(
     pool: &SqlitePool,
     agent_manager: AgentManager,
     events: EventBus,
+    jobs: Sender<Job>,
 ) -> anyhow::Result<()> {
     debug!("Waiting for registration");
 
@@ -89,7 +94,7 @@ async fn handle_agent(
         }));
     }
 
-    let result = run_agent_loop(&mut socket, &mut rx, pool, &events, &agent_id).await;
+    let result = run_agent_loop(&mut socket, &mut rx, pool, &events, &agent_id, &jobs).await;
 
     let _ = disconnect_agent_connection(pool, agent_id.clone()).await;
     agent_manager.unregister(&agent_id).await;
@@ -109,6 +114,7 @@ async fn run_agent_loop(
     pool: &SqlitePool,
     events: &EventBus,
     agent_id: &str,
+    jobs: &Sender<Job>,
 ) -> anyhow::Result<()> {
     loop {
         tokio::select! {
@@ -149,6 +155,15 @@ async fn run_agent_loop(
                                         completed_at: payload.stopped_at.to_string(),
                                         duration_seconds: payload.duration_seconds.to_string()
                                     }).await?;
+
+                                    jobs
+                                    .send(Job::Sync(SyncJob {
+                                        id: Uuid::new_v4(),
+                                        storefront: None,
+                                        force: false,
+                                    }))
+                                    .await?;
+
                                 }
                                 _ => {}
                             }
