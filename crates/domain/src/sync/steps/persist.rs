@@ -32,10 +32,9 @@ impl SyncStep for PersistStep {
     }
 
     async fn execute(&self, context: &mut SyncContext) -> Result<(), SyncError> {
-        let discovered = context
-            .discovered
-            .as_ref()
-            .ok_or(SyncError::MissingDiscoveredMedia)?;
+        let Some(discovered) = &context.discovered else {
+            return Ok(());
+        };
 
         let media_type = discovered.media_type.clone();
         let metadata = discovered.metadata.clone();
