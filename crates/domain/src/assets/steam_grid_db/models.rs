@@ -30,7 +30,7 @@ impl GridSearchOptions {
             page: Some(page),
             limit: Some(limit),
             styles: Some("alternate,material".into()),
-            dimensions: Some("1920x620".into()),
+            dimensions: Some("1920x620,3840x1240".into()),
             mimes: Some("image/jpeg,image/png,image/webp".into()),
             types: Some("static".into()),
         }
