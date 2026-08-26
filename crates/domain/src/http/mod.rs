@@ -1,3 +1,7 @@
+pub mod rate_limiter;
+
+pub use rate_limiter::{RateLimitMiddleware, RateLimitPermit, RateLimiter};
+
 use async_trait::async_trait;
 use reqwest::Client;
 use reqwest::{Request, Response};
@@ -14,6 +18,18 @@ pub fn create_http_client() -> ClientWithMiddleware {
         .expect("failed to create http client");
 
     ClientBuilder::new(client)
+        .with(LoggingMiddleware)
+        .with(TracingMiddleware::default())
+        .build()
+}
+
+pub fn create_rate_limited_http_client(limiter: RateLimiter) -> ClientWithMiddleware {
+    let client = Client::builder()
+        .build()
+        .expect("failed to create http client");
+
+    ClientBuilder::new(client)
+        .with(RateLimitMiddleware::new(limiter))
         .with(LoggingMiddleware)
         .with(TracingMiddleware::default())
         .build()

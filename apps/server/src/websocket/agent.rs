@@ -231,6 +231,7 @@ pub async fn handle_agent_scan_result(
                         title: item.title.clone(),
                         media_type: item.media_type.as_str().into(),
                         status_id: MediaStatus::NotStarted.id(),
+                        ..Default::default()
                     },
                 )
                 .await?

@@ -6,13 +6,16 @@ use crate::{
     agents::AgentManager,
     assets::{downloader::AssetDownloader, registry::AssetRegistry},
     events::{EventBus, JobEventType, JobType, SyncEvent},
+    metadata::registry::MetadataRegistry,
     storage::path::AppPaths,
     storefronts::{models::StorefrontId, registry::StorefrontRegistry},
     sync::{
         context::{SyncAction, SyncContext},
         errors::SyncError,
         pipeline::{MediaSyncPipeline, SyncStep},
-        steps::{assets::AssetStep, identify::IdentifyStep, persist::PersistStep},
+        steps::{
+            assets::AssetStep, identify::IdentifyStep, metadata::MetadataStep, persist::PersistStep,
+        },
     },
 };
 
@@ -42,10 +45,12 @@ impl LibrarySyncService {
         agents: AgentManager,
         storefronts: StorefrontRegistry,
         assets: AssetRegistry,
+        metadata: MetadataRegistry,
     ) -> Self {
         let steps: Vec<Box<dyn SyncStep>> = vec![
             Box::new(IdentifyStep::new()),
             Box::new(PersistStep::new(db.clone())),
+            Box::new(MetadataStep::new(db.clone(), metadata)),
             Box::new(AssetStep::new(
                 db.clone(),
                 assets,

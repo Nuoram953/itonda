@@ -128,9 +128,7 @@ export function HeroHeader({ media }: HeroHeaderProps) {
               </div>
 
               <p className="text-xs sm:text-sm text-text-muted max-w-lg leading-relaxed font-normal">
-                A story-driven open-world RPG set in 15th century Bohemia. You
-                are Henry, the son of a blacksmith, thrust into a brutal civil
-                war. Forge your destiny in a realistic medieval world.
+                {media.description}
               </p>
 
               <div className="flex flex-wrap items-center gap-1.5 pt-0.5">

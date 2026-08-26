@@ -24,6 +24,7 @@ async fn test_update_playtime_creates_game_details() {
             title: "Half-Life 2".into(),
             media_type: "game".into(),
             status_id: MediaStatus::NotStarted.id(),
+            ..Default::default()
         },
     )
     .await
@@ -74,6 +75,7 @@ async fn test_update_playtime_appends_to_existing_playtime() {
             title: "Portal".into(),
             media_type: "game".into(),
             status_id: MediaStatus::NotStarted.id(),
+            ..Default::default()
         },
     )
     .await
@@ -146,6 +148,7 @@ async fn test_update_playtime_storefront_launch_does_not_double_count_after_sync
             title: "Cyberpunk 2077".into(),
             media_type: "game".into(),
             status_id: MediaStatus::NotStarted.id(),
+            ..Default::default()
         },
     )
     .await
@@ -238,6 +241,7 @@ async fn test_update_playtime_custom_launch_preserved_after_storefront_sync() {
             title: "Super Mario 64".into(),
             media_type: "game".into(),
             status_id: MediaStatus::NotStarted.id(),
+            ..Default::default()
         },
     )
     .await
@@ -309,6 +313,7 @@ async fn test_multiple_storefronts_playtime_aggregated() {
             title: "Witcher 3".into(),
             media_type: "game".into(),
             status_id: MediaStatus::NotStarted.id(),
+            ..Default::default()
         },
     )
     .await

@@ -56,6 +56,7 @@ pub async fn test_app() -> TestApp {
         config,
         secrets,
         storefronts: StorefrontRegistry::new(),
+        metadata: itonda_domain::metadata::registry::MetadataRegistry::new(),
         agent_manager,
     };
 

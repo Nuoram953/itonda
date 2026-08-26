@@ -3,7 +3,7 @@ use utoipa::ToSchema;
 
 use crate::media::errors::MediaError;
 
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, ToSchema, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum MediaType {
     Game,

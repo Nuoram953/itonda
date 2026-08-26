@@ -21,9 +21,6 @@ export function WhatIsThisGameSection({ media }: WhatIsThisGameSectionProps) {
       ? getAssetUrl(backdropAsset.id)
       : null;
 
-  const description =
-    "Kingdom Come: Deliverance is an immersive open-world RPG set in medieval Bohemia. Experience a living world, realistic combat, and a gripping story where your choices matter.";
-
   const featurePills = [
     { label: "Singleplayer", icon: <User className="w-8 h-8" /> },
     { label: "Open World", icon: <Globe className="w-8 h-8" /> },
@@ -41,7 +38,7 @@ export function WhatIsThisGameSection({ media }: WhatIsThisGameSectionProps) {
               WHAT IS THIS GAME?
             </h3>
             <p className="text-base text-text-muted leading-relaxed font-normal">
-              {description}
+              {media.summary}
             </p>
           </div>
 

@@ -1,6 +1,6 @@
 import { useMemo, useRef, useEffect } from "react";
 import { useSearch } from "@tanstack/react-router";
-import { useInfiniteMedia, useMedia } from "../api/get-media";
+import { useInfiniteMedia } from "../api/get-media";
 import { useLibrary } from "./useLibrary";
 import type { components } from "@/api/generated.d";
 
@@ -17,7 +17,7 @@ export function useMediaGrid() {
 
   const { search, filters, sort } = useLibrary();
 
-  const infiniteQuery = useInfiniteMedia({
+  const mediaQuery = useInfiniteMedia({
     type: (type ?? filters.type) as
       | components["schemas"]["MediaType"]
       | undefined,
@@ -27,10 +27,6 @@ export function useMediaGrid() {
     sort_by: sort.field as components["schemas"]["MediaSortField"],
     sort_order: sort.direction as components["schemas"]["SortOrder"],
   });
-
-  const fallbackQuery = useMedia({ type });
-
-  const mediaQuery = infiniteQuery.data ? infiniteQuery : fallbackQuery;
 
   const mediaItems = useMemo(() => {
     if (!mediaQuery.data) return [];
@@ -54,9 +50,9 @@ export function useMediaGrid() {
     return mediaItems.length;
   }, [mediaQuery.data, mediaItems.length]);
 
-  const hasNextPage = infiniteQuery.hasNextPage;
-  const isFetchingNextPage = infiniteQuery.isFetchingNextPage;
-  const fetchNextPage = infiniteQuery.fetchNextPage;
+  const hasNextPage = mediaQuery.hasNextPage;
+  const isFetchingNextPage = mediaQuery.isFetchingNextPage;
+  const fetchNextPage = mediaQuery.fetchNextPage;
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
 

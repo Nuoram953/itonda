@@ -95,7 +95,7 @@ impl AssetRegistry {
         let mut attempted = HashSet::new();
 
         for poster in &self.posters {
-            if poster.supports_media_type(media_type.clone()) {
+            if poster.supports_media_type(media_type) {
                 let asset_types = poster.discovered_asset_types();
                 let needed = options.force
                     || match options.limit {
@@ -116,7 +116,7 @@ impl AssetRegistry {
                         attempted.insert(at.id());
                     }
                     if let Some(asset) = poster
-                        .discover_poster(Some(media_type.clone()), storefront, external_id, title)
+                        .discover_poster(Some(media_type), storefront, external_id, title)
                         .await?
                     {
                         results.push(asset);
@@ -126,7 +126,7 @@ impl AssetRegistry {
         }
 
         for banner in &self.banners {
-            if banner.supports_media_type(media_type.clone()) {
+            if banner.supports_media_type(media_type) {
                 let asset_types = banner.discovered_asset_types();
                 let needed = options.force
                     || match options.limit {
@@ -147,7 +147,7 @@ impl AssetRegistry {
                         attempted.insert(at.id());
                     }
                     if let Some(asset) = banner
-                        .discover_banner(Some(media_type.clone()), storefront, external_id, title)
+                        .discover_banner(Some(media_type), storefront, external_id, title)
                         .await?
                     {
                         results.push(asset);

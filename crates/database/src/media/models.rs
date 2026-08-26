@@ -1,12 +1,15 @@
 use serde::Serialize;
 use sqlx::prelude::FromRow;
 
-#[derive(Debug, Serialize, FromRow)]
+#[derive(Debug, Clone, Serialize, FromRow)]
 pub struct MediaRow {
     pub id: String,
     pub title: String,
     pub media_type: String,
     pub status_id: i64,
+    pub description: Option<String>,
+    pub summary: Option<String>,
+    pub release_date: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, FromRow)]
@@ -62,11 +65,35 @@ pub struct MediaInstallationUpsert {
     pub path: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Default)]
 pub struct MediaInsert {
     pub title: String,
     pub media_type: String,
     pub status_id: i64,
+    pub description: Option<String>,
+    pub summary: Option<String>,
+    pub release_date: Option<i64>,
+}
+
+impl MediaInsert {
+    pub fn new(title: impl Into<String>, media_type: impl Into<String>, status_id: i64) -> Self {
+        Self {
+            title: title.into(),
+            media_type: media_type.into(),
+            status_id,
+            description: None,
+            summary: None,
+            release_date: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MediaMetadataUpdate {
+    pub media_id: String,
+    pub description: Option<String>,
+    pub summary: Option<String>,
+    pub release_date: Option<i64>,
 }
 
 #[derive(Debug, Clone)]
@@ -103,16 +130,38 @@ pub struct MediaLaunchUpsert {
     pub enabled: bool,
 }
 
+#[derive(Debug, Clone, Default)]
 pub struct MediaGameDetailsUpsert {
     pub media_id: String,
     pub playtime_minutes: Option<i64>,
     pub last_played_at: Option<i64>,
+    pub series: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, FromRow)]
 pub struct MediaGameDetailsRow {
     pub media_id: String,
     pub playtime_minutes: Option<i64>,
     pub last_played_at: Option<i64>,
+    pub series: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, FromRow)]
+pub struct GenreRow {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, FromRow)]
+pub struct TagRow {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, FromRow)]
+pub struct CompanyRoleRow {
+    pub company_name: String,
+    pub role_name: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -156,6 +205,17 @@ pub struct MediaAssetSearchRow {
 pub struct MediaAssetSearchInsert {
     pub media_id: String,
     pub asset_id: i64,
+}
+
+#[derive(Debug, Clone, Serialize, FromRow)]
+pub struct MediaMetadataSearchRow {
+    pub media_id: String,
+    pub searched_at: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct MediaMetadataSearchInsert {
+    pub media_id: String,
 }
 
 #[derive(Debug, Clone, FromRow)]

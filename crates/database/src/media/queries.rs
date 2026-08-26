@@ -11,7 +11,8 @@ use crate::{
         MediaAssetInsert, MediaAssetRow, MediaAssetSearchInsert, MediaAssetSearchRow,
         MediaGameDetailsRow, MediaGameDetailsUpsert, MediaInsert, MediaInstallationRow,
         MediaInstallationUpsert, MediaLaunchRow, MediaLaunchSessionInsert, MediaLaunchSessionRow,
-        MediaLaunchUpsert, MediaStatusHistoryRow, MediaStorefrontRow, MediaStorefrontUpsert,
+        MediaLaunchUpsert, MediaMetadataSearchInsert, MediaMetadataSearchRow,
+        MediaStatusHistoryRow, MediaStorefrontRow, MediaStorefrontUpsert,
     },
     models::{UpsertAction, UpsertResult},
 };
@@ -46,7 +47,9 @@ pub async fn find_all(
     pool: &SqlitePool,
     media_type: Option<&str>,
 ) -> Result<Vec<MediaRow>, DatabaseError> {
-    let mut qb = QueryBuilder::<Sqlite>::new("SELECT id, title, media_type, status_id FROM media");
+    let mut qb = QueryBuilder::<Sqlite>::new(
+        "SELECT id, title, media_type, status_id, description, summary, release_date FROM media",
+    );
 
     if let Some(media_type) = media_type {
         qb.push(" WHERE media_type = ");
@@ -127,7 +130,7 @@ pub async fn find_paginated(
         .map_err(DatabaseError::from)?;
 
     let mut qb = QueryBuilder::<Sqlite>::new(
-        "SELECT media.id, media.title, media.media_type, media.status_id FROM media",
+        "SELECT media.id, media.title, media.media_type, media.status_id, media.description, media.summary, media.release_date FROM media",
     );
 
     let needs_details_join = matches!(options.sort_by, Some(DbMediaSortField::LastPlayedAt));
@@ -224,19 +227,21 @@ pub async fn find_media_by_id(
     pool: &SqlitePool,
     media_id: String,
 ) -> Result<MediaRow, DatabaseError> {
-    sqlx::query_as!(
-        MediaRow,
+    sqlx::query_as::<Sqlite, MediaRow>(
         r#"
-    SELECT
-        id,
-        title,
-        media_type,
-        status_id
-    FROM media
-    where id=?
-    "#,
-        media_id
+        SELECT
+            id,
+            title,
+            media_type,
+            status_id,
+            description,
+            summary,
+            release_date
+        FROM media
+        WHERE id = ?
+        "#,
     )
+    .bind(media_id)
     .fetch_one(pool)
     .await
     .map_err(DatabaseError::from)
@@ -268,19 +273,21 @@ pub async fn find_media_by_title(
     pool: &SqlitePool,
     title: String,
 ) -> Result<Option<MediaRow>, DatabaseError> {
-    sqlx::query_as!(
-        MediaRow,
+    sqlx::query_as::<Sqlite, MediaRow>(
         r#"
-    SELECT
-        id,
-        title,
-        media_type,
-        status_id
-    FROM media
-    WHERE title=?
-    "#,
-        title
+        SELECT
+            id,
+            title,
+            media_type,
+            status_id,
+            description,
+            summary,
+            release_date
+        FROM media
+        WHERE title = ?
+        "#,
     )
+    .bind(title)
     .fetch_optional(pool)
     .await
     .map_err(DatabaseError::from)
@@ -292,27 +299,35 @@ pub async fn insert_media(
 ) -> Result<MediaRow, DatabaseError> {
     let id = Uuid::new_v4().to_string();
 
-    sqlx::query_as!(
-        MediaRow,
+    sqlx::query_as::<Sqlite, MediaRow>(
         r#"
         INSERT INTO media (
             id,
             title,
             media_type,
-            status_id
+            status_id,
+            description,
+            summary,
+            release_date
         )
-        VALUES (?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         RETURNING
             id,
             title,
             media_type,
-            status_id
+            status_id,
+            description,
+            summary,
+            release_date
         "#,
-        id,
-        media.title,
-        media.media_type,
-        media.status_id
     )
+    .bind(id)
+    .bind(media.title)
+    .bind(media.media_type)
+    .bind(media.status_id)
+    .bind(media.description)
+    .bind(media.summary)
+    .bind(media.release_date)
     .fetch_one(pool)
     .await
     .map_err(DatabaseError::from)
@@ -622,41 +637,43 @@ pub async fn upsert_media_game_details(
     pool: &SqlitePool,
     details: MediaGameDetailsUpsert,
 ) -> Result<UpsertResult<MediaGameDetailsRow>, DatabaseError> {
-    let existing = sqlx::query_as!(
-        MediaGameDetailsRow,
+    let existing = sqlx::query_as::<Sqlite, MediaGameDetailsRow>(
         r#"
         SELECT
             media_id,
             playtime_minutes,
-            last_played_at
+            last_played_at,
+            series
         FROM media_game_details
         WHERE media_id = ?
         "#,
-        details.media_id,
     )
+    .bind(&details.media_id)
     .fetch_optional(pool)
     .await
     .map_err(DatabaseError::from)?;
 
     let Some(existing) = existing else {
-        let row = sqlx::query_as!(
-            MediaGameDetailsRow,
+        let row = sqlx::query_as::<Sqlite, MediaGameDetailsRow>(
             r#"
             INSERT INTO media_game_details (
                 media_id,
                 playtime_minutes,
-                last_played_at
+                last_played_at,
+                series
             )
-            VALUES (?, ?, ?)
+            VALUES (?, ?, ?, ?)
             RETURNING
                 media_id,
                 playtime_minutes,
-                last_played_at
+                last_played_at,
+                series
             "#,
-            details.media_id,
-            details.playtime_minutes,
-            details.last_played_at,
         )
+        .bind(&details.media_id)
+        .bind(details.playtime_minutes)
+        .bind(details.last_played_at)
+        .bind(details.series)
         .fetch_one(pool)
         .await
         .map_err(DatabaseError::from)?;
@@ -669,6 +686,7 @@ pub async fn upsert_media_game_details(
 
     if existing.playtime_minutes == details.playtime_minutes
         && existing.last_played_at == details.last_played_at
+        && existing.series == details.series
     {
         return Ok(UpsertResult {
             value: existing,
@@ -676,23 +694,25 @@ pub async fn upsert_media_game_details(
         });
     }
 
-    let row = sqlx::query_as!(
-        MediaGameDetailsRow,
+    let row = sqlx::query_as::<Sqlite, MediaGameDetailsRow>(
         r#"
         UPDATE media_game_details
         SET
             playtime_minutes = ?,
-            last_played_at = ?
+            last_played_at = ?,
+            series = ?
         WHERE media_id = ?
         RETURNING
             media_id,
             playtime_minutes,
-            last_played_at
+            last_played_at,
+            series
         "#,
-        details.playtime_minutes,
-        details.last_played_at,
-        details.media_id,
     )
+    .bind(details.playtime_minutes)
+    .bind(details.last_played_at)
+    .bind(details.series)
+    .bind(&details.media_id)
     .fetch_one(pool)
     .await
     .map_err(DatabaseError::from)?;
@@ -707,18 +727,18 @@ pub async fn find_game_details(
     pool: &SqlitePool,
     media_id: &str,
 ) -> Result<Option<MediaGameDetailsRow>, DatabaseError> {
-    let row = sqlx::query_as!(
-        MediaGameDetailsRow,
+    let row = sqlx::query_as::<Sqlite, MediaGameDetailsRow>(
         r#"
         SELECT
             media_id,
             playtime_minutes,
-            last_played_at
+            last_played_at,
+            series
         FROM media_game_details
         WHERE media_id = ?
         "#,
-        media_id
     )
+    .bind(media_id)
     .fetch_optional(pool)
     .await
     .map_err(DatabaseError::from)?;
@@ -864,6 +884,73 @@ pub async fn insert_media_asset_search(
         search.media_id,
         search.asset_id
     )
+    .fetch_one(pool)
+    .await
+    .map_err(DatabaseError::from)
+}
+
+pub async fn find_metadata_searches_by_media_ids(
+    pool: &SqlitePool,
+    ids: &[String],
+) -> Result<Vec<MediaMetadataSearchRow>, DatabaseError> {
+    if ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut qb = QueryBuilder::<Sqlite>::new(
+        "SELECT media_id, searched_at FROM media_metadata_searches WHERE media_id IN (",
+    );
+
+    let mut separated = qb.separated(", ");
+
+    for id in ids {
+        separated.push_bind(id);
+    }
+
+    separated.push_unseparated(")");
+
+    qb.build_query_as::<MediaMetadataSearchRow>()
+        .fetch_all(pool)
+        .await
+        .map_err(DatabaseError::from)
+}
+
+pub async fn find_metadata_search_by_media_id(
+    pool: &SqlitePool,
+    media_id: &str,
+) -> Result<Option<MediaMetadataSearchRow>, DatabaseError> {
+    sqlx::query_as::<_, MediaMetadataSearchRow>(
+        r#"
+        SELECT
+            media_id,
+            searched_at
+        FROM media_metadata_searches
+        WHERE media_id = ?
+        "#,
+    )
+    .bind(media_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(DatabaseError::from)
+}
+
+pub async fn insert_media_metadata_search(
+    pool: &SqlitePool,
+    search: MediaMetadataSearchInsert,
+) -> Result<MediaMetadataSearchRow, DatabaseError> {
+    sqlx::query_as::<_, MediaMetadataSearchRow>(
+        r#"
+        INSERT INTO media_metadata_searches (
+            media_id
+        )
+        VALUES (?)
+        ON CONFLICT(media_id) DO UPDATE SET searched_at = CURRENT_TIMESTAMP
+        RETURNING
+            media_id,
+            searched_at
+        "#,
+    )
+    .bind(search.media_id)
     .fetch_one(pool)
     .await
     .map_err(DatabaseError::from)
@@ -1081,7 +1168,10 @@ pub async fn find_media_by_storefront(
             m.id,
             m.title,
             m.media_type,
-            m.status_id
+            m.status_id,
+            m.description,
+            m.summary,
+            m.release_date
         FROM media m
         INNER JOIN media_storefronts ms ON ms.media_id = m.id
         WHERE ms.storefront_id = ? AND ms.external_id = ?
@@ -1266,4 +1356,318 @@ pub async fn find_installations_by_media_id(
     .fetch_all(pool)
     .await
     .map_err(DatabaseError::from)
+}
+
+pub async fn update_media_metadata(
+    pool: &SqlitePool,
+    update: crate::media::MediaMetadataUpdate,
+) -> Result<(), DatabaseError> {
+    sqlx::query(
+        r#"
+        UPDATE media
+        SET
+            description = COALESCE(?, description),
+            summary = COALESCE(?, summary),
+            release_date = COALESCE(?, release_date)
+        WHERE id = ?
+        "#,
+    )
+    .bind(update.description)
+    .bind(update.summary)
+    .bind(update.release_date)
+    .bind(update.media_id)
+    .execute(pool)
+    .await
+    .map_err(DatabaseError::from)?;
+
+    Ok(())
+}
+
+pub async fn sync_media_genres(
+    pool: &SqlitePool,
+    media_id: &str,
+    genres: &[String],
+) -> Result<(), DatabaseError> {
+    for genre_name in genres {
+        let genre_name = genre_name.trim();
+        if genre_name.is_empty() {
+            continue;
+        }
+
+        let existing_genre =
+            sqlx::query_as::<Sqlite, (String,)>(r#"SELECT id FROM genres WHERE name = ?"#)
+                .bind(genre_name)
+                .fetch_optional(pool)
+                .await
+                .map_err(DatabaseError::from)?;
+
+        let genre_id = match existing_genre {
+            Some(row) => row.0,
+            None => {
+                let new_id = Uuid::new_v4().to_string();
+                sqlx::query_as::<Sqlite, (String,)>(
+                    r#"INSERT INTO genres (id, name) VALUES (?, ?) ON CONFLICT(name) DO UPDATE SET name=excluded.name RETURNING id"#,
+                )
+                .bind(new_id)
+                .bind(genre_name)
+                .fetch_one(pool)
+                .await
+                .map_err(DatabaseError::from)?
+                .0
+            }
+        };
+
+        sqlx::query(r#"INSERT OR IGNORE INTO media_genres (media_id, genre_id) VALUES (?, ?)"#)
+            .bind(media_id)
+            .bind(genre_id)
+            .execute(pool)
+            .await
+            .map_err(DatabaseError::from)?;
+    }
+    Ok(())
+}
+
+pub async fn sync_media_tags(
+    pool: &SqlitePool,
+    media_id: &str,
+    tags: &[String],
+) -> Result<(), DatabaseError> {
+    for tag_name in tags {
+        let tag_name = tag_name.trim();
+        if tag_name.is_empty() {
+            continue;
+        }
+
+        let existing_tag =
+            sqlx::query_as::<Sqlite, (String,)>(r#"SELECT id FROM tags WHERE name = ?"#)
+                .bind(tag_name)
+                .fetch_optional(pool)
+                .await
+                .map_err(DatabaseError::from)?;
+
+        let tag_id = match existing_tag {
+            Some(row) => row.0,
+            None => {
+                let new_id = Uuid::new_v4().to_string();
+                sqlx::query_as::<Sqlite, (String,)>(
+                    r#"INSERT INTO tags (id, name) VALUES (?, ?) ON CONFLICT(name) DO UPDATE SET name=excluded.name RETURNING id"#,
+                )
+                .bind(new_id)
+                .bind(tag_name)
+                .fetch_one(pool)
+                .await
+                .map_err(DatabaseError::from)?
+                .0
+            }
+        };
+
+        sqlx::query(r#"INSERT OR IGNORE INTO media_tags (media_id, tags_id) VALUES (?, ?)"#)
+            .bind(media_id)
+            .bind(tag_id)
+            .execute(pool)
+            .await
+            .map_err(DatabaseError::from)?;
+    }
+    Ok(())
+}
+
+pub async fn sync_media_companies(
+    pool: &SqlitePool,
+    media_id: &str,
+    developers: &[String],
+    publishers: &[String],
+) -> Result<(), DatabaseError> {
+    let roles = [("developer", developers), ("publisher", publishers)];
+
+    for (role_name, company_names) in roles {
+        for name in company_names {
+            let name = name.trim();
+            if name.is_empty() {
+                continue;
+            }
+
+            let role_id = role_name.to_string();
+            sqlx::query(r#"INSERT OR IGNORE INTO roles (id, name) VALUES (?, ?)"#)
+                .bind(&role_id)
+                .bind(role_name)
+                .execute(pool)
+                .await
+                .map_err(DatabaseError::from)?;
+
+            let existing_company =
+                sqlx::query_as::<Sqlite, (String,)>(r#"SELECT id FROM companies WHERE name = ?"#)
+                    .bind(name)
+                    .fetch_optional(pool)
+                    .await
+                    .map_err(DatabaseError::from)?;
+
+            let company_id = match existing_company {
+                Some(row) => row.0,
+                None => {
+                    let new_id = Uuid::new_v4().to_string();
+                    sqlx::query_as::<Sqlite, (String,)>(
+                        r#"INSERT INTO companies (id, name) VALUES (?, ?) RETURNING id"#,
+                    )
+                    .bind(new_id)
+                    .bind(name)
+                    .fetch_one(pool)
+                    .await
+                    .map_err(DatabaseError::from)?
+                    .0
+                }
+            };
+
+            sqlx::query(
+                r#"INSERT OR IGNORE INTO media_companies (media_id, company_id, role_id) VALUES (?, ?, ?)"#,
+            )
+            .bind(media_id)
+            .bind(company_id)
+            .bind(role_id)
+            .execute(pool)
+            .await
+            .map_err(DatabaseError::from)?;
+        }
+    }
+    Ok(())
+}
+
+pub async fn find_genres_by_media_ids(
+    pool: &SqlitePool,
+    ids: &[String],
+) -> Result<Vec<(String, String)>, DatabaseError> {
+    if ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut qb = QueryBuilder::<Sqlite>::new(
+        "SELECT mg.media_id, g.name FROM media_genres mg INNER JOIN genres g ON g.id = mg.genre_id WHERE mg.media_id IN (",
+    );
+
+    let mut separated = qb.separated(", ");
+    for id in ids {
+        separated.push_bind(id);
+    }
+    separated.push_unseparated(")");
+
+    let rows = qb
+        .build_query_as::<(String, String)>()
+        .fetch_all(pool)
+        .await
+        .map_err(DatabaseError::from)?;
+
+    Ok(rows)
+}
+
+pub async fn find_genres_by_media_id(
+    pool: &SqlitePool,
+    media_id: &str,
+) -> Result<Vec<String>, DatabaseError> {
+    let rows = sqlx::query_as::<Sqlite, (String,)>(
+        r#"
+        SELECT g.name
+        FROM media_genres mg
+        INNER JOIN genres g ON g.id = mg.genre_id
+        WHERE mg.media_id = ?
+        "#,
+    )
+    .bind(media_id)
+    .fetch_all(pool)
+    .await
+    .map_err(DatabaseError::from)?;
+
+    Ok(rows.into_iter().map(|r| r.0).collect())
+}
+
+pub async fn find_tags_by_media_ids(
+    pool: &SqlitePool,
+    ids: &[String],
+) -> Result<Vec<(String, String)>, DatabaseError> {
+    if ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut qb = QueryBuilder::<Sqlite>::new(
+        "SELECT mt.media_id, t.name FROM media_tags mt INNER JOIN tags t ON t.id = mt.tags_id WHERE mt.media_id IN (",
+    );
+
+    let mut separated = qb.separated(", ");
+    for id in ids {
+        separated.push_bind(id);
+    }
+    separated.push_unseparated(")");
+
+    let rows = qb
+        .build_query_as::<(String, String)>()
+        .fetch_all(pool)
+        .await
+        .map_err(DatabaseError::from)?;
+
+    Ok(rows)
+}
+
+pub async fn find_tags_by_media_id(
+    pool: &SqlitePool,
+    media_id: &str,
+) -> Result<Vec<String>, DatabaseError> {
+    let rows = sqlx::query_as::<Sqlite, (String,)>(
+        r#"
+        SELECT t.name
+        FROM media_tags mt
+        INNER JOIN tags t ON t.id = mt.tags_id
+        WHERE mt.media_id = ?
+        "#,
+    )
+    .bind(media_id)
+    .fetch_all(pool)
+    .await
+    .map_err(DatabaseError::from)?;
+
+    Ok(rows.into_iter().map(|r| r.0).collect())
+}
+
+pub async fn find_companies_by_media_ids(
+    pool: &SqlitePool,
+    ids: &[String],
+) -> Result<Vec<(String, String, String)>, DatabaseError> {
+    if ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut qb = QueryBuilder::<Sqlite>::new(
+        "SELECT mc.media_id, c.name, mc.role_id FROM media_companies mc INNER JOIN companies c ON c.id = mc.company_id WHERE mc.media_id IN (",
+    );
+
+    let mut separated = qb.separated(", ");
+    for id in ids {
+        separated.push_bind(id);
+    }
+    separated.push_unseparated(")");
+
+    let rows = qb
+        .build_query_as::<(String, String, String)>()
+        .fetch_all(pool)
+        .await
+        .map_err(DatabaseError::from)?;
+
+    Ok(rows)
+}
+
+pub async fn find_companies_by_media_id(
+    pool: &SqlitePool,
+    media_id: &str,
+) -> Result<Vec<crate::media::CompanyRoleRow>, DatabaseError> {
+    let rows = sqlx::query_as::<Sqlite, crate::media::CompanyRoleRow>(
+        r#"
+        SELECT c.name as company_name, mc.role_id as role_name
+        FROM media_companies mc
+        INNER JOIN companies c ON c.id = mc.company_id
+        WHERE mc.media_id = ?
+        "#,
+    )
+    .bind(media_id)
+    .fetch_all(pool)
+    .await
+    .map_err(DatabaseError::from)?;
+
+    Ok(rows)
 }
