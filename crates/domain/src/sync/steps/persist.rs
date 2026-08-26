@@ -36,7 +36,7 @@ impl SyncStep for PersistStep {
             return Ok(());
         };
 
-        let media_type = discovered.media_type.clone();
+        let media_type = discovered.media_type;
         let metadata = discovered.metadata.clone();
         let title = discovered.title.clone();
 
@@ -64,6 +64,7 @@ impl SyncStep for PersistStep {
                                 title: title.clone(),
                                 media_type: media_type.as_str().into(),
                                 status_id: MediaStatus::NotStarted.id(),
+                                ..Default::default()
                             },
                         )
                         .await?
@@ -143,6 +144,7 @@ mod tests {
                 title: "Portal 2".into(),
                 media_type: "game".into(),
                 status_id: MediaStatus::NotStarted.id(),
+                ..Default::default()
             },
         )
         .await
@@ -170,6 +172,7 @@ mod tests {
                 title: "Old Title".into(),
                 media_type: "game".into(),
                 status_id: MediaStatus::NotStarted.id(),
+                ..Default::default()
             },
         )
         .await

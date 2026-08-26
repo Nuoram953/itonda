@@ -3,7 +3,7 @@ use thiserror::Error;
 
 use crate::{
     agents::errors::AgentsError, assets::error::AssetError, media::errors::MediaError,
-    storefronts::error::StorefrontError,
+    metadata::error::MetadataError, storefronts::error::StorefrontError,
 };
 
 #[derive(Debug, Error)]
@@ -19,6 +19,9 @@ pub enum SyncError {
 
     #[error("Asset error: {0}")]
     Asset(#[from] AssetError),
+
+    #[error("metadata error: {0}")]
+    Metadata(#[from] MetadataError),
 
     #[error("agent error: {0}")]
     Agent(#[from] AgentsError),

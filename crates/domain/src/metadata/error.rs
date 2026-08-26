@@ -1,0 +1,34 @@
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum MetadataError {
+    #[error("middleware http error: {0}")]
+    Middleware(#[from] reqwest_middleware::Error),
+
+    #[error("io error: {0}")]
+    Io(#[from] std::io::Error),
+
+    #[error("http request failed: {0}")]
+    Http(#[from] reqwest::Error),
+
+    #[error("authentication failed")]
+    Authentication,
+
+    #[error("access denied")]
+    Forbidden,
+
+    #[error("rate limited")]
+    RateLimited,
+
+    #[error("resource not found")]
+    NotFound,
+
+    #[error("invalid response from storefront")]
+    InvalidResponse,
+
+    #[error("storefront is unavailable")]
+    Unavailable,
+
+    #[error("{0}")]
+    Other(String),
+}

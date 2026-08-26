@@ -2,6 +2,7 @@ use itonda_domain::{
     agents::AgentManager,
     assets::registry::AssetRegistry,
     events::{EventBus, JobEventType, JobType, SyncEvent},
+    metadata::registry::MetadataRegistry,
     storefronts::registry::StorefrontRegistry,
     sync::LibrarySyncService,
 };
@@ -15,6 +16,7 @@ pub struct SyncHandler {
     agents: AgentManager,
     storefronts: StorefrontRegistry,
     assets: AssetRegistry,
+    metadata: MetadataRegistry,
 }
 
 impl SyncHandler {
@@ -24,6 +26,7 @@ impl SyncHandler {
         agents: AgentManager,
         storefronts: StorefrontRegistry,
         assets: AssetRegistry,
+        metadata: MetadataRegistry,
     ) -> Self {
         Self {
             db,
@@ -31,6 +34,7 @@ impl SyncHandler {
             agents,
             storefronts,
             assets,
+            metadata,
         }
     }
 
@@ -48,6 +52,7 @@ impl SyncHandler {
             self.agents.clone(),
             self.storefronts.clone(),
             self.assets.clone(),
+            self.metadata.clone(),
         );
 
         let _ = sync.sync_all(job.force).await;

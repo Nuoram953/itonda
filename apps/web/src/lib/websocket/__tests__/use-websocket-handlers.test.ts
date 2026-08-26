@@ -7,6 +7,8 @@ import {
   handleJobEvent,
 } from "../use-websocket-handlers";
 import type { MediaEvent, AgentEvent, JobEvent } from "../types";
+import { getMediaQueryOptions } from "@/features/library/api/get-media";
+import { getMediaByIdQueryOptions } from "@/features/details/api/get-media-id";
 
 describe("use-websocket-handlers", () => {
   let mockQueryClient: QueryClient;
@@ -28,7 +30,8 @@ describe("use-websocket-handlers", () => {
       updateBySourceId: vi.fn(),
     };
 
-    mockSetActiveSession = vi.fn<(session: ActiveMediaSession | null) => void>();
+    mockSetActiveSession =
+      vi.fn<(session: ActiveMediaSession | null) => void>();
   });
 
   describe("handleMediaEvent", () => {
@@ -57,10 +60,10 @@ describe("use-websocket-handlers", () => {
       );
 
       expect(mockQueryClient.invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ["media", "game-101"],
+        queryKey: getMediaByIdQueryOptions("game-101").queryKey,
       });
       expect(mockQueryClient.invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ["media"],
+        queryKey: getMediaQueryOptions().queryKey,
       });
 
       expect(mockNotify.info).not.toHaveBeenCalled();
@@ -86,10 +89,10 @@ describe("use-websocket-handlers", () => {
       expect(mockSetActiveSession).toHaveBeenCalledWith(null);
 
       expect(mockQueryClient.invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ["media", "game-101"],
+        queryKey: getMediaByIdQueryOptions("game-101").queryKey,
       });
       expect(mockQueryClient.invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ["media"],
+        queryKey: getMediaQueryOptions().queryKey,
       });
 
       expect(mockNotify.info).toHaveBeenCalledWith({

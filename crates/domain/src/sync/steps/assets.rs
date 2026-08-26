@@ -73,12 +73,12 @@ impl SyncStep for AssetStep {
 
         let (media_type, storefront, external_id, title) = match &context.discovered {
             Some(discovered) => (
-                discovered.media_type.clone(),
+                discovered.media_type,
                 Some(discovered.storefront),
                 Some(discovered.external_id.as_str()),
                 discovered.title.as_str(),
             ),
-            None => (media.media_type.clone(), None, None, media.title.as_str()),
+            None => (media.media_type, None, None, media.title.as_str()),
         };
 
         let limit = self.policy.max_items();
@@ -302,6 +302,7 @@ mod tests {
                 title: "Test Game".into(),
                 media_type: "game".into(),
                 status_id: MediaStatus::NotStarted.id(),
+                ..Default::default()
             },
         )
         .await
@@ -350,6 +351,7 @@ mod tests {
                 title: "Mr. Robot".into(),
                 media_type: "tv_show".into(),
                 status_id: MediaStatus::NotStarted.id(),
+                ..Default::default()
             },
         )
         .await
@@ -405,6 +407,7 @@ mod tests {
                 title: "Test Game".into(),
                 media_type: "game".into(),
                 status_id: MediaStatus::NotStarted.id(),
+                ..Default::default()
             },
         )
         .await
@@ -441,6 +444,7 @@ mod tests {
                 title: "Test Game".into(),
                 media_type: "game".into(),
                 status_id: MediaStatus::NotStarted.id(),
+                ..Default::default()
             },
         )
         .await
@@ -611,6 +615,7 @@ mod tests {
                 title: "Test Game".into(),
                 media_type: "game".into(),
                 status_id: MediaStatus::NotStarted.id(),
+                ..Default::default()
             },
         )
         .await
@@ -670,6 +675,7 @@ mod tests {
                 title: "Test Game".into(),
                 media_type: "game".into(),
                 status_id: MediaStatus::NotStarted.id(),
+                ..Default::default()
             },
         )
         .await
@@ -756,6 +762,7 @@ mod tests {
                 title: "Test Game".into(),
                 media_type: "game".into(),
                 status_id: MediaStatus::NotStarted.id(),
+                ..Default::default()
             },
         )
         .await
@@ -813,6 +820,7 @@ mod tests {
                 title: "Test Game".into(),
                 media_type: "game".into(),
                 status_id: MediaStatus::NotStarted.id(),
+                ..Default::default()
             },
         )
         .await
@@ -905,6 +913,7 @@ mod tests {
                 title: "Test Game".into(),
                 media_type: "game".into(),
                 status_id: MediaStatus::NotStarted.id(),
+                ..Default::default()
             },
         )
         .await
@@ -959,6 +968,7 @@ mod tests {
                 title: "Test Game".into(),
                 media_type: "game".into(),
                 status_id: MediaStatus::NotStarted.id(),
+                ..Default::default()
             },
         )
         .await

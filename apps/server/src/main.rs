@@ -6,6 +6,7 @@ use itonda_domain::{
         registry::AssetRegistry, steam_grid_db::SteamGridDb, the_movie_database::TheMovieDatabase,
     },
     events::EventBus,
+    metadata::{registry::MetadataRegistry, the_internet_game_database::TheInternetGameDatabase},
     storage::path::AppPaths,
     store::toml::TomlCodec,
     storefronts::{registry::StorefrontRegistry, steam::SteamStorefront},
@@ -47,9 +48,12 @@ async fn main() -> anyhow::Result<()> {
 
     let asset_store = init_asset_store(&secrets).await?;
 
+    let metadata = init_metadata(&secrets).await?;
+
     let agent_manager = AgentManager::new();
 
-    let (jobs, events) = init_worker(&pool, &storefronts, &asset_store, &agent_manager).await?;
+    let (jobs, events) =
+        init_worker(&pool, &storefronts, &asset_store, &metadata, &agent_manager).await?;
 
     let state = state::AppState {
         db: pool,
@@ -59,6 +63,7 @@ async fn main() -> anyhow::Result<()> {
         config,
         secrets,
         storefronts,
+        metadata,
         agent_manager,
     };
 
@@ -121,6 +126,7 @@ async fn init_worker(
     pool: &SqlitePool,
     storefronts: &StorefrontRegistry,
     asset_store: &AssetRegistry,
+    metadata: &MetadataRegistry,
     agent_manager: &AgentManager,
 ) -> anyhow::Result<(Sender<Job>, EventBus)> {
     let events = EventBus::new();
@@ -136,6 +142,7 @@ async fn init_worker(
             agent_manager.clone(),
             storefronts.clone(),
             asset_store.clone(),
+            metadata.clone(),
         ),
     );
 
@@ -201,6 +208,23 @@ async fn init_asset_store(secrets: &SecretsManager) -> anyhow::Result<AssetRegis
     registry.register_poster(Arc::new(TheMovieDatabase::new(
         secrets.asset_store.tmdb.api_key,
     )));
+
+    Ok(registry)
+}
+
+async fn init_metadata(secrets: &SecretsManager) -> anyhow::Result<MetadataRegistry> {
+    let secrets = secrets.get().await;
+
+    let mut registry = MetadataRegistry::new();
+
+    if !secrets.metadata_store.igdb.client_id.is_empty()
+        && !secrets.metadata_store.igdb.client_secret.is_empty()
+    {
+        registry.register(Arc::new(TheInternetGameDatabase::new(
+            secrets.metadata_store.igdb.client_id,
+            secrets.metadata_store.igdb.client_secret,
+        )));
+    }
 
     Ok(registry)
 }

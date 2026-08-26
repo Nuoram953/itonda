@@ -53,11 +53,34 @@ pub async fn get_media_by_id(pool: &SqlitePool, id: String) -> Result<Media, Med
 
     media.launches = launches.into_iter().map(Launch::from).collect();
 
+    media.genres = MediaQueries::find_genres_by_media_id(pool, &media.id).await?;
+    media.tags = MediaQueries::find_tags_by_media_id(pool, &media.id).await?;
+
     media.details = match media.media_type {
         MediaType::Game => {
             let details = MediaQueries::find_game_details(pool, &media.id).await?;
+            let companies = MediaQueries::find_companies_by_media_id(pool, &media.id).await?;
 
-            details.map(|details| MediaDetails::Game(details.into()))
+            let mut developers = Vec::new();
+            let mut publishers = Vec::new();
+
+            for c in companies {
+                if c.role_name == "developer" && !developers.contains(&c.company_name) {
+                    developers.push(c.company_name);
+                } else if c.role_name == "publisher" && !publishers.contains(&c.company_name) {
+                    publishers.push(c.company_name);
+                }
+            }
+
+            details.map(|details| {
+                MediaDetails::Game(crate::media::models::MediaGameDetails {
+                    playtime_minutes: details.playtime_minutes,
+                    last_played_at: details.last_played_at,
+                    series: details.series,
+                    developers,
+                    publishers,
+                })
+            })
         }
 
         MediaType::Movie => None,
@@ -122,6 +145,9 @@ pub async fn get_paginated_media(
     let storefronts = MediaQueries::find_storefronts_by_media_ids(pool, &ids).await?;
     let installations = MediaQueries::find_installations_by_media_ids(pool, &ids).await?;
     let launches = MediaQueries::find_media_launches_by_media_ids(pool, &ids).await?;
+    let genres = MediaQueries::find_genres_by_media_ids(pool, &ids).await?;
+    let tags = MediaQueries::find_tags_by_media_ids(pool, &ids).await?;
+    let companies = MediaQueries::find_companies_by_media_ids(pool, &ids).await?;
 
     let assets_by_media = assets.into_iter().fold(HashMap::new(), |mut map, asset| {
         map.entry(asset.media_id.clone())
@@ -154,6 +180,30 @@ pub async fn get_paginated_media(
                 .push(launch);
             map
         });
+
+    let genres_by_media = genres
+        .into_iter()
+        .fold(HashMap::new(), |mut map, (media_id, name)| {
+            map.entry(media_id).or_insert_with(Vec::new).push(name);
+            map
+        });
+
+    let tags_by_media = tags
+        .into_iter()
+        .fold(HashMap::new(), |mut map, (media_id, name)| {
+            map.entry(media_id).or_insert_with(Vec::new).push(name);
+            map
+        });
+
+    let companies_by_media = companies.into_iter().fold(
+        HashMap::new(),
+        |mut map, (media_id, company_name, role_name)| {
+            map.entry(media_id)
+                .or_insert_with(Vec::new)
+                .push((company_name, role_name));
+            map
+        },
+    );
 
     let mut medias = Vec::with_capacity(result.items.len());
 
@@ -192,11 +242,37 @@ pub async fn get_paginated_media(
             .map(Launch::from)
             .collect();
 
+        media.genres = genres_by_media.get(&media.id).cloned().unwrap_or_default();
+        media.tags = tags_by_media.get(&media.id).cloned().unwrap_or_default();
+
         media.details = match media.media_type {
             MediaType::Game => {
                 let details = MediaQueries::find_game_details(pool, &media.id).await?;
+                let comps = companies_by_media
+                    .get(&media.id)
+                    .cloned()
+                    .unwrap_or_default();
 
-                details.map(|details| MediaDetails::Game(details.into()))
+                let mut developers = Vec::new();
+                let mut publishers = Vec::new();
+
+                for (comp_name, role_name) in comps {
+                    if role_name == "developer" && !developers.contains(&comp_name) {
+                        developers.push(comp_name);
+                    } else if role_name == "publisher" && !publishers.contains(&comp_name) {
+                        publishers.push(comp_name);
+                    }
+                }
+
+                details.map(|details| {
+                    MediaDetails::Game(crate::media::models::MediaGameDetails {
+                        playtime_minutes: details.playtime_minutes,
+                        last_played_at: details.last_played_at,
+                        series: details.series,
+                        developers,
+                        publishers,
+                    })
+                })
             }
 
             MediaType::Movie => None,
@@ -260,6 +336,8 @@ pub async fn recalculate_media_game_details(
     let storefronts = MediaQueries::find_storefronts_by_media_id(pool, media_id).await?;
     let launches = MediaQueries::find_media_launches_by_media_id(pool, media_id).await?;
     let sessions = MediaQueries::find_launch_sessions_by_media_id(pool, media_id).await?;
+    let existing_details = MediaQueries::find_game_details(pool, media_id).await?;
+    let series = existing_details.and_then(|d| d.series);
 
     let mut total_playtime_minutes = 0i64;
     let mut latest_last_played_at: Option<i64> = None;
@@ -305,6 +383,7 @@ pub async fn recalculate_media_game_details(
             media_id: media_id.to_string(),
             playtime_minutes: Some(total_playtime_minutes),
             last_played_at: latest_last_played_at,
+            series,
         },
     )
     .await?;

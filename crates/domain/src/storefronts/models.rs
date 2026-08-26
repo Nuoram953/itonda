@@ -32,6 +32,12 @@ impl StorefrontId {
             StorefrontId::Steam => "steam",
         }
     }
+
+    pub fn as_the_internet_game_database(&self) -> i32 {
+        match self {
+            StorefrontId::Steam => 1,
+        }
+    }
 }
 
 impl TryFrom<&str> for StorefrontId {

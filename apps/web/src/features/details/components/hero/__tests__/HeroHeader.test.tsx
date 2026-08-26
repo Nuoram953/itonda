@@ -20,16 +20,20 @@ describe("HeroHeader Component", () => {
     details: {
       playtime_minutes: 180,
       last_played_at: 1700000000,
+      developers: [],
+      publishers: [],
     },
     storefronts: [],
     installations: [],
+    genres: [],
+    tags: [],
   };
 
   it("renders media title, playtime, and last played metadata", () => {
     render(<HeroHeader media={mockMedia} />);
 
     expect(screen.getByText("Kingdom Come: Deliverance")).toBeDefined();
-    expect(screen.getByText("3 Hours")).toBeDefined();
+    expect(screen.getByText("3h")).toBeDefined();
     expect(screen.getByText("Playtime")).toBeDefined();
     expect(screen.getByText("Last Played")).toBeDefined();
     expect(screen.getByText("Trailer")).toBeDefined();

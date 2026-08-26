@@ -27,6 +27,7 @@ pub async fn import(pool: &SqlitePool, input: MediaImport) -> Result<Media, Medi
             title: input.title,
             media_type: input.media_type.as_str().to_string(),
             status_id: MediaStatus::NotStarted.id(),
+            ..Default::default()
         },
     )
     .await?;

@@ -287,6 +287,12 @@ export interface components {
              *           "api_key": ""
              *         }
              *       },
+             *       "metadata_store": {
+             *         "igdb": {
+             *           "client_id": "",
+             *           "client_secret": ""
+             *         }
+             *       },
              *       "storefronts": {
              *         "steam": {
              *           "account_name": null,
@@ -334,21 +340,30 @@ export interface components {
         };
         Media: {
             assets: components["schemas"]["Asset"][];
+            description?: string | null;
             details?: null | components["schemas"]["MediaDetails"];
+            genres: string[];
             id: string;
             installations: components["schemas"]["MediaInstallation"][];
             launches: components["schemas"]["Launch"][];
             media_type: components["schemas"]["MediaType"];
+            /** Format: int64 */
+            release_date?: number | null;
             status: components["schemas"]["MediaStatus"];
             storefronts: components["schemas"]["MediaStorefront"][];
+            summary?: string | null;
+            tags: string[];
             title: string;
         };
         MediaDetails: components["schemas"]["MediaGameDetails"];
         MediaGameDetails: {
+            developers: string[];
             /** Format: int64 */
             last_played_at?: number | null;
             /** Format: int64 */
             playtime_minutes?: number | null;
+            publishers: string[];
+            series?: string | null;
         };
         MediaImportItem: {
             media_type: components["schemas"]["MediaType"];
@@ -424,6 +439,15 @@ export interface components {
              */
             steam: components["schemas"]["SteamSettings"];
         };
+        MetadataStoreSettings: {
+            /**
+             * @default {
+             *       "client_id": "",
+             *       "client_secret": ""
+             *     }
+             */
+            igdb: components["schemas"]["TheInternetGameDatabaseSettings"];
+        };
         PaginatedMedia: {
             has_next: boolean;
             items: components["schemas"]["Media"][];
@@ -454,8 +478,12 @@ export interface components {
         PatchMetadataSettings: {
             steam?: null | components["schemas"]["PatchSteamSettings"];
         };
+        PatchMetadataStoreSettings: {
+            igdb?: null | components["schemas"]["PatchTheInternetGameDatabaseSettings"];
+        };
         PatchSecrets: {
             asset_store?: null | components["schemas"]["PatchAssetStoreSettings"];
+            metadata_store?: null | components["schemas"]["PatchMetadataStoreSettings"];
             storefronts?: null | components["schemas"]["PatchStorefrontsSettings"];
         };
         PatchServerConfig: {
@@ -482,6 +510,10 @@ export interface components {
         PatchStorefrontsSettings: {
             steam?: null | components["schemas"]["PatchSteamSecrets"];
         };
+        PatchTheInternetGameDatabaseSettings: {
+            client_id?: string | null;
+            client_secret?: string | null;
+        };
         PatchTheMovieDatabaseSettings: {
             api_key?: string | null;
         };
@@ -497,6 +529,15 @@ export interface components {
              *     }
              */
             asset_store: components["schemas"]["AssetStoreSettings"];
+            /**
+             * @default {
+             *       "igdb": {
+             *         "client_id": "",
+             *         "client_secret": ""
+             *       }
+             *     }
+             */
+            metadata_store: components["schemas"]["MetadataStoreSettings"];
             /**
              * @default {
              *       "steam": {
@@ -576,6 +617,12 @@ export interface components {
              *     }
              */
             steam: components["schemas"]["SteamSecrets"];
+        };
+        TheInternetGameDatabaseSettings: {
+            /** @default  */
+            client_id: string;
+            /** @default  */
+            client_secret: string;
         };
         TheMovieDatabaseSettings: {
             /** @default  */

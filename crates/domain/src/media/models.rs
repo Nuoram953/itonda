@@ -21,6 +21,11 @@ pub struct Media {
     pub title: String,
     pub media_type: MediaType,
     pub status: MediaStatus,
+    pub description: Option<String>,
+    pub summary: Option<String>,
+    pub release_date: Option<i64>,
+    pub genres: Vec<String>,
+    pub tags: Vec<String>,
     pub assets: Vec<Asset>,
     pub details: Option<MediaDetails>,
     pub storefronts: Vec<MediaStorefront>,
@@ -78,6 +83,9 @@ pub enum MediaDetails {
 pub struct MediaGameDetails {
     pub playtime_minutes: Option<i64>,
     pub last_played_at: Option<i64>,
+    pub series: Option<String>,
+    pub developers: Vec<String>,
+    pub publishers: Vec<String>,
 }
 
 impl TryFrom<MediaAssetRow> for Asset {
@@ -142,6 +150,11 @@ impl TryFrom<MediaRow> for Media {
             title: row.title,
             status: row.status_id.try_into()?,
             media_type: row.media_type.try_into()?,
+            description: row.description,
+            summary: row.summary,
+            release_date: row.release_date,
+            genres: Vec::new(),
+            tags: Vec::new(),
             assets: Vec::new(),
             storefronts: Vec::new(),
             installations: Vec::new(),
@@ -156,6 +169,9 @@ impl From<MediaGameDetailsRow> for MediaGameDetails {
         Self {
             playtime_minutes: row.playtime_minutes,
             last_played_at: row.last_played_at,
+            series: row.series,
+            developers: Vec::new(),
+            publishers: Vec::new(),
         }
     }
 }

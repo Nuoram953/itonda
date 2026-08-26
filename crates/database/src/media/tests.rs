@@ -12,6 +12,7 @@ async fn insert_media_creates_media() {
             title: "Halo".to_string(),
             media_type: "game".to_string(),
             status_id: 1,
+            ..Default::default()
         },
     )
     .await
@@ -32,6 +33,7 @@ async fn insert_media_generates_unique_id() {
             title: "Halo".to_string(),
             media_type: "game".to_string(),
             status_id: 1,
+            ..Default::default()
         },
     )
     .await
@@ -43,6 +45,7 @@ async fn insert_media_generates_unique_id() {
             title: "Halo".to_string(),
             media_type: "game".to_string(),
             status_id: 1,
+            ..Default::default()
         },
     )
     .await
@@ -61,6 +64,7 @@ async fn find_all_returns_all_media() {
             title: "Halo".to_string(),
             media_type: "game".to_string(),
             status_id: 1,
+            ..Default::default()
         },
     )
     .await
@@ -72,6 +76,7 @@ async fn find_all_returns_all_media() {
             title: "The Matrix".to_string(),
             media_type: "movie".to_string(),
             status_id: 1,
+            ..Default::default()
         },
     )
     .await
@@ -98,6 +103,7 @@ async fn find_all_filters_by_media_type() {
             title: "Halo".to_string(),
             media_type: "game".to_string(),
             status_id: 1,
+            ..Default::default()
         },
     )
     .await
@@ -109,6 +115,7 @@ async fn find_all_filters_by_media_type() {
             title: "The Matrix".to_string(),
             media_type: "movie".to_string(),
             status_id: 1,
+            ..Default::default()
         },
     )
     .await
@@ -152,6 +159,7 @@ async fn find_paginated_supports_filters_sorting_and_pagination() {
             title: "Cyberpunk 2077".to_string(),
             media_type: "game".to_string(),
             status_id: 1,
+            ..Default::default()
         },
     )
     .await
@@ -163,6 +171,7 @@ async fn find_paginated_supports_filters_sorting_and_pagination() {
             title: "Elden Ring".to_string(),
             media_type: "game".to_string(),
             status_id: 2,
+            ..Default::default()
         },
     )
     .await
@@ -174,6 +183,7 @@ async fn find_paginated_supports_filters_sorting_and_pagination() {
             title: "The Matrix".to_string(),
             media_type: "movie".to_string(),
             status_id: 1,
+            ..Default::default()
         },
     )
     .await
@@ -185,6 +195,7 @@ async fn find_paginated_supports_filters_sorting_and_pagination() {
             media_id: media1.id.clone(),
             playtime_minutes: Some(100),
             last_played_at: Some(1000),
+            ..Default::default()
         },
     )
     .await
@@ -196,6 +207,7 @@ async fn find_paginated_supports_filters_sorting_and_pagination() {
             media_id: media2.id.clone(),
             playtime_minutes: Some(500),
             last_played_at: Some(2000),
+            ..Default::default()
         },
     )
     .await
@@ -278,6 +290,7 @@ async fn find_media_by_title_returns_media_when_exists() {
             title: "Halo".to_string(),
             media_type: "game".to_string(),
             status_id: 1,
+            ..Default::default()
         },
     )
     .await
@@ -316,6 +329,7 @@ async fn upsert_media_launch_creates_launch() {
             title: "Halo".to_string(),
             media_type: "game".to_string(),
             status_id: 1,
+            ..Default::default()
         },
     )
     .await
@@ -329,7 +343,7 @@ async fn upsert_media_launch_creates_launch() {
             name: "Default".to_string(),
             launch_type: "steam".to_string(),
             program: "steam".to_string(),
-            arguments: r#"["steam://run/9310"]"#.to_string(),
+            arguments: "[]".to_string(),
             working_directory: None,
             is_default: true,
             enabled: true,
@@ -345,9 +359,9 @@ async fn upsert_media_launch_creates_launch() {
     assert_eq!(launch.name, "Default");
     assert_eq!(launch.launch_type, "steam");
     assert_eq!(launch.program, "steam");
-    assert_eq!(launch.arguments, r#"["steam://run/9310"]"#);
     assert!(launch.is_default);
     assert!(launch.enabled);
+    assert_eq!(launch.arguments, "[]");
 }
 
 #[tokio::test]
@@ -360,6 +374,7 @@ async fn find_media_launch_by_media_id_returns_launches() {
             title: "Halo".to_string(),
             media_type: "game".to_string(),
             status_id: 1,
+            ..Default::default()
         },
     )
     .await
@@ -373,7 +388,7 @@ async fn find_media_launch_by_media_id_returns_launches() {
             name: "Default".to_string(),
             launch_type: "steam".to_string(),
             program: "steam".to_string(),
-            arguments: r#"["steam://run/9310"]"#.to_string(),
+            arguments: "[]".to_string(),
             working_directory: None,
             is_default: true,
             enabled: true,
@@ -411,6 +426,7 @@ async fn find_media_launch_by_id_returns_launch() {
             title: "Halo".to_string(),
             media_type: "game".to_string(),
             status_id: 1,
+            ..Default::default()
         },
     )
     .await
@@ -450,6 +466,7 @@ async fn update_media_status_updates_media_and_creates_history() {
             title: "Halo".to_string(),
             media_type: "game".to_string(),
             status_id: 1,
+            ..Default::default()
         },
     )
     .await
@@ -485,6 +502,7 @@ async fn upsert_media_launch_returns_unchanged_when_nothing_changed() {
             title: "Halo".to_string(),
             media_type: "game".to_string(),
             status_id: 1,
+            ..Default::default()
         },
     )
     .await
@@ -496,7 +514,7 @@ async fn upsert_media_launch_returns_unchanged_when_nothing_changed() {
         name: "Default".to_string(),
         launch_type: "steam".to_string(),
         program: "steam".to_string(),
-        arguments: r#"["steam://run/9310"]"#.to_string(),
+        arguments: "[]".to_string(),
         working_directory: None,
         is_default: true,
         enabled: true,
@@ -526,6 +544,7 @@ async fn upsert_media_launch_updates_existing_launch() {
             title: "Halo".to_string(),
             media_type: "game".to_string(),
             status_id: 1,
+            ..Default::default()
         },
     )
     .await
@@ -584,6 +603,7 @@ async fn find_assets_by_media_ids_returns_assets() {
             title: "Halo".into(),
             media_type: "game".into(),
             status_id: 1,
+            ..Default::default()
         },
     )
     .await
@@ -617,6 +637,7 @@ async fn upsert_media_storefront_creates_and_updates() {
             title: "Portal 2".into(),
             media_type: "game".into(),
             status_id: 1,
+            ..Default::default()
         },
     )
     .await
@@ -680,6 +701,7 @@ async fn find_media_by_storefront_returns_correct_media() {
             title: "Half-Life 2".into(),
             media_type: "game".into(),
             status_id: 1,
+            ..Default::default()
         },
     )
     .await
@@ -717,7 +739,6 @@ async fn find_media_by_storefront_returns_correct_media() {
     assert_eq!(storefronts[0].external_id, "220");
     assert_eq!(storefronts[0].playtime_minutes, Some(120));
 
-    // Test installations
     use crate::agent::{AgentsInsert, upsert_agent};
     upsert_agent(
         &pool,
@@ -751,4 +772,138 @@ async fn find_media_by_storefront_returns_correct_media() {
     assert_eq!(installations.len(), 1);
     assert_eq!(installations[0].agent_id, "agent-1");
     assert_eq!(installations[0].path, Some("/games/hl2".into()));
+}
+
+#[tokio::test]
+async fn test_metadata_queries_crud() {
+    let pool = setup_db().await;
+
+    let media = MediaQueries::insert_media(
+        &pool,
+        MediaQueries::MediaInsert {
+            title: "The Witcher 3".into(),
+            media_type: "game".into(),
+            status_id: 1,
+            description: Some("Initial storyline".into()),
+            summary: Some("Initial summary".into()),
+            release_date: Some(1431993600),
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(media.description.as_deref(), Some("Initial storyline"));
+    assert_eq!(media.summary.as_deref(), Some("Initial summary"));
+    assert_eq!(media.release_date, Some(1431993600));
+
+    MediaQueries::update_media_metadata(
+        &pool,
+        MediaQueries::MediaMetadataUpdate {
+            media_id: media.id.clone(),
+            description: Some("Updated storyline".into()),
+            summary: Some("Updated summary".into()),
+            release_date: Some(1431993600),
+        },
+    )
+    .await
+    .unwrap();
+
+    let updated = MediaQueries::find_media_by_id(&pool, media.id.clone())
+        .await
+        .unwrap();
+    assert_eq!(updated.description.as_deref(), Some("Updated storyline"));
+    assert_eq!(updated.summary.as_deref(), Some("Updated summary"));
+
+    MediaQueries::sync_media_genres(&pool, &media.id, &["RPG".into(), "Open World".into()])
+        .await
+        .unwrap();
+
+    let genres = MediaQueries::find_genres_by_media_id(&pool, &media.id)
+        .await
+        .unwrap();
+    assert_eq!(genres.len(), 2);
+    assert!(genres.contains(&"RPG".to_string()));
+    assert!(genres.contains(&"Open World".to_string()));
+
+    MediaQueries::sync_media_tags(&pool, &media.id, &["Action".into(), "Fantasy".into()])
+        .await
+        .unwrap();
+
+    let tags = MediaQueries::find_tags_by_media_id(&pool, &media.id)
+        .await
+        .unwrap();
+    assert_eq!(tags.len(), 2);
+    assert!(tags.contains(&"Action".to_string()));
+    assert!(tags.contains(&"Fantasy".to_string()));
+
+    MediaQueries::sync_media_companies(
+        &pool,
+        &media.id,
+        &["CD Projekt RED".into()],
+        &["CD Projekt".into()],
+    )
+    .await
+    .unwrap();
+
+    let companies = MediaQueries::find_companies_by_media_id(&pool, &media.id)
+        .await
+        .unwrap();
+    assert_eq!(companies.len(), 2);
+
+    let details = MediaQueries::upsert_media_game_details(
+        &pool,
+        MediaQueries::MediaGameDetailsUpsert {
+            media_id: media.id.clone(),
+            playtime_minutes: Some(150),
+            last_played_at: Some(1700000000),
+            series: Some("The Witcher".into()),
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(details.value.series.as_deref(), Some("The Witcher"));
+}
+
+#[tokio::test]
+async fn test_metadata_searches_crud() {
+    let pool = setup_db().await;
+
+    let media = MediaQueries::insert_media(
+        &pool,
+        MediaQueries::MediaInsert {
+            title: "Dark Souls".into(),
+            media_type: "game".into(),
+            status_id: 1,
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    let search_none = MediaQueries::find_metadata_search_by_media_id(&pool, &media.id)
+        .await
+        .unwrap();
+    assert!(search_none.is_none());
+
+    let inserted = MediaQueries::insert_media_metadata_search(
+        &pool,
+        MediaQueries::MediaMetadataSearchInsert {
+            media_id: media.id.clone(),
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(inserted.media_id, media.id);
+
+    let search_found = MediaQueries::find_metadata_search_by_media_id(&pool, &media.id)
+        .await
+        .unwrap();
+    assert!(search_found.is_some());
+    assert_eq!(search_found.unwrap().media_id, media.id);
+
+    let batch = MediaQueries::find_metadata_searches_by_media_ids(&pool, &[media.id])
+        .await
+        .unwrap();
+    assert_eq!(batch.len(), 1);
 }

@@ -60,6 +60,7 @@ impl MediaFixture {
                 title: self.title,
                 media_type: self.media_type,
                 status_id: MediaStatus::NotStarted.id(),
+                ..Default::default()
             },
         )
         .await

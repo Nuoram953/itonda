@@ -7,6 +7,7 @@ use utoipa::ToSchema;
 pub struct Secrets {
     pub storefronts: StorefrontsSettings,
     pub asset_store: AssetStoreSettings,
+    pub metadata_store: MetadataStoreSettings,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
@@ -20,6 +21,12 @@ pub struct StorefrontsSettings {
 pub struct AssetStoreSettings {
     pub steam_grid_db: SteamGridDbSettings,
     pub tmdb: TheMovieDatabaseSettings,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(default)]
+pub struct MetadataStoreSettings {
+    pub igdb: TheInternetGameDatabaseSettings,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
@@ -40,6 +47,13 @@ pub struct SteamGridDbSettings {
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(default)]
+pub struct TheInternetGameDatabaseSettings {
+    pub client_id: String,
+    pub client_secret: String,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(default)]
 pub struct TheMovieDatabaseSettings {
     pub api_key: String,
 }
@@ -53,6 +67,9 @@ impl Secrets {
         }
         if let Some(asset_store) = patch.asset_store {
             self.asset_store.apply_patch(asset_store);
+        }
+        if let Some(metadata_store) = patch.metadata_store {
+            self.metadata_store.apply_patch(metadata_store);
         }
     }
 }
@@ -107,10 +124,26 @@ impl TheMovieDatabaseSettings {
     }
 }
 
+impl MetadataStoreSettings {
+    pub fn apply_patch(&mut self, patch: PatchMetadataStoreSettings) {
+        if let Some(igdb) = patch.igdb {
+            self.igdb.apply_patch(igdb);
+        }
+    }
+}
+
+impl TheInternetGameDatabaseSettings {
+    pub fn apply_patch(&mut self, patch: PatchTheInternetGameDatabaseSettings) {
+        apply_secret_string(&mut self.client_id, patch.client_id);
+        apply_secret_string(&mut self.client_secret, patch.client_secret);
+    }
+}
+
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct PatchSecrets {
     pub storefronts: Option<PatchStorefrontsSettings>,
     pub asset_store: Option<PatchAssetStoreSettings>,
+    pub metadata_store: Option<PatchMetadataStoreSettings>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
@@ -141,4 +174,15 @@ pub struct PatchSteamGridDbSettings {
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct PatchTheMovieDatabaseSettings {
     pub api_key: Option<String>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
+pub struct PatchMetadataStoreSettings {
+    pub igdb: Option<PatchTheInternetGameDatabaseSettings>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
+pub struct PatchTheInternetGameDatabaseSettings {
+    pub client_id: Option<String>,
+    pub client_secret: Option<String>,
 }

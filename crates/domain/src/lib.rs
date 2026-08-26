@@ -4,6 +4,7 @@ pub mod events;
 pub mod http;
 pub mod launch;
 pub mod media;
+pub mod metadata;
 pub mod protocol;
 pub mod scanner;
 pub mod storage;
