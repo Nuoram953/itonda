@@ -8,6 +8,8 @@ import type { NotificationContextValue } from "@/app/notificationContext";
 import type { ActiveMediaSession } from "@/app/activeMediaContext";
 import { formatDurationText } from "@/utils/datetime";
 import { getAgentsQueryOptions } from "@/api/get-agents";
+import { getMediaQueryOptions } from "@/features/library/api/get-media";
+import { getMediaByIdQueryOptions } from "@/features/details/api/get-media-id";
 
 type Notify = NotificationContextValue["notify"];
 
@@ -164,7 +166,9 @@ export function handleMediaEvent(
 
 function invalidateMediaQuery(queryClient: QueryClient, mediaId?: string) {
   if (mediaId) {
-    queryClient.invalidateQueries({ queryKey: ["media", mediaId] });
+    queryClient.invalidateQueries({
+      queryKey: getMediaByIdQueryOptions(mediaId).queryKey,
+    });
   }
-  queryClient.invalidateQueries({ queryKey: ["media"] });
+  queryClient.invalidateQueries({ queryKey: getMediaQueryOptions().queryKey });
 }

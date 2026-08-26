@@ -7,7 +7,7 @@ import {
   getHeroPosterAsset,
   getHeroTrailerAsset,
 } from "../../utils/media-assets";
-import { formatPlaytimeHours, formatLastPlayedDate } from "@/utils/datetime";
+import { formatLastPlayedDate, formatPlaytime } from "@/utils/datetime";
 import { cn } from "@/lib/utils";
 
 type HeroHeaderProps = {
@@ -54,7 +54,9 @@ export function HeroHeader({ media }: HeroHeaderProps) {
   };
 
   const showVideo = Boolean(trailerAsset && !videoError);
-  const playtimeHours = formatPlaytimeHours(media.details?.playtime_minutes);
+  const playtimeHours = formatPlaytime(media.details?.playtime_minutes, {
+    mode: "compact",
+  });
   const lastPlayedDate = formatLastPlayedDate(media.details?.last_played_at);
 
   return (
@@ -151,7 +153,7 @@ export function HeroHeader({ media }: HeroHeaderProps) {
                       Playtime
                     </span>
                     <span className="text-md font-bold text-foreground">
-                      {playtimeHours} Hours
+                      {playtimeHours}
                     </span>
                   </div>
 
