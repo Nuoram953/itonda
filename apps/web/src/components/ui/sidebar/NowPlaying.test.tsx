@@ -1,8 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, renderWithRouter } from "@/test/test-utils";
+import {
+  screen,
+  renderWithRouter,
+  createMedia,
+  createLaunch,
+  createAsset,
+  createActiveMediaSession,
+} from "@/test/test-utils";
 import { NowPlaying } from "./NowPlaying";
 import { useActiveMedia } from "@/hooks/use-active-media";
-import type { components } from "@/api/generated.d";
 
 vi.mock("@/hooks/use-active-media", () => ({
   useActiveMedia: vi.fn(),
@@ -29,24 +35,21 @@ describe("NowPlayingGame", () => {
   });
 
   it("renders game title, live elapsed time, and poster when playing", async () => {
-    const mockMedia: components["schemas"]["Media"] = {
+    const mockMedia = createMedia({
       id: "media-game-1",
       title: "Cyberpunk 2077",
-      media_type: "game",
       status: "in_progress",
-      launches: [{ id: "launch-1", name: "Default" }],
-      assets: [{ id: "poster-cp2077", asset_type: "poster" }],
-      storefronts: [],
-      installations: [],
-    };
+      launches: [createLaunch({ id: "launch-1", name: "Default" })],
+      assets: [createAsset({ id: "poster-cp2077", asset_type: "poster" })],
+    });
 
     vi.mocked(useActiveMedia).mockReturnValue({
-      session: {
+      session: createActiveMediaSession({
         mediaId: "media-game-1",
         launchId: "launch-1",
         agentId: "agent-1",
         startedAt: Date.now() - 125000,
-      },
+      }),
       media: mockMedia,
       isLoadingMedia: false,
       isPlaying: true,
@@ -71,24 +74,19 @@ describe("NowPlayingGame", () => {
   });
 
   it("renders fallback gamepad icon when poster is not present", async () => {
-    const mockMedia: components["schemas"]["Media"] = {
+    const mockMedia = createMedia({
       id: "media-game-2",
       title: "Hollow Knight",
-      media_type: "game",
       status: "in_progress",
-      launches: [],
-      assets: [],
-      storefronts: [],
-      installations: [],
-    };
+    });
 
     vi.mocked(useActiveMedia).mockReturnValue({
-      session: {
+      session: createActiveMediaSession({
         mediaId: "media-game-2",
         launchId: "launch-2",
         agentId: "agent-1",
         startedAt: Date.now() - 60000,
-      },
+      }),
       media: mockMedia,
       isLoadingMedia: false,
       isPlaying: true,

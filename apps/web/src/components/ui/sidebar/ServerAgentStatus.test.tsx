@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, render, fireEvent } from "@/test/test-utils";
+import { screen, render, fireEvent, createAgent } from "@/test/test-utils";
 import { ServerAgentStatus } from "./ServerAgentStatus";
 import { useWebSocketStatus } from "@/hooks/use-websocket-status";
 import { useAgents } from "@/api/get-agents";
@@ -53,14 +53,13 @@ describe("ServerAgentStatus", () => {
     vi.mocked(useAgents).mockReturnValue({
       data: {
         agents: [
-          {
+          createAgent({
             id: "agent-1",
             name: "Desktop-Agent",
             hostname: "desktop-pc",
             platform: "linux",
             is_connected: true,
-            created_at: 1000,
-          },
+          }),
         ],
       },
       isLoading: false,
@@ -79,14 +78,13 @@ describe("ServerAgentStatus", () => {
     vi.mocked(useAgents).mockReturnValue({
       data: {
         agents: [
-          {
+          createAgent({
             id: "agent-12345678",
             name: "Primary Agent Node",
             hostname: "agent-host-1",
             platform: "linux",
             is_connected: true,
-            created_at: 1000,
-          },
+          }),
         ],
       },
       isLoading: false,

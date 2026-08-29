@@ -1,19 +1,14 @@
 import { describe, it, expect } from "vitest";
 import { fireEvent } from "@testing-library/react";
-import { render, screen } from "@/test/test-utils";
+import { render, screen, createMedia, createAsset } from "@/test/test-utils";
 import { Card } from "../card";
 import type { components } from "@/api/generated.d";
 
-const mockMedia: components["schemas"]["Media"] = {
+const mockMedia = createMedia({
   id: "media-1",
   title: "Elden Ring",
-  media_type: "game",
   status: "in_progress",
-  assets: [],
-  launches: [],
-  storefronts: [],
-  installations: [],
-};
+});
 
 describe("Card", () => {
   it("renders the card title", () => {
@@ -43,7 +38,7 @@ describe("Card", () => {
       <Card
         media={{
           ...mockMedia,
-          assets: [{ id: "asset-1", asset_type: "backdrop" }],
+          assets: [createAsset({ id: "asset-1", asset_type: "backdrop" })],
         }}
       />,
     );
@@ -56,7 +51,7 @@ describe("Card", () => {
       <Card
         media={{
           ...mockMedia,
-          assets: [{ id: "poster-123", asset_type: "poster" }],
+          assets: [createAsset({ id: "poster-123", asset_type: "poster" })],
         }}
       />,
     );
@@ -73,7 +68,7 @@ describe("Card", () => {
       <Card
         media={{
           ...mockMedia,
-          assets: [{ id: "poster-123", asset_type: "poster" }],
+          assets: [createAsset({ id: "poster-123", asset_type: "poster" })],
         }}
       />,
     );
@@ -91,7 +86,7 @@ describe("Card", () => {
       <Card
         media={{
           ...mockMedia,
-          assets: [{ id: "poster-123", asset_type: "poster" }],
+          assets: [createAsset({ id: "poster-123", asset_type: "poster" })],
         }}
       />,
     );

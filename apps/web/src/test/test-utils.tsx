@@ -89,5 +89,6 @@ export const renderWithRouter = (component: React.ReactNode) => {
 
 /* eslint-disable react-refresh/only-export-components */
 export * from "@testing-library/react";
+export * from "./factories";
 
 export { renderWithProviders as render };

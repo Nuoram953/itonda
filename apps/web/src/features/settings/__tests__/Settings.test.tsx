@@ -1,45 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@/test/test-utils";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  createCombinedConfig,
+} from "@/test/test-utils";
 import { Settings } from "../index";
-import type { components } from "@/api/generated.d";
 
-const mockConfigData: components["schemas"]["CombinedConfig"] = {
-  settings: {
-    metadata: {
-      steam: {
-        enabled: true,
-        fetch_achievements: true,
-        fetch_playtime: true,
-      },
-    },
-  },
-  secrets: {
-    storefronts: {
-      steam: {
-        api_key: "steam-api-key-xyz",
-        steam_id: "76561198000000000",
-        account_name: null,
-        avatar_url: null,
-      },
-    },
-    asset_store: {
-      steam_grid_db: {
-        api_key: "sgdb-api-key-123",
-      },
-      tmdb: {
-        api_key: "tmdb-api-key-456",
-      },
-    },
-  },
+const mockConfigData = createCombinedConfig({
   app: {
     server: {
       host: "127.0.0.1",
       port: 3005,
     },
   },
-};
+});
 
 const mockMutateAsync = vi.fn().mockResolvedValue(mockConfigData);
+
 
 vi.mock("../api/get-config", () => ({
   useConfig: () => ({

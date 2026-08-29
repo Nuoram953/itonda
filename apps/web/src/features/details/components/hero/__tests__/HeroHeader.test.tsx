@@ -1,33 +1,29 @@
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@/test/test-utils";
+import {
+  render,
+  screen,
+  createMedia,
+  createAsset,
+  createMediaDetails,
+} from "@/test/test-utils";
 import { HeroHeader } from "../HeroHeader";
-import type { components } from "@/api/generated.d";
-
-type Media = components["schemas"]["Media"];
 
 describe("HeroHeader Component", () => {
-  const mockMedia: Media = {
+  const mockMedia = createMedia({
     id: "media-1",
     title: "Kingdom Come: Deliverance",
-    media_type: "game",
     status: "in_progress",
     assets: [
-      { id: "poster-1", asset_type: "poster" },
-      { id: "banner-1", asset_type: "banner" },
-      { id: "trailer-1", asset_type: "trailer" },
+      createAsset({ id: "poster-1", asset_type: "poster" }),
+      createAsset({ id: "banner-1", asset_type: "banner" }),
+      createAsset({ id: "trailer-1", asset_type: "trailer" }),
     ],
-    launches: [],
-    details: {
+    details: createMediaDetails({
       playtime_minutes: 180,
       last_played_at: 1700000000,
-      developers: [],
-      publishers: [],
-    },
-    storefronts: [],
-    installations: [],
-    genres: [],
-    tags: [],
-  };
+    }),
+  });
+
 
   it("renders media title, playtime, and last played metadata", () => {
     render(<HeroHeader media={mockMedia} />);

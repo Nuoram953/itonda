@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen } from "@/test/test-utils";
+import {
+  fireEvent,
+  render,
+  screen,
+  createLaunch,
+  createActiveMediaSession,
+} from "@/test/test-utils";
 import { Launch } from "../Launch";
-import type { components } from "@/api/generated.d";
 import { useActiveMedia } from "@/hooks/use-active-media";
 
 const mockMutate = vi.fn();
@@ -34,14 +39,15 @@ describe("Launch Component", () => {
     });
   });
 
-  const singleProfile: components["schemas"]["Launch"][] = [
-    { id: "profile-1", name: "Default Profile" },
+  const singleProfile = [
+    createLaunch({ id: "profile-1", name: "Default Profile" }),
   ];
 
-  const multipleProfiles: components["schemas"]["Launch"][] = [
-    { id: "profile-dx11", name: "DirectX 11" },
-    { id: "profile-vulkan", name: "Vulkan" },
+  const multipleProfiles = [
+    createLaunch({ id: "profile-dx11", name: "DirectX 11" }),
+    createLaunch({ id: "profile-vulkan", name: "Vulkan" }),
   ];
+
 
   it("renders the Play action button", () => {
     render(<Launch profiles={singleProfile} />);
@@ -164,12 +170,12 @@ describe("Launch Component", () => {
 
   it("renders active playing state when game is running", () => {
     vi.mocked(useActiveMedia).mockReturnValue({
-      session: {
+      session: createActiveMediaSession({
         mediaId: "game-99",
         launchId: "profile-1",
         agentId: "agent-1",
         startedAt: Date.now() - 30000,
-      },
+      }),
       isPlaying: true,
       formattedElapsed: "00:30",
       media: undefined,
