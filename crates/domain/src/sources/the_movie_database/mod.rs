@@ -4,10 +4,10 @@ use crate::{
     assets::{
         error::AssetError,
         models::{AssetStoreId, PosterSearchOptions},
-        the_movie_database::client::TheMovieDatabaseClient,
         traits::{AssetFetcher, PosterFetcher},
     },
     media::{discovered::DiscoveredAsset, types::MediaType},
+    sources::the_movie_database::client::TheMovieDatabaseClient,
     storefronts::models::StorefrontId,
 };
 

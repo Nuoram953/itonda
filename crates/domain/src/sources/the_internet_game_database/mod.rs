@@ -5,9 +5,9 @@ use crate::{
     metadata::{
         error::MetadataError,
         models::{GeneralMetadata, MetadataProviderId, MetadataQuery},
-        the_internet_game_database::client::TheInternetGameDatabaseClient,
         traits::{GeneralInfoFetcher, MetadataFetcher},
     },
+    sources::the_internet_game_database::client::TheInternetGameDatabaseClient,
 };
 
 pub mod client;

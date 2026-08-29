@@ -1,8 +1,10 @@
-use crate::assets::the_movie_database::models::{
-    TmdbImageItem, TmdbImagesResponse, TmdbKeywordSearchResponse, TmdbMovieSearchResponse,
-    TmdbMultiSearchResponse, TmdbTvSearchResponse,
+use crate::{
+    assets::types::AssetType,
+    sources::the_movie_database::models::{
+        TmdbImageItem, TmdbImagesResponse, TmdbKeywordSearchResponse, TmdbMovieSearchResponse,
+        TmdbMultiSearchResponse, TmdbTvSearchResponse,
+    },
 };
-use crate::assets::types::AssetType;
 
 #[test]
 fn test_deserialize_movie_search_response() {

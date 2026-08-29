@@ -7,6 +7,7 @@ pub mod media;
 pub mod metadata;
 pub mod protocol;
 pub mod scanner;
+pub mod sources;
 pub mod storage;
 pub mod store;
 pub mod storefronts;

@@ -2,10 +2,10 @@ use reqwest_middleware::ClientWithMiddleware;
 
 use crate::{
     http::create_http_client,
-    storefronts::{
-        error::StorefrontError,
-        steam::models::{GetOwnedGamesResponse, GetPlayerSummariesResponse, SteamPlayerSummary},
+    sources::steam::models::{
+        GetOwnedGamesResponse, GetPlayerSummariesResponse, SteamPlayerSummary,
     },
+    storefronts::error::StorefrontError,
 };
 
 pub struct SteamClient {

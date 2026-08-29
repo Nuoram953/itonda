@@ -2,14 +2,14 @@ use crate::{
     media::types::MediaType,
     metadata::{
         models::{GeneralMetadata, MetadataProviderId},
-        the_internet_game_database::{
-            TheInternetGameDatabase,
-            models::{
-                Company, GetExternalGameResponse, GetGameResponse, GetInvolvedCompanyResponse,
-                IgdbNamedItem, Screenshot, TwitchTokenResponse,
-            },
-        },
         traits::MetadataFetcher,
+    },
+    sources::the_internet_game_database::{
+        TheInternetGameDatabase,
+        models::{
+            Company, GetExternalGameResponse, GetGameResponse, GetInvolvedCompanyResponse,
+            IgdbNamedItem, Screenshot, TwitchTokenResponse,
+        },
     },
 };
 
@@ -210,7 +210,7 @@ fn test_metadata_fetcher_trait() {
 
 #[tokio::test]
 async fn test_client_token_lock_flow() {
-    use crate::metadata::the_internet_game_database::models::CachedToken;
+    use crate::sources::the_internet_game_database::models::CachedToken;
     use std::time::{Duration, Instant};
 
     let igdb = TheInternetGameDatabase::new("client_id".into(), "client_secret".into());
@@ -272,7 +272,7 @@ async fn test_rate_limiter_pacing() {
 #[tokio::test]
 async fn test_client_surfaces_http_error() {
     use crate::http::RateLimiter;
-    use crate::metadata::the_internet_game_database::{
+    use crate::sources::the_internet_game_database::{
         client::TheInternetGameDatabaseClient, models::CachedToken,
     };
     use std::time::{Duration, Instant};

@@ -5,12 +5,10 @@ use tokio::sync::RwLock;
 
 use crate::{
     http::{RateLimiter, create_rate_limited_http_client},
-    metadata::{
-        error::MetadataError,
-        the_internet_game_database::models::{
-            CachedToken, GetExternalGameResponse, GetGameResponse, GetInvolvedCompanyResponse,
-            GetSearchResponse, TwitchTokenResponse,
-        },
+    metadata::error::MetadataError,
+    sources::the_internet_game_database::models::{
+        CachedToken, GetExternalGameResponse, GetGameResponse, GetInvolvedCompanyResponse,
+        GetSearchResponse, TwitchTokenResponse,
     },
     storefronts::models::StorefrontId,
 };

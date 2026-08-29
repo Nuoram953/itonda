@@ -4,11 +4,11 @@ use crate::{
     assets::{
         error::AssetError,
         models::{AssetStoreId, PosterSearchOptions},
-        steam_grid_db::{client::SteamGridDbClient, models::GridSearchOptions},
         traits::{AssetFetcher, BannerFetcher, PosterFetcher},
         types::AssetType,
     },
     media::{discovered::DiscoveredAsset, types::MediaType},
+    sources::steam_grid_db::{client::SteamGridDbClient, models::GridSearchOptions},
     storefronts::models::StorefrontId,
 };
 

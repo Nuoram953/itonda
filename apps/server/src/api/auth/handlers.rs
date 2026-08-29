@@ -6,10 +6,9 @@ use axum::{
     http::HeaderMap,
     response::{IntoResponse, Redirect, Response},
 };
-use itonda_domain::storefronts::{
-    auth::StorefrontAuthenticator,
-    models::StorefrontId,
-    steam::{SteamStorefront, auth::SteamAuthenticator, client::SteamClient},
+use itonda_domain::{
+    sources::steam::{SteamStorefront, auth::SteamAuthenticator, client::SteamClient},
+    storefronts::{auth::StorefrontAuthenticator, models::StorefrontId},
 };
 use serde::Deserialize;
 use tracing::instrument;
