@@ -1,28 +1,29 @@
 import { describe, it, expect, vi } from "vitest";
-import { fireEvent, render, screen } from "@/test/test-utils";
+import {
+  fireEvent,
+  render,
+  screen,
+  createMedia,
+  createAsset,
+  createMediaDetails,
+} from "@/test/test-utils";
 import { OverviewTab } from "../OverviewTab";
-import type { components } from "@/api/generated.d";
-
-type Media = components["schemas"]["Media"];
 
 describe("OverviewTab Component", () => {
-  const mockMedia: Media = {
+  const mockMedia = createMedia({
     id: "media-1",
     title: "Kingdom Come: Deliverance",
-    media_type: "game",
     status: "in_progress",
     assets: [
-      { id: "s1", asset_type: "screenshot" },
-      { id: "t1", asset_type: "trailer" },
+      createAsset({ id: "s1", asset_type: "screenshot" }),
+      createAsset({ id: "t1", asset_type: "trailer" }),
     ],
-    launches: [],
-    details: {
+    details: createMediaDetails({
       playtime_minutes: 120,
       last_played_at: 1700000000,
-    },
-    storefronts: [],
-    installations: [],
-  };
+    }),
+  });
+
 
   it("renders all overview sections", () => {
     const handleNavigateTab = vi.fn();

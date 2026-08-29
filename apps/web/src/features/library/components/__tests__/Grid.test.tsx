@@ -1,38 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@/test/test-utils";
+import { render, screen, createMedia, createMediaResponse } from "@/test/test-utils";
 import { MediaGrid } from "../Grid";
 import { LibraryProvider } from "../../store/LibraryContext";
-import type { components } from "@/api/generated.d";
 
-type Media = components["schemas"]["Media"];
-
-const mockMediaItems: Media[] = [
-  {
+const mockMediaItems = [
+  createMedia({
     id: "media-1",
     title: "Elden Ring",
-    media_type: "game",
     status: "in_progress",
-    assets: [],
-    launches: [],
-    storefronts: [],
-    installations: [],
-  },
-  {
+  }),
+  createMedia({
     id: "media-2",
     title: "Cyberpunk 2077",
-    media_type: "game",
     status: "completed",
-    assets: [],
-    launches: [],
-    storefronts: [],
-    installations: [],
-  },
+  }),
 ];
 
-let mockMediaData: { items: Media[]; total: number } = {
+let mockMediaData = createMediaResponse({
   items: mockMediaItems,
-  total: mockMediaItems.length,
-};
+});
+
 
 vi.mock("../../api/get-media", () => ({
   useMedia: () => ({
@@ -94,7 +81,7 @@ function renderMediaGrid() {
 describe("MediaGrid Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockMediaData = { items: mockMediaItems, total: mockMediaItems.length };
+    mockMediaData = createMediaResponse({ items: mockMediaItems });
   });
 
   it("renders workspace header with title and item count", () => {
@@ -121,7 +108,7 @@ describe("MediaGrid Component", () => {
   });
 
   it("renders 0 items subtitle and no cards when library is empty", () => {
-    mockMediaData = { items: [], total: 0 };
+    mockMediaData = createMediaResponse({ items: [], total: 0 });
 
     renderMediaGrid();
 

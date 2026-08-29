@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useActiveMedia } from "@/app/activeMediaContext";
 import { formatElapsedSeconds, formatDurationText } from "@/utils/datetime";
+import { createActiveMediaSession } from "@/test/factories";
 
 import { ActiveMediaProvider } from "@/app/activeMediaProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -58,6 +59,7 @@ describe("formatDurationText", () => {
 });
 
 describe("useActiveMedia", () => {
+
   beforeEach(() => {
     sessionStorage.clear();
     vi.useFakeTimers();
@@ -92,12 +94,14 @@ describe("useActiveMedia", () => {
     const now = Date.now();
 
     act(() => {
-      result.current.setActiveSession({
-        mediaId: "game-123",
-        launchId: "launch-456",
-        agentId: "agent-789",
-        startedAt: now,
-      });
+      result.current.setActiveSession(
+        createActiveMediaSession({
+          mediaId: "game-123",
+          launchId: "launch-456",
+          agentId: "agent-789",
+          startedAt: now,
+        }),
+      );
     });
 
     expect(result.current.isPlaying).toBe(true);
