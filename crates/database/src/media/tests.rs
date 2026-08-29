@@ -907,3 +907,108 @@ async fn test_metadata_searches_crud() {
         .unwrap();
     assert_eq!(batch.len(), 1);
 }
+
+#[tokio::test]
+async fn test_media_external_ids_crud() {
+    let pool = setup_db().await;
+
+    let media = MediaQueries::insert_media(
+        &pool,
+        MediaQueries::MediaInsert {
+            title: "Portal 2".into(),
+            media_type: "game".into(),
+            status_id: 1,
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    let created = MediaQueries::upsert_media_external_id(
+        &pool,
+        MediaQueries::MediaExternalIdUpsert {
+            media_id: media.id.clone(),
+            provider: "steam".into(),
+            external_id: "620".into(),
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(created.action, UpsertAction::Created);
+    assert_eq!(created.value.provider, "steam");
+    assert_eq!(created.value.external_id, "620");
+
+    let igdb_created = MediaQueries::upsert_media_external_id(
+        &pool,
+        MediaQueries::MediaExternalIdUpsert {
+            media_id: media.id.clone(),
+            provider: "igdb".into(),
+            external_id: "12345".into(),
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(igdb_created.action, UpsertAction::Created);
+
+    let unchanged = MediaQueries::upsert_media_external_id(
+        &pool,
+        MediaQueries::MediaExternalIdUpsert {
+            media_id: media.id.clone(),
+            provider: "steam".into(),
+            external_id: "620".into(),
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(unchanged.action, UpsertAction::Unchanged);
+
+    let updated = MediaQueries::upsert_media_external_id(
+        &pool,
+        MediaQueries::MediaExternalIdUpsert {
+            media_id: media.id.clone(),
+            provider: "igdb".into(),
+            external_id: "99999".into(),
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(updated.action, UpsertAction::Updated);
+    assert_eq!(updated.value.external_id, "99999");
+
+    let by_single = MediaQueries::find_external_ids_by_media_id(&pool, &media.id)
+        .await
+        .unwrap();
+    assert_eq!(by_single.len(), 2);
+
+    let by_batch =
+        MediaQueries::find_external_ids_by_media_ids(&pool, std::slice::from_ref(&media.id))
+            .await
+            .unwrap();
+    assert_eq!(by_batch.len(), 2);
+
+    let single_find = MediaQueries::find_external_id(&pool, &media.id, "steam")
+        .await
+        .unwrap();
+    assert!(single_find.is_some());
+    assert_eq!(single_find.unwrap().external_id, "620");
+
+    let found_media = MediaQueries::find_media_by_external_id(&pool, "steam", "620")
+        .await
+        .unwrap();
+    assert!(found_media.is_some());
+    assert_eq!(found_media.unwrap().id, media.id);
+
+    let not_found_media = MediaQueries::find_media_by_external_id(&pool, "steam", "000")
+        .await
+        .unwrap();
+    assert!(not_found_media.is_none());
+
+    MediaQueries::delete_media_external_id(&pool, &media.id, "igdb")
+        .await
+        .unwrap();
+    let remaining = MediaQueries::find_external_ids_by_media_id(&pool, &media.id)
+        .await
+        .unwrap();
+    assert_eq!(remaining.len(), 1);
+    assert_eq!(remaining[0].provider, "steam");
+}

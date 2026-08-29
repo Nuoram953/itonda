@@ -157,6 +157,10 @@ impl GetGameResponse {
                 release_date,
                 genres,
                 tags,
+                external_ids: vec![crate::media::models::MediaExternalId {
+                    provider: crate::media::models::ExternalIdProvider::Igdb,
+                    external_id: self.id.to_string(),
+                }],
             },
             developers,
             publishers,

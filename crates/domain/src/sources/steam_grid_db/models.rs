@@ -70,11 +70,24 @@ pub struct MediaResponse {
 
 impl MediaResponse {
     pub fn into_assets(self, asset_type: AssetType) -> Vec<DiscoveredAsset> {
+        self.into_assets_with_game_id(asset_type, None)
+    }
+
+    pub fn into_assets_with_game_id(
+        self,
+        asset_type: AssetType,
+        game_id: Option<u32>,
+    ) -> Vec<DiscoveredAsset> {
+        let provider_external_id = game_id.map(|id| crate::media::models::MediaExternalId {
+            provider: crate::media::models::ExternalIdProvider::SteamGridDb,
+            external_id: id.to_string(),
+        });
         self.data
             .into_iter()
             .map(|media| DiscoveredAsset {
                 asset_type,
                 url: media.url,
+                provider_external_id: provider_external_id.clone(),
             })
             .collect()
     }

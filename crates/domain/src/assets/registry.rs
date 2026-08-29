@@ -77,6 +77,7 @@ impl AssetRegistry {
                     searched_types: &HashSet::new(),
                     limit: None,
                     force: true,
+                    external_ids: &[],
                 },
             )
             .await?;
@@ -223,10 +224,10 @@ mod tests {
             _external_id: Option<&str>,
             _title: &str,
         ) -> Result<Option<DiscoveredAsset>, AssetError> {
-            Ok(Some(DiscoveredAsset {
-                asset_type: AssetType::Poster,
-                url: "http://example.com/poster.png".into(),
-            }))
+            Ok(Some(DiscoveredAsset::new(
+                AssetType::Poster,
+                "http://example.com/poster.png",
+            )))
         }
 
         async fn search_poster(
@@ -237,10 +238,10 @@ mod tests {
             _title: &str,
             _options: &PosterSearchOptions,
         ) -> Result<Vec<DiscoveredAsset>, AssetError> {
-            Ok(vec![DiscoveredAsset {
-                asset_type: AssetType::Poster,
-                url: "http://example.com/poster.png".into(),
-            }])
+            Ok(vec![DiscoveredAsset::new(
+                AssetType::Poster,
+                "http://example.com/poster.png",
+            )])
         }
     }
 
@@ -321,6 +322,7 @@ mod tests {
                     searched_types: &searched,
                     limit: Some(1),
                     force: false,
+                    external_ids: &[],
                 },
             )
             .await
@@ -340,6 +342,7 @@ mod tests {
                     searched_types: &searched,
                     limit: Some(1),
                     force: false,
+                    external_ids: &[],
                 },
             )
             .await
@@ -358,6 +361,7 @@ mod tests {
                     searched_types: &searched,
                     limit: Some(2),
                     force: false,
+                    external_ids: &[],
                 },
             )
             .await
@@ -376,6 +380,7 @@ mod tests {
                     searched_types: &searched,
                     limit: Some(1),
                     force: false,
+                    external_ids: &[],
                 },
             )
             .await
@@ -410,6 +415,7 @@ mod tests {
             Ok(Some(DiscoveredAsset {
                 asset_type: AssetType::Poster,
                 url: "http://example.com/poster.png".into(),
+                provider_external_id: None,
             }))
         }
 
@@ -445,6 +451,7 @@ mod tests {
                     searched_types: &searched,
                     limit: Some(1),
                     force: false,
+                    external_ids: &[],
                 },
             )
             .await
@@ -463,6 +470,7 @@ mod tests {
                     searched_types: &searched,
                     limit: Some(1),
                     force: false,
+                    external_ids: &[],
                 },
             )
             .await

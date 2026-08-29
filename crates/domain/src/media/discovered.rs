@@ -1,6 +1,9 @@
 use crate::{
     assets::types::AssetType,
-    media::types::{MediaLaunchType, MediaType},
+    media::{
+        models::MediaExternalId,
+        types::{MediaLaunchType, MediaType},
+    },
     storefronts::models::StorefrontId,
 };
 
@@ -34,8 +37,24 @@ pub struct GameMetadata {
     pub last_played: Option<i64>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DiscoveredAsset {
     pub asset_type: AssetType,
     pub url: String,
+    pub provider_external_id: Option<MediaExternalId>,
+}
+
+impl DiscoveredAsset {
+    pub fn new(asset_type: AssetType, url: impl Into<String>) -> Self {
+        Self {
+            asset_type,
+            url: url.into(),
+            provider_external_id: None,
+        }
+    }
+
+    pub fn with_provider_external_id(mut self, external_id: MediaExternalId) -> Self {
+        self.provider_external_id = Some(external_id);
+        self
+    }
 }

@@ -1,8 +1,9 @@
 use async_trait::async_trait;
 use itonda_database::media::{
-    MediaGameDetailsUpsert, MediaMetadataSearchInsert, MediaMetadataUpdate, find_game_details,
-    find_metadata_search_by_media_id, insert_media_metadata_search, sync_media_companies,
-    sync_media_genres, sync_media_tags, update_media_metadata, upsert_media_game_details,
+    MediaExternalIdUpsert, MediaGameDetailsUpsert, MediaMetadataSearchInsert, MediaMetadataUpdate,
+    find_game_details, find_metadata_search_by_media_id, insert_media_metadata_search,
+    sync_media_companies, sync_media_genres, sync_media_tags, update_media_metadata,
+    upsert_media_external_id, upsert_media_game_details,
 };
 use sqlx::SqlitePool;
 
@@ -73,6 +74,7 @@ impl SyncStep for MetadataStep {
             storefront,
             external_id,
             force: context.force,
+            external_ids: &media.external_ids,
         };
 
         let metadata = match self
@@ -109,6 +111,26 @@ impl SyncStep for MetadataStep {
             },
         )
         .await?;
+
+        for ext in &common.external_ids {
+            upsert_media_external_id(
+                &self.pool,
+                MediaExternalIdUpsert {
+                    media_id: media.id.clone(),
+                    provider: ext.provider.as_str().into(),
+                    external_id: ext.external_id.clone(),
+                },
+            )
+            .await?;
+
+            if !media
+                .external_ids
+                .iter()
+                .any(|e| e.provider == ext.provider)
+            {
+                media.external_ids.push(ext.clone());
+            }
+        }
 
         if common.description.is_some() {
             media.description = common.description.clone();

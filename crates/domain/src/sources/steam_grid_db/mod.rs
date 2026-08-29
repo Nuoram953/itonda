@@ -80,7 +80,7 @@ impl PosterFetcher for SteamGridDb {
 
         let response = self.client.grids(game_id, grid_options).await?;
 
-        Ok(response.into_assets(AssetType::Poster))
+        Ok(response.into_assets_with_game_id(AssetType::Poster, Some(game_id)))
     }
 }
 
@@ -124,6 +124,6 @@ impl BannerFetcher for SteamGridDb {
 
         let response = self.client.heroes(game_id, grid_options).await?;
 
-        Ok(response.into_assets(AssetType::Banner))
+        Ok(response.into_assets_with_game_id(AssetType::Banner, Some(game_id)))
     }
 }

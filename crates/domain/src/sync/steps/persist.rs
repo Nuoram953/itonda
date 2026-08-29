@@ -1,17 +1,18 @@
 use async_trait::async_trait;
 use itonda_database::media::{
-    MediaInsert, MediaStorefrontUpsert, find_media_by_storefront, find_media_by_title,
-    insert_media, upsert_media_storefront,
+    MediaExternalIdUpsert, MediaStorefrontUpsert, find_external_ids_by_media_ids,
+    upsert_media_external_id, upsert_media_storefront,
 };
 use sqlx::SqlitePool;
 
 use crate::{
     media::{
         discovered::DiscoveredMediaMetadata,
-        models::Media,
-        service::recalculate_media_game_details,
-        types::{MediaStatus, MediaType},
+        models::{ExternalIdProvider, Media, MediaExternalId},
+        service::{find_or_create_media, recalculate_media_game_details},
+        types::MediaType,
     },
+    storefronts::models::StorefrontId,
     sync::{context::SyncContext, errors::SyncError, pipeline::SyncStep},
 };
 
@@ -33,6 +34,18 @@ impl SyncStep for PersistStep {
 
     async fn execute(&self, context: &mut SyncContext) -> Result<(), SyncError> {
         let Some(discovered) = &context.discovered else {
+            if let Some(media) = &mut context.media
+                && media.external_ids.is_empty()
+            {
+                let external_ids =
+                    find_external_ids_by_media_ids(&self.pool, std::slice::from_ref(&media.id))
+                        .await?;
+                media.external_ids = external_ids
+                    .into_iter()
+                    .map(MediaExternalId::try_from)
+                    .collect::<Result<Vec<_>, _>>()
+                    .unwrap_or_default();
+            }
             return Ok(());
         };
 
@@ -40,36 +53,22 @@ impl SyncStep for PersistStep {
         let metadata = discovered.metadata.clone();
         let title = discovered.title.clone();
 
-        let media = match &context.media {
+        let ext_provider = match discovered.storefront {
+            StorefrontId::Steam => ExternalIdProvider::Steam,
+        };
+
+        let mut media = match &context.media {
             Some(media) => media.clone(),
             None => {
-                let existing = find_media_by_storefront(
+                let row = find_or_create_media(
                     &self.pool,
-                    discovered.storefront.as_str(),
-                    &discovered.external_id,
+                    &title,
+                    media_type,
+                    Some(discovered.storefront.as_str()),
+                    Some(ext_provider.as_str()),
+                    Some(&discovered.external_id),
                 )
                 .await?;
-
-                let existing = match existing {
-                    Some(row) => Some(row),
-                    None => find_media_by_title(&self.pool, title.clone()).await?,
-                };
-
-                let row = match existing {
-                    Some(row) => row,
-                    None => {
-                        insert_media(
-                            &self.pool,
-                            MediaInsert {
-                                title: title.clone(),
-                                media_type: media_type.as_str().into(),
-                                status_id: MediaStatus::NotStarted.id(),
-                                ..Default::default()
-                            },
-                        )
-                        .await?
-                    }
-                };
 
                 let media = Media::try_from(row).unwrap();
                 context.media = Some(media.clone());
@@ -94,10 +93,31 @@ impl SyncStep for PersistStep {
 
             context.action.merge(result.action.into());
 
+            let ext_result = upsert_media_external_id(
+                &self.pool,
+                MediaExternalIdUpsert {
+                    media_id: media.id.clone(),
+                    provider: ext_provider.as_str().into(),
+                    external_id: discovered.external_id.clone(),
+                },
+            )
+            .await?;
+
+            context.action.merge(ext_result.action.into());
+
             let details_result = recalculate_media_game_details(&self.pool, &media.id).await?;
 
             context.action.merge(details_result.action.into());
         }
+
+        let external_ids =
+            find_external_ids_by_media_ids(&self.pool, std::slice::from_ref(&media.id)).await?;
+        media.external_ids = external_ids
+            .into_iter()
+            .map(MediaExternalId::try_from)
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap_or_default();
+        context.media = Some(media);
 
         Ok(())
     }
@@ -105,10 +125,16 @@ impl SyncStep for PersistStep {
 
 #[cfg(test)]
 mod tests {
-    use itonda_database::{media::find_game_details, test_utils::setup_db};
+    use itonda_database::{
+        media::{MediaInsert, find_game_details, find_media_by_storefront, insert_media},
+        test_utils::setup_db,
+    };
 
     use crate::{
-        media::discovered::{DiscoveredMediaMetadata, GameMetadata},
+        media::{
+            discovered::{DiscoveredMediaMetadata, GameMetadata},
+            types::MediaStatus,
+        },
         storefronts::models::StorefrontId,
         tests::fixtures::{context::sync_context_with_media, media::DiscoveredMediaBuilder},
     };
@@ -236,5 +262,48 @@ mod tests {
             .unwrap();
         assert!(storefront_media.is_some());
         assert_eq!(storefront_media.unwrap().id, media.id);
+    }
+
+    #[tokio::test]
+    async fn does_not_overwrite_existing_media_with_same_title_and_different_external_id() {
+        let pool = setup_db().await;
+
+        let step = PersistStep::new(pool.clone());
+
+        let media1 = DiscoveredMediaBuilder::new()
+            .title("Civ IV")
+            .external_id("34440")
+            .storefront(StorefrontId::Steam)
+            .build();
+
+        let mut context1 = sync_context_with_media(media1);
+        step.execute(&mut context1).await.unwrap();
+
+        let first_id = context1.media.unwrap().id;
+
+        let media2 = DiscoveredMediaBuilder::new()
+            .title("Civ IV")
+            .external_id("3900")
+            .storefront(StorefrontId::Steam)
+            .build();
+
+        let mut context2 = sync_context_with_media(media2);
+        step.execute(&mut context2).await.unwrap();
+
+        let second_id = context2.media.unwrap().id;
+
+        assert_ne!(first_id, second_id);
+
+        let sf1 = find_media_by_storefront(&pool, StorefrontId::Steam.as_str(), "34440")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(sf1.id, first_id);
+
+        let sf2 = find_media_by_storefront(&pool, StorefrontId::Steam.as_str(), "3900")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(sf2.id, second_id);
     }
 }

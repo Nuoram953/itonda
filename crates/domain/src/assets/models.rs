@@ -1,5 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
+use crate::media::models::MediaExternalId;
+
 #[derive(Hash, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AssetStoreId {
     SteamGridDb,
@@ -27,4 +29,5 @@ pub struct DiscoverOptions<'a> {
     pub searched_types: &'a HashSet<i64>,
     pub limit: Option<usize>,
     pub force: bool,
+    pub external_ids: &'a [MediaExternalId],
 }

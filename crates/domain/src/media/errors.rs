@@ -27,6 +27,9 @@ pub enum MediaError {
     #[error("invalid launch type")]
     InvalidLaunchType,
 
+    #[error("invalid external provider: {0}")]
+    InvalidExternalProvider(String),
+
     #[error("asset error: {0}")]
     AssetError(#[from] AssetError),
 

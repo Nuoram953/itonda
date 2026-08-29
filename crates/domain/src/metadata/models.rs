@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-use crate::{media::types::MediaType, storefronts::models::StorefrontId};
+use crate::{
+    media::{models::MediaExternalId, types::MediaType},
+    storefronts::models::StorefrontId,
+};
 
 #[derive(Debug, Clone)]
 pub struct MetadataQuery<'a> {
@@ -10,6 +13,7 @@ pub struct MetadataQuery<'a> {
     pub storefront: Option<StorefrontId>,
     pub external_id: Option<&'a str>,
     pub force: bool,
+    pub external_ids: &'a [MediaExternalId],
 }
 
 #[derive(Hash, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
@@ -24,6 +28,7 @@ pub struct CommonMetadata {
     pub release_date: Option<i64>,
     pub genres: Vec<String>,
     pub tags: Vec<String>,
+    pub external_ids: Vec<MediaExternalId>,
 }
 
 impl CommonMetadata {
@@ -45,6 +50,11 @@ impl CommonMetadata {
         for tag in source.tags {
             if !self.tags.contains(&tag) {
                 self.tags.push(tag);
+            }
+        }
+        for ext in source.external_ids {
+            if !self.external_ids.iter().any(|e| e.provider == ext.provider) {
+                self.external_ids.push(ext);
             }
         }
     }
@@ -124,6 +134,10 @@ mod tests {
             release_date: None,
             genres: vec!["Action".into()],
             tags: vec!["Singleplayer".into()],
+            external_ids: vec![MediaExternalId {
+                provider: crate::media::models::ExternalIdProvider::Steam,
+                external_id: "123".into(),
+            }],
         };
 
         let incoming = CommonMetadata {
@@ -132,6 +146,10 @@ mod tests {
             release_date: Some(12345678),
             genres: vec!["Action".into(), "RPG".into()],
             tags: vec!["Difficult".into()],
+            external_ids: vec![MediaExternalId {
+                provider: crate::media::models::ExternalIdProvider::Igdb,
+                external_id: "456".into(),
+            }],
         };
 
         base.merge(incoming);
@@ -141,6 +159,7 @@ mod tests {
         assert_eq!(base.release_date, Some(12345678));
         assert_eq!(base.genres, vec!["Action", "RPG"]);
         assert_eq!(base.tags, vec!["Singleplayer", "Difficult"]);
+        assert_eq!(base.external_ids.len(), 2);
     }
 
     #[test]
