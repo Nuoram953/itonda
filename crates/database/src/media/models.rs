@@ -234,3 +234,19 @@ pub struct MediaLaunchSessionInsert {
     pub completed_at: String,
     pub duration_seconds: String,
 }
+
+#[derive(Debug, Clone, Serialize, FromRow, PartialEq, Eq)]
+pub struct MediaExternalIdRow {
+    pub media_id: String,
+    pub provider: String,
+    pub external_id: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct MediaExternalIdUpsert {
+    pub media_id: String,
+    pub provider: String,
+    pub external_id: String,
+}

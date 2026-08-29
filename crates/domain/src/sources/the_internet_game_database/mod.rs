@@ -1,13 +1,17 @@
 use async_trait::async_trait;
 
 use crate::{
-    media::types::MediaType,
+    media::{
+        models::{ExternalIdProvider, MediaExternalId},
+        types::MediaType,
+    },
     metadata::{
         error::MetadataError,
         models::{GeneralMetadata, MetadataProviderId, MetadataQuery},
         traits::{GeneralInfoFetcher, MetadataFetcher},
     },
     sources::the_internet_game_database::client::TheInternetGameDatabaseClient,
+    storefronts::models::StorefrontId,
 };
 
 pub mod client;
@@ -52,11 +56,31 @@ impl GeneralInfoFetcher for TheInternetGameDatabase {
         &self,
         query: &MetadataQuery<'_>,
     ) -> Result<Option<GeneralMetadata>, MetadataError> {
-        let Some(game_id) = self
-            .client
-            .find_game_id(query.storefront, query.external_id, query.title)
-            .await?
-        else {
+        let igdb_id = query
+            .external_ids
+            .iter()
+            .find(|e| e.provider == ExternalIdProvider::Igdb)
+            .and_then(|e| e.external_id.parse::<u64>().ok());
+
+        let game_id = match igdb_id {
+            Some(id) => Some(id),
+            None => {
+                let steam_id = query
+                    .external_ids
+                    .iter()
+                    .find(|e| e.provider == ExternalIdProvider::Steam)
+                    .map(|e| e.external_id.as_str())
+                    .or(query.external_id);
+                let storefront = query
+                    .storefront
+                    .or_else(|| steam_id.map(|_| StorefrontId::Steam));
+                self.client
+                    .find_game_id(storefront, steam_id, query.title)
+                    .await?
+            }
+        };
+
+        let Some(game_id) = game_id else {
             return Ok(None);
         };
 
@@ -64,6 +88,12 @@ impl GeneralInfoFetcher for TheInternetGameDatabase {
             return Ok(None);
         };
 
-        Ok(Some(game.into_general_metadata()))
+        let mut metadata = game.into_general_metadata();
+        metadata.common_mut().external_ids.push(MediaExternalId {
+            provider: ExternalIdProvider::Igdb,
+            external_id: game_id.to_string(),
+        });
+
+        Ok(Some(metadata))
     }
 }

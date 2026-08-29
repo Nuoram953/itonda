@@ -11,16 +11,19 @@ use itonda_database::{
         upsert_agent,
     },
     media::{
-        MediaInsert, MediaInstallationUpsert, MediaLaunchSessionInsert, MediaLaunchUpsert,
-        find_media_by_storefront, find_media_by_title, insert_media, upsert_media_installation,
-        upsert_media_launch,
+        MediaInstallationUpsert, MediaLaunchSessionInsert, MediaLaunchUpsert,
+        upsert_media_installation, upsert_media_launch,
     },
 };
 pub use itonda_domain::agents::AgentManager;
 use itonda_domain::{
     events::{AgentEvent, AppEvent, EventBus, MediaEvent},
-    media::{service::update_playtime, types::MediaStatus},
+    media::{
+        models::ExternalIdProvider,
+        service::{find_or_create_media, update_playtime},
+    },
     protocol::{AgentRegistration, AgentToServerMessage, ScanResult, ServerToAgentMessage},
+    storefronts::models::StorefrontId,
 };
 use sqlx::SqlitePool;
 use tokio::sync::mpsc::{self, Sender};
@@ -204,39 +207,29 @@ pub async fn handle_agent_scan_result(
     }
 
     for item in scan_result.items {
-        let storefront_id =
-            itonda_domain::storefronts::models::StorefrontId::try_from(item.source.as_str()).ok();
+        let storefront_id = StorefrontId::try_from(item.source.as_str()).ok();
         let storefront_db_id = storefront_id
             .as_ref()
             .map(|sf| sf.as_str())
             .unwrap_or(item.source.as_str());
 
-        let existing = if let Some(ref external_id) = item.external_id {
-            find_media_by_storefront(pool, storefront_db_id, external_id).await?
-        } else {
-            None
-        };
+        let ext_provider = storefront_id.map(|sf| match sf {
+            StorefrontId::Steam => ExternalIdProvider::Steam,
+        });
 
-        let existing = match existing {
-            Some(row) => Some(row),
-            None => find_media_by_title(pool, item.title.clone()).await?,
-        };
-
-        let media_row = match existing {
-            Some(row) => row,
-            None => {
-                insert_media(
-                    pool,
-                    MediaInsert {
-                        title: item.title.clone(),
-                        media_type: item.media_type.as_str().into(),
-                        status_id: MediaStatus::NotStarted.id(),
-                        ..Default::default()
-                    },
-                )
-                .await?
-            }
-        };
+        let media_row = find_or_create_media(
+            pool,
+            &item.title,
+            item.media_type,
+            if item.source.is_empty() {
+                None
+            } else {
+                Some(storefront_db_id)
+            },
+            ext_provider.map(|p| p.as_str()),
+            item.external_id.as_deref(),
+        )
+        .await?;
 
         let install_path = item.working_directory.clone().or_else(|| {
             item.launch

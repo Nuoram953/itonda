@@ -8,8 +8,12 @@ use itonda_database::{
 
 use crate::{
     media::{
-        service::{recalculate_media_game_details, update_playtime},
-        types::MediaStatus,
+        models::ExternalIdProvider,
+        service::{
+            find_matching_media, find_or_create_media, recalculate_media_game_details,
+            update_playtime,
+        },
+        types::{MediaStatus, MediaType},
     },
     storefronts::models::StorefrontId,
 };
@@ -51,7 +55,7 @@ async fn test_update_playtime_creates_game_details() {
         launch_id: launch.value.id.clone(),
         started_at: "2026-08-23 10:00:00 UTC".into(),
         completed_at: "2026-08-23 11:30:00 UTC".into(),
-        duration_seconds: "5400".into(), // 90 minutes
+        duration_seconds: "5400".into(),
     };
 
     update_playtime(&pool, session).await.unwrap();
@@ -119,7 +123,7 @@ async fn test_update_playtime_appends_to_existing_playtime() {
         launch_id: launch.value.id.clone(),
         started_at: "2026-08-23 12:00:00 UTC".into(),
         completed_at: "2026-08-23 12:45:00 UTC".into(),
-        duration_seconds: "2700".into(), // 45 minutes
+        duration_seconds: "2700".into(),
     };
 
     update_playtime(&pool, session).await.unwrap();
@@ -129,7 +133,7 @@ async fn test_update_playtime_appends_to_existing_playtime() {
         .unwrap()
         .expect("game details should exist");
 
-    assert_eq!(details.playtime_minutes, Some(105)); // 60 + 45
+    assert_eq!(details.playtime_minutes, Some(105));
     assert_ne!(details.last_played_at, Some(1000));
 
     let storefronts = MediaQueries::find_storefronts_by_media_id(&pool, &media.id)
@@ -188,12 +192,11 @@ async fn test_update_playtime_storefront_launch_does_not_double_count_after_sync
     .await
     .unwrap();
 
-    // 30 minute session played through storefront launch
     let session = MediaLaunchSessionInsert {
         launch_id: launch.value.id.clone(),
         started_at: "2026-08-23 12:00:00 UTC".into(),
         completed_at: "2026-08-23 12:30:00 UTC".into(),
-        duration_seconds: "1800".into(), // 30 minutes
+        duration_seconds: "1800".into(),
     };
 
     update_playtime(&pool, session).await.unwrap();
@@ -202,9 +205,8 @@ async fn test_update_playtime_storefront_launch_does_not_double_count_after_sync
         .await
         .unwrap()
         .expect("game details should exist");
-    assert_eq!(details.playtime_minutes, Some(90)); // 60 + 30
+    assert_eq!(details.playtime_minutes, Some(90));
 
-    // Simulate later Steam sync reporting the new total playtime (90 min)
     upsert_media_storefront(
         &pool,
         MediaStorefrontUpsert {
@@ -227,7 +229,6 @@ async fn test_update_playtime_storefront_launch_does_not_double_count_after_sync
         .unwrap()
         .expect("game details should exist");
 
-    // Must still be 90, NOT 120 (no double counting)
     assert_eq!(details_after_sync.playtime_minutes, Some(90));
 }
 
@@ -268,7 +269,7 @@ async fn test_update_playtime_custom_launch_preserved_after_storefront_sync() {
         launch_id: launch.value.id.clone(),
         started_at: "2026-08-23 14:00:00 UTC".into(),
         completed_at: "2026-08-23 14:45:00 UTC".into(),
-        duration_seconds: "2700".into(), // 45 minutes
+        duration_seconds: "2700".into(),
     };
 
     update_playtime(&pool, session).await.unwrap();
@@ -279,12 +280,11 @@ async fn test_update_playtime_custom_launch_preserved_after_storefront_sync() {
         .expect("game details should exist");
     assert_eq!(details.playtime_minutes, Some(45));
 
-    // Another custom session (15 minutes)
     let session2 = MediaLaunchSessionInsert {
         launch_id: launch.value.id.clone(),
         started_at: "2026-08-23 15:00:00 UTC".into(),
         completed_at: "2026-08-23 15:15:00 UTC".into(),
-        duration_seconds: "900".into(), // 15 minutes
+        duration_seconds: "900".into(),
     };
 
     update_playtime(&pool, session2).await.unwrap();
@@ -319,7 +319,6 @@ async fn test_multiple_storefronts_playtime_aggregated() {
     .await
     .unwrap();
 
-    // Storefront 1: Steam (50 min)
     upsert_media_storefront(
         &pool,
         MediaStorefrontUpsert {
@@ -333,7 +332,6 @@ async fn test_multiple_storefronts_playtime_aggregated() {
     .await
     .unwrap();
 
-    // Storefront 2: GOG (30 min)
     upsert_media_storefront(
         &pool,
         MediaStorefrontUpsert {
@@ -355,10 +353,9 @@ async fn test_multiple_storefronts_playtime_aggregated() {
         .await
         .unwrap()
         .expect("game details should exist");
-    assert_eq!(details.playtime_minutes, Some(80)); // 50 + 30
+    assert_eq!(details.playtime_minutes, Some(80));
     assert_eq!(details.last_played_at, Some(2000));
 
-    // Steam launch
     let steam_launch = upsert_media_launch(
         &pool,
         MediaLaunchUpsert {
@@ -376,7 +373,6 @@ async fn test_multiple_storefronts_playtime_aggregated() {
     .await
     .unwrap();
 
-    // Play on Steam for 20 min
     let session = MediaLaunchSessionInsert {
         launch_id: steam_launch.value.id.clone(),
         started_at: "2026-08-23 16:00:00 UTC".into(),
@@ -390,9 +386,8 @@ async fn test_multiple_storefronts_playtime_aggregated() {
         .await
         .unwrap()
         .expect("game details should exist");
-    assert_eq!(details_after_play.playtime_minutes, Some(100)); // 70 + 30
+    assert_eq!(details_after_play.playtime_minutes, Some(100));
 
-    // Custom launch
     let custom_launch = upsert_media_launch(
         &pool,
         MediaLaunchUpsert {
@@ -410,7 +405,6 @@ async fn test_multiple_storefronts_playtime_aggregated() {
     .await
     .unwrap();
 
-    // Play modded for 15 min
     let custom_session = MediaLaunchSessionInsert {
         launch_id: custom_launch.value.id.clone(),
         started_at: "2026-08-23 17:00:00 UTC".into(),
@@ -424,5 +418,113 @@ async fn test_multiple_storefronts_playtime_aggregated() {
         .await
         .unwrap()
         .expect("game details should exist");
-    assert_eq!(details_after_mod.playtime_minutes, Some(115)); // 70 (Steam) + 30 (GOG) + 15 (custom)
+    assert_eq!(details_after_mod.playtime_minutes, Some(115));
+}
+
+#[tokio::test]
+async fn test_find_matching_media_and_conflicts() {
+    let pool = setup_db().await;
+
+    let civ4 = find_or_create_media(
+        &pool,
+        "Civilization IV",
+        MediaType::Game,
+        Some(StorefrontId::Steam.as_str()),
+        Some(ExternalIdProvider::Steam.as_str()),
+        Some("34440"),
+    )
+    .await
+    .unwrap();
+
+    upsert_media_storefront(
+        &pool,
+        MediaStorefrontUpsert {
+            media_id: civ4.id.clone(),
+            storefront_id: StorefrontId::Steam.as_str().into(),
+            external_id: "34440".into(),
+            playtime_minutes: None,
+            last_played_at: None,
+        },
+    )
+    .await
+    .unwrap();
+
+    MediaQueries::upsert_media_external_id(
+        &pool,
+        MediaQueries::MediaExternalIdUpsert {
+            media_id: civ4.id.clone(),
+            provider: ExternalIdProvider::Steam.as_str().into(),
+            external_id: "34440".into(),
+        },
+    )
+    .await
+    .unwrap();
+
+    let matched = find_matching_media(
+        &pool,
+        "Civilization IV",
+        Some(StorefrontId::Steam.as_str()),
+        Some(ExternalIdProvider::Steam.as_str()),
+        Some("34440"),
+    )
+    .await
+    .unwrap();
+    assert_eq!(matched.unwrap().id, civ4.id);
+
+    let matched_by_provider = find_matching_media(
+        &pool,
+        "Civilization IV Renamed",
+        None,
+        Some(ExternalIdProvider::Steam.as_str()),
+        Some("34440"),
+    )
+    .await
+    .unwrap();
+    assert_eq!(matched_by_provider.unwrap().id, civ4.id);
+
+    let conflict_sf = find_matching_media(
+        &pool,
+        "Civilization IV",
+        Some(StorefrontId::Steam.as_str()),
+        Some(ExternalIdProvider::Steam.as_str()),
+        Some("3900"),
+    )
+    .await
+    .unwrap();
+    assert!(conflict_sf.is_none());
+
+    let civ4_legacy = find_or_create_media(
+        &pool,
+        "Civilization IV",
+        MediaType::Game,
+        Some(StorefrontId::Steam.as_str()),
+        Some(ExternalIdProvider::Steam.as_str()),
+        Some("3900"),
+    )
+    .await
+    .unwrap();
+    assert_ne!(civ4_legacy.id, civ4.id);
+
+    let generic_media = insert_media(
+        &pool,
+        MediaInsert {
+            title: "Generic Game".into(),
+            media_type: "game".into(),
+            status_id: MediaStatus::NotStarted.id(),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    let matched_generic = find_matching_media(
+        &pool,
+        "Generic Game",
+        Some(StorefrontId::Steam.as_str()),
+        Some(ExternalIdProvider::Steam.as_str()),
+        Some("55555"),
+    )
+    .await
+    .unwrap();
+    assert_eq!(matched_generic.unwrap().id, generic_media.id);
 }

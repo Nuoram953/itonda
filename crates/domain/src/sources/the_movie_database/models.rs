@@ -103,11 +103,16 @@ pub struct TmdbImageItem {
 
 impl TmdbImagesResponse {
     pub fn into_poster_assets(self) -> Vec<DiscoveredAsset> {
+        let provider_external_id = Some(crate::media::models::MediaExternalId {
+            provider: crate::media::models::ExternalIdProvider::Tmdb,
+            external_id: self.id.to_string(),
+        });
         self.posters
             .into_iter()
             .map(|item| DiscoveredAsset {
                 asset_type: AssetType::Poster,
                 url: format!("https://image.tmdb.org/t/p/original{}", item.file_path),
+                provider_external_id: provider_external_id.clone(),
             })
             .collect()
     }

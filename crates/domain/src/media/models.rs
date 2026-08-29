@@ -1,6 +1,6 @@
 use itonda_database::media::{
-    MediaAssetRow, MediaGameDetailsRow, MediaInstallationRow, MediaLaunchRow, MediaRow,
-    MediaStorefrontRow,
+    MediaAssetRow, MediaExternalIdRow, MediaGameDetailsRow, MediaInstallationRow, MediaLaunchRow,
+    MediaRow, MediaStorefrontRow,
 };
 use serde::{Deserialize, Serialize};
 
@@ -29,8 +29,57 @@ pub struct Media {
     pub assets: Vec<Asset>,
     pub details: Option<MediaDetails>,
     pub storefronts: Vec<MediaStorefront>,
+    pub external_ids: Vec<MediaExternalId>,
     pub installations: Vec<MediaInstallation>,
     pub launches: Vec<Launch>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ExternalIdProvider {
+    Steam,
+    Igdb,
+    SteamGridDb,
+    Tmdb,
+}
+
+impl ExternalIdProvider {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Steam => "steam",
+            Self::Igdb => "igdb",
+            Self::SteamGridDb => "steamgriddb",
+            Self::Tmdb => "tmdb",
+        }
+    }
+}
+
+impl TryFrom<&str> for ExternalIdProvider {
+    type Error = MediaError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value.to_lowercase().as_str() {
+            "steam" => Ok(Self::Steam),
+            "igdb" => Ok(Self::Igdb),
+            "steamgriddb" => Ok(Self::SteamGridDb),
+            "tmdb" => Ok(Self::Tmdb),
+            _ => Err(MediaError::InvalidExternalProvider(value.to_string())),
+        }
+    }
+}
+
+impl TryFrom<String> for ExternalIdProvider {
+    type Error = MediaError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::try_from(value.as_str())
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq)]
+pub struct MediaExternalId {
+    pub provider: ExternalIdProvider,
+    pub external_id: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -141,6 +190,17 @@ impl TryFrom<MediaInstallationRow> for MediaInstallation {
     }
 }
 
+impl TryFrom<MediaExternalIdRow> for MediaExternalId {
+    type Error = MediaError;
+
+    fn try_from(row: MediaExternalIdRow) -> Result<Self, Self::Error> {
+        Ok(Self {
+            provider: ExternalIdProvider::try_from(row.provider.as_str())?,
+            external_id: row.external_id,
+        })
+    }
+}
+
 impl TryFrom<MediaRow> for Media {
     type Error = MediaError;
 
@@ -157,6 +217,7 @@ impl TryFrom<MediaRow> for Media {
             tags: Vec::new(),
             assets: Vec::new(),
             storefronts: Vec::new(),
+            external_ids: Vec::new(),
             installations: Vec::new(),
             launches: Vec::new(),
             details: None,

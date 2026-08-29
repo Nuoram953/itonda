@@ -9,10 +9,11 @@ use crate::{
     error::DatabaseError,
     media::{
         MediaAssetInsert, MediaAssetRow, MediaAssetSearchInsert, MediaAssetSearchRow,
-        MediaGameDetailsRow, MediaGameDetailsUpsert, MediaInsert, MediaInstallationRow,
-        MediaInstallationUpsert, MediaLaunchRow, MediaLaunchSessionInsert, MediaLaunchSessionRow,
-        MediaLaunchUpsert, MediaMetadataSearchInsert, MediaMetadataSearchRow,
-        MediaStatusHistoryRow, MediaStorefrontRow, MediaStorefrontUpsert,
+        MediaExternalIdRow, MediaExternalIdUpsert, MediaGameDetailsRow, MediaGameDetailsUpsert,
+        MediaInsert, MediaInstallationRow, MediaInstallationUpsert, MediaLaunchRow,
+        MediaLaunchSessionInsert, MediaLaunchSessionRow, MediaLaunchUpsert,
+        MediaMetadataSearchInsert, MediaMetadataSearchRow, MediaStatusHistoryRow,
+        MediaStorefrontRow, MediaStorefrontUpsert,
     },
     models::{UpsertAction, UpsertResult},
 };
@@ -1670,4 +1671,181 @@ pub async fn find_companies_by_media_id(
     .map_err(DatabaseError::from)?;
 
     Ok(rows)
+}
+
+pub async fn upsert_media_external_id(
+    pool: &SqlitePool,
+    details: MediaExternalIdUpsert,
+) -> Result<UpsertResult<MediaExternalIdRow>, DatabaseError> {
+    let existing = sqlx::query_as::<Sqlite, MediaExternalIdRow>(
+        r#"
+        SELECT media_id, provider, external_id, created_at, updated_at
+        FROM media_external_ids
+        WHERE media_id = ? AND provider = ?
+        "#,
+    )
+    .bind(&details.media_id)
+    .bind(&details.provider)
+    .fetch_optional(pool)
+    .await
+    .map_err(DatabaseError::from)?;
+
+    let Some(existing) = existing else {
+        let row = sqlx::query_as::<Sqlite, MediaExternalIdRow>(
+            r#"
+            INSERT INTO media_external_ids (
+                media_id,
+                provider,
+                external_id
+            )
+            VALUES (?, ?, ?)
+            RETURNING media_id, provider, external_id, created_at, updated_at
+            "#,
+        )
+        .bind(&details.media_id)
+        .bind(&details.provider)
+        .bind(&details.external_id)
+        .fetch_one(pool)
+        .await
+        .map_err(DatabaseError::from)?;
+
+        return Ok(UpsertResult {
+            value: row,
+            action: UpsertAction::Created,
+        });
+    };
+
+    if existing.external_id == details.external_id {
+        return Ok(UpsertResult {
+            value: existing,
+            action: UpsertAction::Unchanged,
+        });
+    }
+
+    let row = sqlx::query_as::<Sqlite, MediaExternalIdRow>(
+        r#"
+        UPDATE media_external_ids
+        SET
+            external_id = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE media_id = ? AND provider = ?
+        RETURNING media_id, provider, external_id, created_at, updated_at
+        "#,
+    )
+    .bind(details.external_id)
+    .bind(&details.media_id)
+    .bind(&details.provider)
+    .fetch_one(pool)
+    .await
+    .map_err(DatabaseError::from)?;
+
+    Ok(UpsertResult {
+        value: row,
+        action: UpsertAction::Updated,
+    })
+}
+
+pub async fn find_external_ids_by_media_ids(
+    pool: &SqlitePool,
+    ids: &[String],
+) -> Result<Vec<MediaExternalIdRow>, DatabaseError> {
+    if ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut qb = QueryBuilder::<Sqlite>::new(
+        "SELECT media_id, provider, external_id, created_at, updated_at FROM media_external_ids WHERE media_id IN (",
+    );
+    let mut separated = qb.separated(", ");
+    for id in ids {
+        separated.push_bind(id);
+    }
+    separated.push_unseparated(")");
+
+    qb.build_query_as::<MediaExternalIdRow>()
+        .fetch_all(pool)
+        .await
+        .map_err(DatabaseError::from)
+}
+
+pub async fn find_external_ids_by_media_id(
+    pool: &SqlitePool,
+    media_id: &str,
+) -> Result<Vec<MediaExternalIdRow>, DatabaseError> {
+    sqlx::query_as::<Sqlite, MediaExternalIdRow>(
+        r#"
+        SELECT media_id, provider, external_id, created_at, updated_at
+        FROM media_external_ids
+        WHERE media_id = ?
+        "#,
+    )
+    .bind(media_id)
+    .fetch_all(pool)
+    .await
+    .map_err(DatabaseError::from)
+}
+
+pub async fn find_external_id(
+    pool: &SqlitePool,
+    media_id: &str,
+    provider: &str,
+) -> Result<Option<MediaExternalIdRow>, DatabaseError> {
+    sqlx::query_as::<Sqlite, MediaExternalIdRow>(
+        r#"
+        SELECT media_id, provider, external_id, created_at, updated_at
+        FROM media_external_ids
+        WHERE media_id = ? AND provider = ?
+        "#,
+    )
+    .bind(media_id)
+    .bind(provider)
+    .fetch_optional(pool)
+    .await
+    .map_err(DatabaseError::from)
+}
+
+pub async fn find_media_by_external_id(
+    pool: &SqlitePool,
+    provider: &str,
+    external_id: &str,
+) -> Result<Option<MediaRow>, DatabaseError> {
+    sqlx::query_as::<Sqlite, MediaRow>(
+        r#"
+        SELECT
+            m.id,
+            m.title,
+            m.media_type,
+            m.status_id,
+            m.description,
+            m.summary,
+            m.release_date
+        FROM media m
+        INNER JOIN media_external_ids me ON me.media_id = m.id
+        WHERE me.provider = ? AND me.external_id = ?
+        "#,
+    )
+    .bind(provider)
+    .bind(external_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(DatabaseError::from)
+}
+
+pub async fn delete_media_external_id(
+    pool: &SqlitePool,
+    media_id: &str,
+    provider: &str,
+) -> Result<(), DatabaseError> {
+    sqlx::query(
+        r#"
+        DELETE FROM media_external_ids
+        WHERE media_id = ? AND provider = ?
+        "#,
+    )
+    .bind(media_id)
+    .bind(provider)
+    .execute(pool)
+    .await
+    .map_err(DatabaseError::from)?;
+    Ok(())
 }

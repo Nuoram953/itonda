@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use itonda_database::{
     media::{
-        self as MediaQueries, MediaGameDetailsRow, MediaGameDetailsUpsert,
-        MediaLaunchSessionInsert, MediaStorefrontUpsert,
+        self as MediaQueries, MediaGameDetailsRow, MediaGameDetailsUpsert, MediaInsert,
+        MediaLaunchSessionInsert, MediaRow, MediaStorefrontUpsert,
     },
     models::UpsertResult,
 };
@@ -13,7 +13,8 @@ use crate::{
     media::{
         errors::MediaError,
         models::{
-            Asset, Launch, Media, MediaDetails, MediaInstallation, MediaStorefront, PaginatedMedia,
+            Asset, Launch, Media, MediaDetails, MediaExternalId, MediaInstallation,
+            MediaStorefront, PaginatedMedia,
         },
         types::{MediaLaunchType, MediaSortField, MediaStatus, MediaType, SortOrder},
     },
@@ -39,6 +40,14 @@ pub async fn get_media_by_id(pool: &SqlitePool, id: String) -> Result<Media, Med
     media.storefronts = storefronts
         .into_iter()
         .map(MediaStorefront::try_from)
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let external_ids =
+        MediaQueries::find_external_ids_by_media_ids(pool, &[media.id.clone()]).await?;
+
+    media.external_ids = external_ids
+        .into_iter()
+        .map(MediaExternalId::try_from)
         .collect::<Result<Vec<_>, _>>()?;
 
     let installations =
@@ -143,6 +152,7 @@ pub async fn get_paginated_media(
 
     let assets = MediaQueries::find_assets_by_media_ids(pool, &ids).await?;
     let storefronts = MediaQueries::find_storefronts_by_media_ids(pool, &ids).await?;
+    let external_ids = MediaQueries::find_external_ids_by_media_ids(pool, &ids).await?;
     let installations = MediaQueries::find_installations_by_media_ids(pool, &ids).await?;
     let launches = MediaQueries::find_media_launches_by_media_ids(pool, &ids).await?;
     let genres = MediaQueries::find_genres_by_media_ids(pool, &ids).await?;
@@ -162,6 +172,15 @@ pub async fn get_paginated_media(
             .push(sf);
         map
     });
+
+    let external_ids_by_media = external_ids
+        .into_iter()
+        .fold(HashMap::new(), |mut map, ext| {
+            map.entry(ext.media_id.clone())
+                .or_insert_with(Vec::new)
+                .push(ext);
+            map
+        });
 
     let installations_by_media = installations
         .into_iter()
@@ -224,6 +243,14 @@ pub async fn get_paginated_media(
             .unwrap_or_default()
             .into_iter()
             .map(MediaStorefront::try_from)
+            .collect::<Result<Vec<_>, _>>()?;
+
+        media.external_ids = external_ids_by_media
+            .get(&media.id)
+            .cloned()
+            .unwrap_or_default()
+            .into_iter()
+            .map(MediaExternalId::try_from)
             .collect::<Result<Vec<_>, _>>()?;
 
         media.installations = installations_by_media
@@ -453,4 +480,94 @@ pub async fn update_playtime(
     recalculate_media_game_details(pool, &launch.media_id).await?;
 
     Ok(())
+}
+
+pub async fn find_matching_media(
+    pool: &SqlitePool,
+    title: &str,
+    storefront_id: Option<&str>,
+    provider: Option<&str>,
+    external_id: Option<&str>,
+) -> Result<Option<MediaRow>, MediaError> {
+    if let Some(storefront_id) = storefront_id
+        && let Some(external_id) = external_id
+        && let Some(row) =
+            MediaQueries::find_media_by_storefront(pool, storefront_id, external_id).await?
+    {
+        return Ok(Some(row));
+    }
+
+    if let Some(provider) = provider
+        && let Some(external_id) = external_id
+        && let Some(row) =
+            MediaQueries::find_media_by_external_id(pool, provider, external_id).await?
+    {
+        return Ok(Some(row));
+    }
+
+    if let Some(by_title) = MediaQueries::find_media_by_title(pool, title.to_string()).await? {
+        if let Some(storefront_id) = storefront_id
+            && let Some(external_id) = external_id
+        {
+            let storefronts = MediaQueries::find_storefronts_by_media_ids(
+                pool,
+                std::slice::from_ref(&by_title.id),
+            )
+            .await?;
+            let has_conflicting_sf = storefronts
+                .iter()
+                .any(|sf| sf.storefront_id == storefront_id && sf.external_id != external_id);
+            if has_conflicting_sf {
+                return Ok(None);
+            }
+        }
+
+        if let Some(provider) = provider
+            && let Some(external_id) = external_id
+        {
+            let external_ids = MediaQueries::find_external_ids_by_media_ids(
+                pool,
+                std::slice::from_ref(&by_title.id),
+            )
+            .await?;
+            let has_conflicting_ext = external_ids
+                .iter()
+                .any(|ext| ext.provider == provider && ext.external_id != external_id);
+            if has_conflicting_ext {
+                return Ok(None);
+            }
+        }
+
+        return Ok(Some(by_title));
+    }
+
+    Ok(None)
+}
+
+pub async fn find_or_create_media(
+    pool: &SqlitePool,
+    title: &str,
+    media_type: MediaType,
+    storefront_id: Option<&str>,
+    provider: Option<&str>,
+    external_id: Option<&str>,
+) -> Result<MediaRow, MediaError> {
+    if let Some(existing) =
+        find_matching_media(pool, title, storefront_id, provider, external_id).await?
+    {
+        return Ok(existing);
+    }
+
+    let inserted = MediaQueries::insert_media(
+        pool,
+        MediaInsert {
+            title: title.to_string(),
+            media_type: media_type.as_str().into(),
+            status_id: MediaStatus::NotStarted.id(),
+            ..Default::default()
+        },
+    )
+    .await?;
+
+    Ok(inserted)
 }

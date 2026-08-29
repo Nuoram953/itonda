@@ -7,8 +7,9 @@ use async_trait::async_trait;
 use sqlx::SqlitePool;
 
 use itonda_database::media::{
-    MediaAssetInsert, MediaAssetSearchInsert, find_asset_searches_by_media_ids,
-    find_assets_by_media_ids, insert_media_asset, insert_media_asset_search,
+    MediaAssetInsert, MediaAssetSearchInsert, MediaExternalIdUpsert,
+    find_asset_searches_by_media_ids, find_assets_by_media_ids, insert_media_asset,
+    insert_media_asset_search, upsert_media_external_id,
 };
 use uuid::Uuid;
 
@@ -17,6 +18,8 @@ use crate::{
         downloader::AssetDownloader, models::DiscoverOptions, policy::AssetPolicy,
         registry::AssetRegistry,
     },
+    media::models::ExternalIdProvider,
+    storefronts::models::StorefrontId,
     sync::{context::SyncContext, errors::SyncError, pipeline::SyncStep},
 };
 
@@ -58,7 +61,7 @@ impl SyncStep for AssetStep {
     }
 
     async fn execute(&self, context: &mut SyncContext) -> Result<(), SyncError> {
-        let media = context.media.as_ref().ok_or(SyncError::MissingMedia)?;
+        let media = context.media.clone().ok_or(SyncError::MissingMedia)?;
 
         let existing_assets = find_assets_by_media_ids(&self.pool, from_ref(&media.id)).await?;
         let mut existing_counts = HashMap::<i64, usize>::new();
@@ -78,7 +81,15 @@ impl SyncStep for AssetStep {
                 Some(discovered.external_id.as_str()),
                 discovered.title.as_str(),
             ),
-            None => (media.media_type, None, None, media.title.as_str()),
+            None => {
+                let steam_id = media
+                    .external_ids
+                    .iter()
+                    .find(|e| e.provider == ExternalIdProvider::Steam)
+                    .map(|e| e.external_id.as_str());
+                let sf = steam_id.map(|_| StorefrontId::Steam);
+                (media.media_type, sf, steam_id, media.title.as_str())
+            }
         };
 
         let limit = self.policy.max_items();
@@ -96,9 +107,33 @@ impl SyncStep for AssetStep {
                     searched_types: &searched_types,
                     limit,
                     force,
+                    external_ids: &media.external_ids,
                 },
             )
             .await?;
+
+        for asset in &discovered_assets {
+            if let Some(ext) = &asset.provider_external_id {
+                upsert_media_external_id(
+                    &self.pool,
+                    MediaExternalIdUpsert {
+                        media_id: media.id.clone(),
+                        provider: ext.provider.as_str().into(),
+                        external_id: ext.external_id.clone(),
+                    },
+                )
+                .await?;
+
+                if let Some(media_mut) = &mut context.media
+                    && !media_mut
+                        .external_ids
+                        .iter()
+                        .any(|e| e.provider == ext.provider)
+                {
+                    media_mut.external_ids.push(ext.clone());
+                }
+            }
+        }
 
         let mut assets_to_process = Vec::new();
         for asset in discovered_assets {
@@ -223,10 +258,10 @@ mod tests {
             _external_id: Option<&str>,
             _title: &str,
         ) -> Result<Option<DiscoveredAsset>, AssetError> {
-            Ok(Some(DiscoveredAsset {
-                asset_type: AssetType::Poster,
-                url: self.url.clone(),
-            }))
+            Ok(Some(DiscoveredAsset::new(
+                AssetType::Poster,
+                self.url.clone(),
+            )))
         }
 
         async fn search_poster(
@@ -237,10 +272,10 @@ mod tests {
             _title: &str,
             _options: &PosterSearchOptions,
         ) -> Result<Vec<DiscoveredAsset>, AssetError> {
-            Ok(vec![DiscoveredAsset {
-                asset_type: AssetType::Poster,
-                url: self.url.clone(),
-            }])
+            Ok(vec![DiscoveredAsset::new(
+                AssetType::Poster,
+                self.url.clone(),
+            )])
         }
     }
 
@@ -507,10 +542,10 @@ mod tests {
             _external_id: Option<&str>,
             _title: &str,
         ) -> Result<Option<DiscoveredAsset>, AssetError> {
-            Ok(Some(DiscoveredAsset {
-                asset_type: self.asset_type,
-                url: self.url.clone(),
-            }))
+            Ok(Some(DiscoveredAsset::new(
+                self.asset_type,
+                self.url.clone(),
+            )))
         }
 
         async fn search_poster(
@@ -521,10 +556,10 @@ mod tests {
             _title: &str,
             _options: &PosterSearchOptions,
         ) -> Result<Vec<DiscoveredAsset>, AssetError> {
-            Ok(vec![DiscoveredAsset {
-                asset_type: self.asset_type,
-                url: self.url.clone(),
-            }])
+            Ok(vec![DiscoveredAsset::new(
+                self.asset_type,
+                self.url.clone(),
+            )])
         }
     }
 
@@ -562,10 +597,10 @@ mod tests {
             _external_id: Option<&str>,
             _title: &str,
         ) -> Result<Option<DiscoveredAsset>, AssetError> {
-            Ok(Some(DiscoveredAsset {
-                asset_type: self.asset_type,
-                url: self.url.clone(),
-            }))
+            Ok(Some(DiscoveredAsset::new(
+                self.asset_type,
+                self.url.clone(),
+            )))
         }
 
         async fn search_banner(
@@ -576,10 +611,10 @@ mod tests {
             _title: &str,
             _options: &PosterSearchOptions,
         ) -> Result<Vec<DiscoveredAsset>, AssetError> {
-            Ok(vec![DiscoveredAsset {
-                asset_type: self.asset_type,
-                url: self.url.clone(),
-            }])
+            Ok(vec![DiscoveredAsset::new(
+                self.asset_type,
+                self.url.clone(),
+            )])
         }
     }
 

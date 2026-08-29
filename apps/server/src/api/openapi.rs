@@ -3,8 +3,8 @@ use itonda_domain::{
     assets::types::AssetType,
     media::{
         models::{
-            Asset, Launch, Media, MediaDetails, MediaGameDetails, MediaInstallation,
-            MediaStorefront, PaginatedMedia,
+            Asset, ExternalIdProvider, Launch, Media, MediaDetails, MediaExternalId,
+            MediaGameDetails, MediaInstallation, MediaStorefront, PaginatedMedia,
         },
         types::{MediaSortField, MediaSource, MediaStatus, MediaType, SortOrder},
     },
@@ -64,6 +64,8 @@ use crate::api::{
             AssetType,
             Launch,
             MediaStorefront,
+            MediaExternalId,
+            ExternalIdProvider,
             MediaInstallation,
             MediaDetails,
             MediaGameDetails,
