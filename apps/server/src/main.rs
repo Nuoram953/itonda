@@ -2,14 +2,16 @@ use std::{fs::File, sync::Arc};
 
 use axum::Router;
 use itonda_domain::{
-    assets::{
-        registry::AssetRegistry, steam_grid_db::SteamGridDb, the_movie_database::TheMovieDatabase,
-    },
+    assets::registry::AssetRegistry,
     events::EventBus,
-    metadata::{registry::MetadataRegistry, the_internet_game_database::TheInternetGameDatabase},
+    metadata::registry::MetadataRegistry,
+    sources::{
+        steam::SteamStorefront, steam_grid_db::SteamGridDb,
+        the_internet_game_database::TheInternetGameDatabase, the_movie_database::TheMovieDatabase,
+    },
     storage::path::AppPaths,
     store::toml::TomlCodec,
-    storefronts::{registry::StorefrontRegistry, steam::SteamStorefront},
+    storefronts::registry::StorefrontRegistry,
 };
 use sqlx::SqlitePool;
 use tokio::sync::mpsc::Sender;

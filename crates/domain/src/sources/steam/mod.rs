@@ -2,10 +2,10 @@ use async_trait::async_trait;
 
 use crate::{
     media::discovered::DiscoveredMedia,
+    sources::steam::{client::SteamClient, mapper::map_owned_game},
     storefronts::{
         error::StorefrontError,
         models::StorefrontId,
-        steam::{client::SteamClient, mapper::map_owned_game},
         traits::{GameLibraryProvider, Storefront},
     },
 };

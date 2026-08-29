@@ -1,15 +1,13 @@
 use reqwest_middleware::ClientWithMiddleware;
 
 use crate::{
-    assets::{
-        error::AssetError,
-        the_movie_database::models::{
-            TmdbImagesResponse, TmdbKeywordSearchResponse, TmdbMediaType, TmdbMovieSearchResponse,
-            TmdbMultiSearchResponse, TmdbTvSearchResponse,
-        },
-    },
+    assets::error::AssetError,
     http::create_http_client,
     media::types::MediaType,
+    sources::the_movie_database::models::{
+        TmdbImagesResponse, TmdbKeywordSearchResponse, TmdbMediaType, TmdbMovieSearchResponse,
+        TmdbMultiSearchResponse, TmdbTvSearchResponse,
+    },
 };
 
 pub struct TheMovieDatabaseClient {

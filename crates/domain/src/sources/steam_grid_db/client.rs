@@ -1,13 +1,11 @@
 use reqwest_middleware::ClientWithMiddleware;
 
 use crate::{
-    assets::{
-        error::AssetError,
-        steam_grid_db::models::{
-            GetExternalGameIdResponse, GridSearchOptions, MediaResponse, SearchResponse,
-        },
-    },
+    assets::error::AssetError,
     http::create_http_client,
+    sources::steam_grid_db::models::{
+        GetExternalGameIdResponse, GridSearchOptions, MediaResponse, SearchResponse,
+    },
     storefronts::models::StorefrontId,
 };
 

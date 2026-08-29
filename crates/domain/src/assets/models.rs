@@ -17,7 +17,7 @@ impl From<AssetStoreId> for u32 {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PosterSearchOptions {
-    SteamGridDb(crate::assets::steam_grid_db::models::GridSearchOptions),
+    SteamGridDb(crate::sources::steam_grid_db::models::GridSearchOptions),
     Default,
 }
 
