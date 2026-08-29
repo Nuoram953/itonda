@@ -1,11 +1,12 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::media::models::MediaExternalId;
+use crate::media::models::{GameplayPillar, MediaExternalId};
 
 #[derive(Hash, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AssetStoreId {
     SteamGridDb,
     TheMovieDatabase,
+    DuckDuckGo,
 }
 
 impl From<AssetStoreId> for u32 {
@@ -13,6 +14,7 @@ impl From<AssetStoreId> for u32 {
         match value {
             AssetStoreId::SteamGridDb => 0,
             AssetStoreId::TheMovieDatabase => 1,
+            AssetStoreId::DuckDuckGo => 2,
         }
     }
 }
@@ -30,4 +32,5 @@ pub struct DiscoverOptions<'a> {
     pub limit: Option<usize>,
     pub force: bool,
     pub external_ids: &'a [MediaExternalId],
+    pub pillars: &'a [GameplayPillar],
 }

@@ -324,9 +324,17 @@ export interface components {
         };
         /** @enum {string} */
         CommandStatus: "accepted" | "sent";
+        GameplayPillar: {
+            id: string;
+            title: string;
+            description: string;
+            icon: string;
+            asset_id?: string | null;
+        };
         GetAgentsResponse: {
             agents: components["schemas"]["Agent"][];
         };
+
         JobResponse: {
             job_id: string;
             status: components["schemas"]["JobStatus"];
@@ -360,6 +368,7 @@ export interface components {
             developers: string[];
             /** Format: int64 */
             last_played_at?: number | null;
+            pillars?: components["schemas"]["GameplayPillar"][];
             /** Format: int64 */
             playtime_minutes?: number | null;
             publishers: string[];

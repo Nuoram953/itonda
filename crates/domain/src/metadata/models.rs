@@ -2,7 +2,10 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::{
-    media::{models::MediaExternalId, types::MediaType},
+    media::{
+        models::{GameplayPillar, MediaExternalId},
+        types::MediaType,
+    },
     storefronts::models::StorefrontId,
 };
 
@@ -19,6 +22,7 @@ pub struct MetadataQuery<'a> {
 #[derive(Hash, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub enum MetadataProviderId {
     TheInternetGameDatabase,
+    Wikipedia,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
@@ -67,6 +71,7 @@ pub struct GameGeneralMetadata {
     pub publishers: Vec<String>,
     pub platforms: Vec<String>,
     pub series: Option<String>,
+    pub pillars: Vec<GameplayPillar>,
 }
 
 impl GameGeneralMetadata {
@@ -91,8 +96,14 @@ impl GameGeneralMetadata {
         if self.series.is_none() {
             self.series = source.series;
         }
+        for pillar in source.pillars {
+            if !self.pillars.iter().any(|p| p.id == pillar.id) {
+                self.pillars.push(pillar);
+            }
+        }
     }
 }
+
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type", content = "data")]
@@ -170,6 +181,13 @@ mod tests {
             publishers: vec![],
             platforms: vec!["PC".into()],
             series: None,
+            pillars: vec![crate::media::models::GameplayPillar {
+                id: "combat".into(),
+                title: "Cover Combat".into(),
+                description: "Shoot and cover".into(),
+                icon: "combat".into(),
+                asset_id: None,
+            }],
         };
 
         let incoming = GameGeneralMetadata {
@@ -178,6 +196,22 @@ mod tests {
             publishers: vec!["Pub 1".into()],
             platforms: vec!["Switch".into()],
             series: Some("Cool Series".into()),
+            pillars: vec![
+                crate::media::models::GameplayPillar {
+                    id: "combat".into(),
+                    title: "Duplicate combat".into(),
+                    description: "Duplicate".into(),
+                    icon: "combat".into(),
+                    asset_id: None,
+                },
+                crate::media::models::GameplayPillar {
+                    id: "explore".into(),
+                    title: "Open World".into(),
+                    description: "Explore world".into(),
+                    icon: "explore".into(),
+                    asset_id: None,
+                },
+            ],
         };
 
         base.merge(incoming);
@@ -186,5 +220,9 @@ mod tests {
         assert_eq!(base.publishers, vec!["Pub 1"]);
         assert_eq!(base.platforms, vec!["PC", "Switch"]);
         assert_eq!(base.series.as_deref(), Some("Cool Series"));
+        assert_eq!(base.pillars.len(), 2);
+        assert_eq!(base.pillars[0].id, "combat");
+        assert_eq!(base.pillars[1].id, "explore");
     }
 }
+

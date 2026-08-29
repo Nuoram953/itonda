@@ -1269,6 +1269,7 @@ dependencies = [
  "futures",
  "http",
  "itonda-database",
+ "regex",
  "reqwest",
  "reqwest-middleware",
  "reqwest-tracing",

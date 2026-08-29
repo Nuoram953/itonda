@@ -16,10 +16,30 @@ pub struct AssetDownloader {
 
 impl AssetDownloader {
     pub fn new(paths: AppPaths) -> Self {
-        Self {
-            client: Client::new(),
-            paths,
-        }
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert(
+            reqwest::header::USER_AGENT,
+            reqwest::header::HeaderValue::from_static(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            ),
+        );
+        headers.insert(
+            reqwest::header::ACCEPT,
+            reqwest::header::HeaderValue::from_static(
+                "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+            ),
+        );
+        headers.insert(
+            reqwest::header::REFERER,
+            reqwest::header::HeaderValue::from_static("https://duckduckgo.com/"),
+        );
+
+        let client = Client::builder()
+            .default_headers(headers)
+            .build()
+            .unwrap_or_else(|_| Client::new());
+
+        Self { client, paths }
     }
 
     pub async fn download(
@@ -32,30 +52,113 @@ impl AssetDownloader {
 
         fs::create_dir_all(&dir).await?;
 
-        let response = self.client.get(url).send().await?;
+        let response = self
+            .client
+            .get(url)
+            .send()
+            .await?
+            .error_for_status()
+            .map_err(|e| AssetError::Other(e.to_string()))?;
 
         let bytes = response.bytes().await?;
 
-        let extension = Self::extension_from_url(url);
+        if bytes.is_empty() {
+            return Err(AssetError::Other("Downloaded asset is empty".into()));
+        }
 
-        let path = dir.join(format!("{}.{}", asset_type.folder(), extension));
+        // Validate image magic bytes and detect actual extension
+        let extension = Self::detect_image_extension(&bytes)
+            .map(String::from)
+            .or_else(|| {
+                // Fallback to URL extension if not HTML/text or JSON
+                let is_html_or_json = bytes.starts_with(b"<!DOCTYPE")
+                    || bytes.starts_with(b"<!doctype")
+                    || bytes.starts_with(b"<html")
+                    || bytes.starts_with(b"<HTML")
+                    || bytes.starts_with(b"<head")
+                    || bytes.starts_with(b"<body")
+                    || bytes.starts_with(b"{\n")
+                    || bytes.starts_with(b"{\"");
+
+                if !is_html_or_json {
+                    Some(Self::extension_from_url(url))
+                } else {
+                    None
+                }
+            })
+            .ok_or_else(|| {
+                AssetError::Other(
+                    "Downloaded payload is not a valid image (received HTML or corrupt data)".into(),
+                )
+            })?;
+
+        let path = dir.join(format!("{}_{}.{}", asset_type.folder(), Uuid::new_v4(), extension));
 
         fs::write(&path, bytes).await?;
 
         Ok(path)
     }
 
-    fn extension_from_url(url: &str) -> String {
+    pub fn detect_image_extension(bytes: &[u8]) -> Option<&'static str> {
+        if bytes.len() < 8 {
+            return None;
+        }
+
+        // JPEG: 0xFF, 0xD8, 0xFF
+        if bytes.starts_with(&[0xFF, 0xD8, 0xFF]) {
+            return Some("jpg");
+        }
+
+        // PNG: 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A
+        if bytes.starts_with(&[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]) {
+            return Some("png");
+        }
+
+        // WebP: 'R', 'I', 'F', 'F', ... , 'W', 'E', 'B', 'P'
+        if bytes.starts_with(b"RIFF") && bytes.len() >= 12 && &bytes[8..12] == b"WEBP" {
+            return Some("webp");
+        }
+
+        // GIF: 'G', 'I', 'F', '8', '7'/'9', 'a'
+        if bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a") {
+            return Some("gif");
+        }
+
+        // AVIF: starts with ftypavif or ftypavis
+        if bytes.len() >= 12
+            && &bytes[4..8] == b"ftyp"
+            && (&bytes[8..12] == b"avif" || &bytes[8..12] == b"avis")
+        {
+            return Some("avif");
+        }
+
+        // SVG: XML or <svg
+        if bytes.starts_with(b"<svg")
+            || (bytes.starts_with(b"<?xml") && bytes.windows(4).any(|w| w == b"<svg"))
+        {
+            return Some("svg");
+        }
+
+        None
+    }
+
+    pub fn extension_from_url(url: &str) -> String {
         Url::parse(url)
             .ok()
-            .and_then(|url| {
-                url.path()
-                    .rsplit('.')
-                    .next()
-                    .filter(|ext| *ext != url.path())
-                    .map(String::from)
+            .and_then(|parsed| {
+                let path = parsed.path();
+                if let Some((_, after_dot)) = path.rsplit_once('.') {
+                    let ext = after_dot.split('/').next().unwrap_or(after_dot);
+                    let ext = ext.split('?').next().unwrap_or(ext);
+                    let ext_clean: String =
+                        ext.chars().filter(|c| c.is_ascii_alphanumeric()).collect();
+                    if !ext_clean.is_empty() && ext_clean.len() <= 5 {
+                        return Some(ext_clean.to_lowercase());
+                    }
+                }
+                None
             })
-            .unwrap_or_else(|| "img".into())
+            .unwrap_or_else(|| "jpg".into())
     }
 }
 
@@ -78,9 +181,10 @@ mod tests {
     async fn downloads_asset_to_media_directory() {
         let server = MockServer::start().await;
 
+        let png_bytes = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89fake image";
         Mock::given(method("GET"))
             .and(path("/poster.png"))
-            .respond_with(ResponseTemplate::new(200).set_body_bytes(b"fake image"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(png_bytes.as_slice()))
             .mount(&server)
             .await;
 
@@ -107,25 +211,28 @@ mod tests {
         assert!(path.exists());
 
         assert_eq!(
-            path,
+            path.parent().unwrap(),
             paths
                 .data_dir
                 .join("media")
                 .join(media_id.to_string())
                 .join("poster")
-                .join("poster.png")
         );
+        let filename = path.file_name().unwrap().to_str().unwrap();
+        assert!(filename.starts_with("poster_"));
+        assert!(filename.ends_with(".png"));
 
-        assert_eq!(tokio::fs::read(path).await.unwrap(), b"fake image");
+        assert_eq!(tokio::fs::read(path).await.unwrap(), png_bytes);
     }
 
     #[tokio::test]
     async fn creates_asset_directories() {
         let server = MockServer::start().await;
 
+        let webp_bytes = b"RIFF\x20\x00\x00\x00WEBPVP8 \x14\x00\x00\x00fake image payload here";
         Mock::given(method("GET"))
             .and(path("/backdrop.webp"))
-            .respond_with(ResponseTemplate::new(200).set_body_bytes(b"fake image"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(webp_bytes.as_slice()))
             .mount(&server)
             .await;
 
@@ -159,6 +266,27 @@ mod tests {
         );
     }
 
+    #[tokio::test]
+    async fn rejects_html_error_document() {
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/error.jpg"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("<!DOCTYPE html><html><body>Error</body></html>"))
+            .mount(&server)
+            .await;
+
+        let temp = tempdir().unwrap();
+        let paths = AppPaths {
+            config_dir: temp.path().join("config"),
+            data_dir: temp.path().join("data"),
+        };
+
+        let downloader = AssetDownloader::new(paths);
+        let res = downloader.download(Uuid::new_v4(), AssetType::Screenshot, &format!("{}/error.jpg", server.uri())).await;
+        assert!(res.is_err());
+    }
+
     #[test]
     fn asset_type_generates_correct_folder() {
         assert_eq!(AssetType::Poster.folder(), "poster");
@@ -180,8 +308,15 @@ mod tests {
         );
 
         assert_eq!(
+            AssetDownloader::extension_from_url(
+                "http://wikia.com/images/DeltaSquad_HiRes.jpg/revision/latest?cb=123"
+            ),
+            "jpg"
+        );
+
+        assert_eq!(
             AssetDownloader::extension_from_url("https://example.com/image"),
-            "img"
+            "jpg"
         );
     }
 }

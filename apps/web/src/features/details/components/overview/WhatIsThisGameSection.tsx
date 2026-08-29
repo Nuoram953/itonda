@@ -37,7 +37,7 @@ export function WhatIsThisGameSection({ media }: WhatIsThisGameSectionProps) {
             <h3 className="text-xl font-bold tracking-widest text-accent-gold uppercase">
               WHAT IS THIS GAME?
             </h3>
-            <p className="text-base text-text-muted leading-relaxed font-normal">
+            <p className="text-sm text-text-muted leading-relaxed font-normal">
               {media.summary}
             </p>
           </div>

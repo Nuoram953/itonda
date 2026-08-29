@@ -21,8 +21,17 @@ describe("OverviewTab Component", () => {
     details: createMediaDetails({
       playtime_minutes: 120,
       last_played_at: 1700000000,
+      pillars: [
+        {
+          id: "combat",
+          title: "Realistic Combat",
+          description: "Master swordplay.",
+          icon: "combat",
+        },
+      ],
     }),
   });
+
 
 
   it("renders all overview sections", () => {

@@ -6,8 +6,9 @@ use itonda_domain::{
     events::EventBus,
     metadata::registry::MetadataRegistry,
     sources::{
-        steam::SteamStorefront, steam_grid_db::SteamGridDb,
+        duckduckgo::DuckDuckGo, steam::SteamStorefront, steam_grid_db::SteamGridDb,
         the_internet_game_database::TheInternetGameDatabase, the_movie_database::TheMovieDatabase,
+        wikipedia::WikipediaSource,
     },
     storage::path::AppPaths,
     store::toml::TomlCodec,
@@ -211,6 +212,8 @@ async fn init_asset_store(secrets: &SecretsManager) -> anyhow::Result<AssetRegis
         secrets.asset_store.tmdb.api_key,
     )));
 
+    registry.register_pillar_screenshot(Arc::new(DuckDuckGo::new()));
+
     Ok(registry)
 }
 
@@ -218,6 +221,8 @@ async fn init_metadata(secrets: &SecretsManager) -> anyhow::Result<MetadataRegis
     let secrets = secrets.get().await;
 
     let mut registry = MetadataRegistry::new();
+
+    registry.register(Arc::new(WikipediaSource::new()));
 
     if !secrets.metadata_store.igdb.client_id.is_empty()
         && !secrets.metadata_store.igdb.client_secret.is_empty()

@@ -51,6 +51,21 @@ export function createMediaStorefront(
   };
 }
 
+export type GameplayPillar = components["schemas"]["GameplayPillar"];
+
+export function createGameplayPillar(
+  overrides?: Partial<GameplayPillar>,
+): GameplayPillar {
+  return {
+    id: "pillar-1",
+    title: "Realistic Combat",
+    description: "Master challenging melee and ranged battles.",
+    icon: "combat",
+    asset_id: null,
+    ...overrides,
+  };
+}
+
 export function createMediaDetails(
   overrides?: Partial<MediaGameDetails>,
 ): MediaGameDetails {
@@ -60,9 +75,12 @@ export function createMediaDetails(
     last_played_at: null,
     playtime_minutes: null,
     series: null,
+    pillars: overrides?.pillars ?? [],
     ...overrides,
   };
 }
+
+
 
 export function createMedia(overrides?: Partial<Media>): Media {
   return {

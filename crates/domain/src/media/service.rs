@@ -69,6 +69,12 @@ pub async fn get_media_by_id(pool: &SqlitePool, id: String) -> Result<Media, Med
         MediaType::Game => {
             let details = MediaQueries::find_game_details(pool, &media.id).await?;
             let companies = MediaQueries::find_companies_by_media_id(pool, &media.id).await?;
+            let pillar_rows =
+                MediaQueries::find_gameplay_pillars_by_media_id(pool, &media.id).await?;
+            let pillars = pillar_rows
+                .into_iter()
+                .map(crate::media::models::GameplayPillar::from)
+                .collect::<Vec<_>>();
 
             let mut developers = Vec::new();
             let mut publishers = Vec::new();
@@ -81,16 +87,24 @@ pub async fn get_media_by_id(pool: &SqlitePool, id: String) -> Result<Media, Med
                 }
             }
 
-            details.map(|details| {
-                MediaDetails::Game(crate::media::models::MediaGameDetails {
-                    playtime_minutes: details.playtime_minutes,
-                    last_played_at: details.last_played_at,
-                    series: details.series,
+            if details.is_some()
+                || !developers.is_empty()
+                || !publishers.is_empty()
+                || !pillars.is_empty()
+            {
+                Some(MediaDetails::Game(crate::media::models::MediaGameDetails {
+                    playtime_minutes: details.as_ref().and_then(|d| d.playtime_minutes),
+                    last_played_at: details.as_ref().and_then(|d| d.last_played_at),
+                    series: details.and_then(|d| d.series),
                     developers,
                     publishers,
-                })
-            })
+                    pillars,
+                }))
+            } else {
+                None
+            }
         }
+
 
         MediaType::Movie => None,
 
@@ -156,10 +170,20 @@ pub async fn get_paginated_media(
     let installations = MediaQueries::find_installations_by_media_ids(pool, &ids).await?;
     let launches = MediaQueries::find_media_launches_by_media_ids(pool, &ids).await?;
     let genres = MediaQueries::find_genres_by_media_ids(pool, &ids).await?;
+
     let tags = MediaQueries::find_tags_by_media_ids(pool, &ids).await?;
     let companies = MediaQueries::find_companies_by_media_ids(pool, &ids).await?;
+    let pillar_rows = MediaQueries::find_gameplay_pillars_by_media_ids(pool, &ids).await?;
+
+    let pillars_by_media = pillar_rows.into_iter().fold(HashMap::new(), |mut map, p| {
+        map.entry(p.media_id.clone())
+            .or_insert_with(Vec::new)
+            .push(crate::media::models::GameplayPillar::from(p));
+        map
+    });
 
     let assets_by_media = assets.into_iter().fold(HashMap::new(), |mut map, asset| {
+
         map.entry(asset.media_id.clone())
             .or_insert_with(Vec::new)
             .push(asset);
@@ -291,16 +315,26 @@ pub async fn get_paginated_media(
                     }
                 }
 
-                details.map(|details| {
-                    MediaDetails::Game(crate::media::models::MediaGameDetails {
-                        playtime_minutes: details.playtime_minutes,
-                        last_played_at: details.last_played_at,
-                        series: details.series,
+                let pillars = pillars_by_media.get(&media.id).cloned().unwrap_or_default();
+
+                if details.is_some()
+                    || !developers.is_empty()
+                    || !publishers.is_empty()
+                    || !pillars.is_empty()
+                {
+                    Some(MediaDetails::Game(crate::media::models::MediaGameDetails {
+                        playtime_minutes: details.as_ref().and_then(|d| d.playtime_minutes),
+                        last_played_at: details.as_ref().and_then(|d| d.last_played_at),
+                        series: details.and_then(|d| d.series),
                         developers,
                         publishers,
-                    })
-                })
+                        pillars,
+                    }))
+                } else {
+                    None
+                }
             }
+
 
             MediaType::Movie => None,
 

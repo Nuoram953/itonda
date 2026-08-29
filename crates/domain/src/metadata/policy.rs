@@ -30,6 +30,7 @@ impl MetadataPolicy {
                     && !game.publishers.is_empty()
                     && !game.platforms.is_empty()
                     && game.series.is_some()
+                    && !game.pillars.is_empty()
             }
         }
     }
@@ -38,6 +39,7 @@ impl MetadataPolicy {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::media::models::GameplayPillar;
     use crate::metadata::models::GameGeneralMetadata;
 
     #[test]
@@ -60,6 +62,13 @@ mod tests {
         meta.publishers = vec!["pub".into()];
         meta.platforms = vec!["plat".into()];
         meta.series = Some("series".into());
+        meta.pillars = vec![GameplayPillar {
+            id: "combat".into(),
+            title: "Combat".into(),
+            description: "desc".into(),
+            icon: "combat".into(),
+            asset_id: None,
+        }];
         let meta = GeneralMetadata::Game(meta);
 
         assert!(!policy.is_satisfied(&meta));
@@ -81,7 +90,15 @@ mod tests {
         meta.publishers = vec!["pub".into()];
         meta.platforms = vec!["plat".into()];
         meta.series = Some("series".into());
+        meta.pillars = vec![GameplayPillar {
+            id: "combat".into(),
+            title: "Combat".into(),
+            description: "desc".into(),
+            icon: "combat".into(),
+            asset_id: None,
+        }];
         let gm = GeneralMetadata::Game(meta);
         assert!(policy.is_satisfied(&gm));
     }
 }
+

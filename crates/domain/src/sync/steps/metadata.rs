@@ -2,9 +2,10 @@ use async_trait::async_trait;
 use itonda_database::media::{
     MediaExternalIdUpsert, MediaGameDetailsUpsert, MediaMetadataSearchInsert, MediaMetadataUpdate,
     find_game_details, find_metadata_search_by_media_id, insert_media_metadata_search,
-    sync_media_companies, sync_media_genres, sync_media_tags, update_media_metadata,
-    upsert_media_external_id, upsert_media_game_details,
+    sync_gameplay_pillars, sync_media_companies, sync_media_genres, sync_media_tags,
+    update_media_metadata, upsert_media_external_id, upsert_media_game_details,
 };
+
 use sqlx::SqlitePool;
 
 use crate::{
@@ -204,6 +205,31 @@ impl SyncStep for MetadataStep {
                         }
                     }
                 }
+
+                if !game_meta.pillars.is_empty() {
+                    let db_pillars = game_meta
+                        .pillars
+                        .iter()
+                        .enumerate()
+                        .map(|(pos, p)| itonda_database::media::MediaGameplayPillarInsert {
+                            position: pos as i64,
+                            pillar_id: p.id.clone(),
+                            title: p.title.clone(),
+                            description: p.description.clone(),
+                            icon: p.icon.clone(),
+                            asset_id: p.asset_id.clone(),
+                            source: "wikipedia".to_string(),
+                        })
+                        .collect::<Vec<_>>();
+
+                    sync_gameplay_pillars(&self.pool, &media.id, &db_pillars).await?;
+
+                    if let Some(crate::media::models::MediaDetails::Game(details)) =
+                        &mut media.details
+                    {
+                        details.pillars = game_meta.pillars.clone();
+                    }
+                }
             }
         }
 
@@ -218,3 +244,4 @@ impl SyncStep for MetadataStep {
         Ok(())
     }
 }
+

@@ -113,6 +113,52 @@ pub async fn refresh(
         .send(Job::Sync(SyncJob {
             id: job_id,
             storefront: request.storefront,
+            media_id: None,
+            force: request.force,
+        }))
+        .await
+        .map_err(|err| {
+            tracing::error!(?err, "Failed to queue sync job");
+            ApiError::WorkerUnavailable
+        })?;
+
+    Ok((
+        StatusCode::ACCEPTED,
+        Json(JobResponse {
+            job_id: job_id.to_string(),
+            status: JobStatus::Queued,
+        }),
+    ))
+}
+
+#[utoipa::path(
+    post,
+    path = "/media/refresh/{media_id}",
+    params(
+        ("media_id" = String, Path, description = "Media ID"),
+    ),
+    request_body = MediaRefreshPayload,
+    responses(
+        (
+            status = 202,
+            body = JobResponse
+        )
+    )
+)]
+#[instrument(skip(state, request))]
+pub async fn refresh_media_by_id(
+    State(state): State<AppState>,
+    Path(media_id): Path<String>,
+    AppJson(request): AppJson<MediaRefreshPayload>,
+) -> Result<impl IntoResponse, ApiError> {
+    let job_id = Uuid::new_v4();
+
+    state
+        .jobs
+        .send(Job::Sync(SyncJob {
+            id: job_id,
+            storefront: None,
+            media_id: Some(media_id),
             force: request.force,
         }))
         .await

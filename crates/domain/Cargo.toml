@@ -21,6 +21,8 @@ tracing = {workspace=true}
 async-trait = {workspace=true}
 http = {workspace=true}
 sysinfo = { workspace = true }
+regex = "1"
+
 
 url = "2"
 reqwest = { workspace=true, features = ["json"] }

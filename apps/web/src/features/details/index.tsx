@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useParams } from "@tanstack/react-router";
-import { Bookmark, MoreVertical } from "lucide-react";
+import { Bookmark } from "lucide-react";
 import { Workspace } from "@/components/workspace/Workspace";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { ErrorState } from "@/components/feedback/ErrorState";
 import { useMediaById } from "./api/get-media-id";
 import { Launch } from "./components/action/Launch";
 import { Status } from "./components/action/status";
+import { MoreOptions } from "./components/action/MoreOptions";
 import { HeroHeader } from "./components/hero/HeroHeader";
 import { DetailsTabs, type TabId } from "./components/navigation/DetailsTabs";
 import { OverviewTab } from "./components/overview/OverviewTab";
@@ -75,10 +76,7 @@ export const MediaDetails = () => {
             icon={<Bookmark className="w-4 h-4" />}
             title="Bookmark"
           />
-          <HeaderActionButton
-            icon={<MoreVertical className="w-4 h-4" />}
-            title="More options"
-          />
+          <MoreOptions media={media} />
         </Workspace.Actions>
       </Workspace.Header>
 

@@ -250,3 +250,29 @@ pub struct MediaExternalIdUpsert {
     pub provider: String,
     pub external_id: String,
 }
+
+#[derive(Debug, Clone, Serialize, FromRow, PartialEq, Eq)]
+pub struct MediaGameplayPillarRow {
+    pub id: String,
+    pub media_id: String,
+    pub position: i64,
+    pub pillar_id: String,
+    pub title: String,
+    pub description: String,
+    pub icon: String,
+    pub asset_id: Option<String>,
+    pub source: String,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct MediaGameplayPillarInsert {
+    pub position: i64,
+    pub pillar_id: String,
+    pub title: String,
+    pub description: String,
+    pub icon: String,
+    pub asset_id: Option<String>,
+    pub source: String,
+}
+

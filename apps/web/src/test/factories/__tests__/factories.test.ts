@@ -152,7 +152,9 @@ describe("Test Factories", () => {
         last_played_at: null,
         playtime_minutes: null,
         series: null,
+        pillars: [],
       });
+
     });
 
     it("allows overriding details fields", () => {

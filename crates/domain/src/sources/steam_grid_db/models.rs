@@ -88,6 +88,7 @@ impl MediaResponse {
                 asset_type,
                 url: media.url,
                 provider_external_id: provider_external_id.clone(),
+                pillar_id: None,
             })
             .collect()
     }

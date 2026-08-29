@@ -166,6 +166,8 @@ impl GetGameResponse {
             publishers,
             platforms,
             series,
+            pillars: Vec::new(),
         })
     }
 }
+

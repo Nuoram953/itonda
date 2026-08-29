@@ -42,6 +42,7 @@ pub struct DiscoveredAsset {
     pub asset_type: AssetType,
     pub url: String,
     pub provider_external_id: Option<MediaExternalId>,
+    pub pillar_id: Option<String>,
 }
 
 impl DiscoveredAsset {
@@ -50,11 +51,17 @@ impl DiscoveredAsset {
             asset_type,
             url: url.into(),
             provider_external_id: None,
+            pillar_id: None,
         }
     }
 
     pub fn with_provider_external_id(mut self, external_id: MediaExternalId) -> Self {
         self.provider_external_id = Some(external_id);
+        self
+    }
+
+    pub fn with_pillar_id(mut self, pillar_id: impl Into<String>) -> Self {
+        self.pillar_id = Some(pillar_id.into());
         self
     }
 }

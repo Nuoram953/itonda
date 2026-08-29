@@ -8,8 +8,9 @@ use sqlx::SqlitePool;
 
 use itonda_database::media::{
     MediaAssetInsert, MediaAssetSearchInsert, MediaExternalIdUpsert,
-    find_asset_searches_by_media_ids, find_assets_by_media_ids, insert_media_asset,
-    insert_media_asset_search, upsert_media_external_id,
+    find_asset_searches_by_media_ids, find_assets_by_media_ids, find_gameplay_pillars_by_media_ids,
+    insert_media_asset, insert_media_asset_search, update_gameplay_pillar_asset_id,
+    upsert_media_external_id,
 };
 use uuid::Uuid;
 
@@ -18,7 +19,7 @@ use crate::{
         downloader::AssetDownloader, models::DiscoverOptions, policy::AssetPolicy,
         registry::AssetRegistry,
     },
-    media::models::ExternalIdProvider,
+    media::models::{ExternalIdProvider, GameplayPillar, MediaDetails},
     storefronts::models::StorefrontId,
     sync::{context::SyncContext, errors::SyncError, pipeline::SyncStep},
 };
@@ -92,6 +93,23 @@ impl SyncStep for AssetStep {
             }
         };
 
+        let db_pillars: Vec<GameplayPillar> = match &media.details {
+            Some(MediaDetails::Game(details)) if !details.pillars.is_empty() => {
+                details.pillars.clone()
+            }
+            _ => find_gameplay_pillars_by_media_ids(&self.pool, from_ref(&media.id))
+                .await?
+                .into_iter()
+                .map(|p| GameplayPillar {
+                    id: p.pillar_id,
+                    title: p.title,
+                    description: p.description,
+                    icon: p.icon,
+                    asset_id: p.asset_id,
+                })
+                .collect(),
+        };
+
         let limit = self.policy.max_items();
         let force = context.force;
 
@@ -108,6 +126,7 @@ impl SyncStep for AssetStep {
                     limit,
                     force,
                     external_ids: &media.external_ids,
+                    pillars: &db_pillars,
                 },
             )
             .await?;
@@ -137,6 +156,11 @@ impl SyncStep for AssetStep {
 
         let mut assets_to_process = Vec::new();
         for asset in discovered_assets {
+            if asset.pillar_id.is_some() {
+                assets_to_process.push(asset);
+                continue;
+            }
+
             let asset_type_id = asset.asset_type.id();
             let count = existing_counts.entry(asset_type_id).or_default();
             if let Some(max) = limit {
@@ -159,7 +183,7 @@ impl SyncStep for AssetStep {
                 )
                 .await?;
 
-            insert_media_asset(
+            let asset_row = insert_media_asset(
                 &self.pool,
                 MediaAssetInsert {
                     media_id: media.id.clone(),
@@ -168,6 +192,24 @@ impl SyncStep for AssetStep {
                 },
             )
             .await?;
+
+            if let Some(pillar_id) = &asset.pillar_id {
+                update_gameplay_pillar_asset_id(
+                    &self.pool,
+                    &media.id,
+                    pillar_id,
+                    &asset_row.id,
+                )
+                .await?;
+
+                if let Some(media_mut) = &mut context.media {
+                    if let Some(MediaDetails::Game(details)) = &mut media_mut.details {
+                        if let Some(p) = details.pillars.iter_mut().find(|p| p.id == *pillar_id) {
+                            p.asset_id = Some(asset_row.id);
+                        }
+                    }
+                }
+            }
         }
 
         for asset_type_id in attempted_types {
@@ -1029,5 +1071,215 @@ mod tests {
         let asset_ids: Vec<i64> = assets.iter().map(|a| a.asset_id).collect();
         assert!(asset_ids.contains(&AssetType::Poster.id()));
         assert!(asset_ids.contains(&AssetType::Banner.id()));
+    }
+
+    struct MockScreenshotFetcher {
+        url: String,
+    }
+
+    impl MockScreenshotFetcher {
+        fn new(url: String) -> Self {
+            Self { url }
+        }
+    }
+
+    impl AssetFetcher for MockScreenshotFetcher {
+        fn id(&self) -> AssetStoreId {
+            AssetStoreId::DuckDuckGo
+        }
+
+        fn supports_media_type(&self, media_type: MediaType) -> bool {
+            matches!(media_type, MediaType::Game)
+        }
+    }
+
+    #[async_trait]
+    impl crate::assets::traits::ScreenshotFetcher for MockScreenshotFetcher {
+        async fn discover_screenshot(
+            &self,
+            _media_type: Option<MediaType>,
+            _storefront: Option<StorefrontId>,
+            _external_id: Option<&str>,
+            _title: &str,
+        ) -> Result<Option<DiscoveredAsset>, AssetError> {
+            Ok(Some(DiscoveredAsset::new(
+                AssetType::Screenshot,
+                self.url.clone(),
+            )))
+        }
+    }
+
+    struct MockPillarScreenshotFetcher {
+        url: String,
+    }
+
+    impl MockPillarScreenshotFetcher {
+        fn new(url: String) -> Self {
+            Self { url }
+        }
+    }
+
+    impl AssetFetcher for MockPillarScreenshotFetcher {
+        fn id(&self) -> AssetStoreId {
+            AssetStoreId::DuckDuckGo
+        }
+
+        fn supports_media_type(&self, media_type: MediaType) -> bool {
+            matches!(media_type, MediaType::Game)
+        }
+    }
+
+    #[async_trait]
+    impl crate::assets::traits::PillarScreenshotFetcher for MockPillarScreenshotFetcher {
+        async fn discover_pillar_screenshot(
+            &self,
+            _media_type: Option<MediaType>,
+            _storefront: Option<StorefrontId>,
+            _external_id: Option<&str>,
+            _game_title: &str,
+            _pillar_title: &str,
+        ) -> Result<Option<DiscoveredAsset>, AssetError> {
+            Ok(Some(DiscoveredAsset::new(
+                AssetType::Screenshot,
+                self.url.clone(),
+            )))
+        }
+    }
+
+    #[tokio::test]
+    async fn step_downloads_screenshot_and_saves_media_asset() {
+        let pool = setup_db().await;
+        let server = MockServer::start().await;
+
+        let png_bytes = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89fake image";
+        Mock::given(method("GET"))
+            .and(path("/screenshot.png"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(png_bytes.as_slice()))
+            .mount(&server)
+            .await;
+
+        let temp = tempdir().unwrap();
+        let paths = AppPaths {
+            config_dir: temp.path().join("config"),
+            data_dir: temp.path().join("data"),
+        };
+
+        let mut registry = AssetRegistry::new();
+        registry.register_screenshot(Arc::new(MockScreenshotFetcher::new(format!(
+            "{}/screenshot.png",
+            server.uri()
+        ))));
+
+        let downloader = AssetDownloader::new(paths);
+        let step = AssetStep::new(pool.clone(), registry, downloader);
+
+        let media_row = insert_media(
+            &pool,
+            MediaInsert {
+                title: "Gears of War".into(),
+                media_type: "game".into(),
+                status_id: MediaStatus::NotStarted.id(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+        let media = Media::try_from(media_row).unwrap();
+
+        let mut context = SyncContext::from_media(media.clone());
+        step.execute(&mut context).await.unwrap();
+
+        let assets = find_assets_by_media_ids(&pool, &[media.id]).await.unwrap();
+        assert_eq!(assets.len(), 1);
+        assert_eq!(assets[0].asset_id, AssetType::Screenshot.id());
+    }
+
+    #[tokio::test]
+    async fn step_downloads_pillar_screenshots_and_updates_pillar_asset_id() {
+        use itonda_database::media::{
+            MediaGameplayPillarInsert, find_gameplay_pillars_by_media_ids, sync_gameplay_pillars,
+        };
+
+        let pool = setup_db().await;
+        let server = MockServer::start().await;
+
+        let png_bytes = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89fake image";
+        Mock::given(method("GET"))
+            .and(path("/screenshot.png"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(png_bytes.as_slice()))
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/pillar_shot.png"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(png_bytes.as_slice()))
+            .mount(&server)
+            .await;
+
+        let temp = tempdir().unwrap();
+        let paths = AppPaths {
+            config_dir: temp.path().join("config"),
+            data_dir: temp.path().join("data"),
+        };
+
+        let mut registry = AssetRegistry::new();
+        registry.register_screenshot(Arc::new(MockScreenshotFetcher::new(format!(
+            "{}/screenshot.png",
+            server.uri()
+        ))));
+        registry.register_pillar_screenshot(Arc::new(MockPillarScreenshotFetcher::new(format!(
+            "{}/pillar_shot.png",
+            server.uri()
+        ))));
+
+        let downloader = AssetDownloader::new(paths);
+        let step = AssetStep::new(pool.clone(), registry, downloader);
+
+        let media_row = insert_media(
+            &pool,
+            MediaInsert {
+                title: "Gears of War".into(),
+                media_type: "game".into(),
+                status_id: MediaStatus::NotStarted.id(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+        let media = Media::try_from(media_row).unwrap();
+
+        sync_gameplay_pillars(
+            &pool,
+            &media.id,
+            &[MediaGameplayPillarInsert {
+                position: 0,
+                pillar_id: "active_reload".into(),
+                title: "Active Reload".into(),
+                description: "Reload mechanic".into(),
+                icon: "combat".into(),
+                asset_id: None,
+                source: "wikipedia".into(),
+            }],
+        )
+        .await
+        .unwrap();
+
+        let mut context = SyncContext::from_media(media.clone());
+        step.execute(&mut context).await.unwrap();
+
+        let pillars = find_gameplay_pillars_by_media_ids(&pool, &[media.id.clone()])
+            .await
+            .unwrap();
+        assert_eq!(pillars.len(), 1);
+        assert!(pillars[0].asset_id.is_some());
+
+        let assets = find_assets_by_media_ids(&pool, &[media.id]).await.unwrap();
+        assert_eq!(assets.len(), 2);
+        assert!(assets.iter().all(|a| a.asset_id == AssetType::Screenshot.id()));
+
+        let pillar_asset = assets
+            .iter()
+            .find(|a| Some(a.id.as_str()) == pillars[0].asset_id.as_deref())
+            .unwrap();
+        assert_eq!(pillar_asset.asset_id, AssetType::Screenshot.id());
     }
 }

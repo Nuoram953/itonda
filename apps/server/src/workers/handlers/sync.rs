@@ -55,7 +55,11 @@ impl SyncHandler {
             self.metadata.clone(),
         );
 
-        let _ = sync.sync_all(job.force).await;
+        if let Some(media_id) = &job.media_id {
+            let _ = sync.sync_media(media_id, job.force).await;
+        } else {
+            let _ = sync.sync_all(job.force).await;
+        }
 
         self.events.publish_job(
             job.id,

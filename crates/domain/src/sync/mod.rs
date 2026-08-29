@@ -149,4 +149,28 @@ impl LibrarySyncService {
 
         Ok(())
     }
+
+    pub async fn sync_media(&self, media_id: &str, force: bool) -> Result<(), SyncError> {
+        info!("Starting sync process for single media id: {media_id} (force: {force})");
+
+        let media = crate::media::service::get_media_by_id(&self.db, media_id.to_string()).await?;
+        let mut context = SyncContext::from_media(media.clone());
+        context.force = force;
+
+        self.pipeline.execute(&mut context).await?;
+
+        if let Some(synced_media) = &context.media {
+            self.events.publish_job(
+                self.job_id,
+                JobType::Sync,
+                JobEventType::Sync(SyncEvent::MediaSynced {
+                    media_id: synced_media.id.clone(),
+                }),
+            );
+        }
+
+        info!("Single media sync completed for {media_id}");
+
+        Ok(())
+    }
 }

@@ -7,7 +7,8 @@ use crate::{
     assets::{
         error::AssetError,
         models::{AssetStoreId, DiscoverOptions, PosterSearchOptions},
-        traits::{BannerFetcher, PosterFetcher},
+        traits::{BannerFetcher, PillarScreenshotFetcher, PosterFetcher, ScreenshotFetcher},
+        types::AssetType,
     },
     media::{discovered::DiscoveredAsset, types::MediaType},
     storefronts::models::StorefrontId,
@@ -17,6 +18,8 @@ use crate::{
 pub struct AssetRegistry {
     posters: Vec<Arc<dyn PosterFetcher>>,
     banners: Vec<Arc<dyn BannerFetcher>>,
+    screenshots: Vec<Arc<dyn ScreenshotFetcher>>,
+    pillar_screenshots: Vec<Arc<dyn PillarScreenshotFetcher>>,
 }
 
 impl AssetRegistry {
@@ -24,6 +27,8 @@ impl AssetRegistry {
         Self {
             posters: Vec::new(),
             banners: Vec::new(),
+            screenshots: Vec::new(),
+            pillar_screenshots: Vec::new(),
         }
     }
 
@@ -59,6 +64,44 @@ impl AssetRegistry {
         self.banners.iter().find(|f| f.id() == id).cloned()
     }
 
+    pub fn register_screenshot(&mut self, provider: Arc<dyn ScreenshotFetcher>) {
+        self.screenshots.push(provider);
+    }
+
+    pub fn screenshots(&self) -> &[Arc<dyn ScreenshotFetcher>] {
+        &self.screenshots
+    }
+
+    pub fn screenshot_providers(&self) -> Vec<Arc<dyn ScreenshotFetcher>> {
+        self.screenshots.clone()
+    }
+
+    pub fn get_screenshot(&self, id: AssetStoreId) -> Option<Arc<dyn ScreenshotFetcher>> {
+        self.screenshots.iter().find(|f| f.id() == id).cloned()
+    }
+
+    pub fn register_pillar_screenshot(&mut self, provider: Arc<dyn PillarScreenshotFetcher>) {
+        self.pillar_screenshots.push(provider);
+    }
+
+    pub fn pillar_screenshots(&self) -> &[Arc<dyn PillarScreenshotFetcher>] {
+        &self.pillar_screenshots
+    }
+
+    pub fn pillar_screenshot_providers(&self) -> Vec<Arc<dyn PillarScreenshotFetcher>> {
+        self.pillar_screenshots.clone()
+    }
+
+    pub fn get_pillar_screenshot(
+        &self,
+        id: AssetStoreId,
+    ) -> Option<Arc<dyn PillarScreenshotFetcher>> {
+        self.pillar_screenshots
+            .iter()
+            .find(|f| f.id() == id)
+            .cloned()
+    }
+
     pub async fn discover(
         &self,
         media_type: MediaType,
@@ -78,6 +121,7 @@ impl AssetRegistry {
                     limit: None,
                     force: true,
                     external_ids: &[],
+                    pillars: &[],
                 },
             )
             .await?;
@@ -152,6 +196,63 @@ impl AssetRegistry {
                         .await?
                     {
                         results.push(asset);
+                    }
+                }
+            }
+        }
+
+        for screenshot in &self.screenshots {
+            if screenshot.supports_media_type(media_type) {
+                let asset_types = screenshot.discovered_asset_types();
+                let needed = options.force
+                    || match options.limit {
+                        Some(max) => asset_types.iter().any(|asset_type| {
+                            !options.searched_types.contains(&asset_type.id())
+                                && options
+                                    .existing_counts
+                                    .get(&asset_type.id())
+                                    .copied()
+                                    .unwrap_or(0)
+                                    < max
+                        }),
+                        None => true,
+                    };
+
+                if needed {
+                    for at in &asset_types {
+                        attempted.insert(at.id());
+                    }
+                    if let Some(asset) = screenshot
+                        .discover_screenshot(Some(media_type), storefront, external_id, title)
+                        .await?
+                    {
+                        results.push(asset);
+                    }
+                }
+            }
+        }
+
+        if !options.pillars.is_empty() {
+            for pillar in options.pillars {
+                if pillar.asset_id.is_none() || options.force {
+                    for fetcher in &self.pillar_screenshots {
+                        if fetcher.supports_media_type(media_type) {
+                            if let Some(mut asset) = fetcher
+                                .discover_pillar_screenshot(
+                                    Some(media_type),
+                                    storefront,
+                                    external_id,
+                                    title,
+                                    &pillar.title,
+                                )
+                                .await?
+                            {
+                                asset.asset_type = AssetType::Screenshot;
+                                asset.pillar_id = Some(pillar.id.clone());
+                                results.push(asset);
+                                break;
+                            }
+                        }
                     }
                 }
             }
@@ -323,6 +424,7 @@ mod tests {
                     limit: Some(1),
                     force: false,
                     external_ids: &[],
+                    pillars: &[],
                 },
             )
             .await
@@ -343,6 +445,7 @@ mod tests {
                     limit: Some(1),
                     force: false,
                     external_ids: &[],
+                    pillars: &[],
                 },
             )
             .await
@@ -362,6 +465,7 @@ mod tests {
                     limit: Some(2),
                     force: false,
                     external_ids: &[],
+                    pillars: &[],
                 },
             )
             .await
@@ -381,6 +485,7 @@ mod tests {
                     limit: Some(1),
                     force: false,
                     external_ids: &[],
+                    pillars: &[],
                 },
             )
             .await
@@ -412,11 +517,10 @@ mod tests {
             _external_id: Option<&str>,
             _title: &str,
         ) -> Result<Option<DiscoveredAsset>, AssetError> {
-            Ok(Some(DiscoveredAsset {
-                asset_type: AssetType::Poster,
-                url: "http://example.com/poster.png".into(),
-                provider_external_id: None,
-            }))
+            Ok(Some(DiscoveredAsset::new(
+                AssetType::Poster,
+                "http://example.com/poster.png",
+            )))
         }
 
         async fn search_poster(
@@ -452,6 +556,7 @@ mod tests {
                     limit: Some(1),
                     force: false,
                     external_ids: &[],
+                    pillars: &[],
                 },
             )
             .await
@@ -471,10 +576,150 @@ mod tests {
                     limit: Some(1),
                     force: false,
                     external_ids: &[],
+                    pillars: &[],
                 },
             )
             .await
             .unwrap();
         assert_eq!(discovered.len(), 0);
+    }
+
+    struct DummyScreenshotFetcher;
+
+    impl AssetFetcher for DummyScreenshotFetcher {
+        fn id(&self) -> AssetStoreId {
+            AssetStoreId::DuckDuckGo
+        }
+
+        fn supports_media_type(&self, media_type: MediaType) -> bool {
+            matches!(media_type, MediaType::Game)
+        }
+    }
+
+    #[async_trait]
+    impl ScreenshotFetcher for DummyScreenshotFetcher {
+        async fn discover_screenshot(
+            &self,
+            _media_type: Option<MediaType>,
+            _storefront: Option<StorefrontId>,
+            _external_id: Option<&str>,
+            title: &str,
+        ) -> Result<Option<DiscoveredAsset>, AssetError> {
+            Ok(Some(DiscoveredAsset::new(
+                AssetType::Screenshot,
+                format!("http://example.com/{}_screenshot.jpg", title),
+            )))
+        }
+    }
+
+    struct DummyPillarScreenshotFetcher;
+
+    impl AssetFetcher for DummyPillarScreenshotFetcher {
+        fn id(&self) -> AssetStoreId {
+            AssetStoreId::DuckDuckGo
+        }
+
+        fn supports_media_type(&self, media_type: MediaType) -> bool {
+            matches!(media_type, MediaType::Game)
+        }
+    }
+
+    #[async_trait]
+    impl PillarScreenshotFetcher for DummyPillarScreenshotFetcher {
+        async fn discover_pillar_screenshot(
+            &self,
+            _media_type: Option<MediaType>,
+            _storefront: Option<StorefrontId>,
+            _external_id: Option<&str>,
+            game_title: &str,
+            pillar_title: &str,
+        ) -> Result<Option<DiscoveredAsset>, AssetError> {
+            Ok(Some(DiscoveredAsset::new(
+                AssetType::Screenshot,
+                format!("http://example.com/{}_{}.jpg", game_title, pillar_title),
+            )))
+        }
+    }
+
+    #[tokio::test]
+    async fn registers_and_discovers_screenshot() {
+        let mut registry = AssetRegistry::new();
+        registry.register_screenshot(Arc::new(DummyScreenshotFetcher));
+
+        let assets = registry
+            .discover(MediaType::Game, None, None, "Gears of War")
+            .await
+            .unwrap();
+
+        assert_eq!(assets.len(), 1);
+        assert_eq!(assets[0].asset_type, AssetType::Screenshot);
+        assert_eq!(assets[0].url, "http://example.com/Gears of War_screenshot.jpg");
+    }
+
+    #[tokio::test]
+    async fn discovers_screenshots_for_pillars_missing_asset_id() {
+        use crate::media::models::GameplayPillar;
+
+        let mut registry = AssetRegistry::new();
+        registry.register_screenshot(Arc::new(DummyScreenshotFetcher));
+        registry.register_pillar_screenshot(Arc::new(DummyPillarScreenshotFetcher));
+
+        let pillars = vec![
+            GameplayPillar {
+                id: "active_reload".into(),
+                title: "Active Reload".into(),
+                description: "Reload mechanic".into(),
+                icon: "combat".into(),
+                asset_id: None,
+            },
+            GameplayPillar {
+                id: "squad_tagging".into(),
+                title: "Squad Tagging".into(),
+                description: "Tagging mechanic".into(),
+                icon: "coop".into(),
+                asset_id: Some("existing_uuid".into()),
+            },
+        ];
+
+        let (discovered, _) = registry
+            .discover_needed(
+                MediaType::Game,
+                None,
+                None,
+                "Gears of War",
+                DiscoverOptions {
+                    existing_counts: &HashMap::new(),
+                    searched_types: &HashSet::new(),
+                    limit: None,
+                    force: false,
+                    external_ids: &[],
+                    pillars: &pillars,
+                },
+            )
+            .await
+            .unwrap();
+
+        let pillar_shots: Vec<_> = discovered
+            .iter()
+            .filter(|a| a.pillar_id.is_some())
+            .collect();
+        assert_eq!(pillar_shots.len(), 1);
+        assert_eq!(pillar_shots[0].asset_type, AssetType::Screenshot);
+        assert_eq!(pillar_shots[0].pillar_id.as_deref(), Some("active_reload"));
+        assert_eq!(
+            pillar_shots[0].url,
+            "http://example.com/Gears of War_Active Reload.jpg"
+        );
+
+        let regular_shots: Vec<_> = discovered
+            .iter()
+            .filter(|a| a.pillar_id.is_none())
+            .collect();
+        assert_eq!(regular_shots.len(), 1);
+        assert_eq!(regular_shots[0].asset_type, AssetType::Screenshot);
+        assert_eq!(
+            regular_shots[0].url,
+            "http://example.com/Gears of War_screenshot.jpg"
+        );
     }
 }

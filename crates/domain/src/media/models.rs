@@ -1,7 +1,8 @@
 use itonda_database::media::{
-    MediaAssetRow, MediaExternalIdRow, MediaGameDetailsRow, MediaInstallationRow, MediaLaunchRow,
-    MediaRow, MediaStorefrontRow,
+    MediaAssetRow, MediaExternalIdRow, MediaGameDetailsRow, MediaGameplayPillarRow,
+    MediaInstallationRow, MediaLaunchRow, MediaRow, MediaStorefrontRow,
 };
+
 use serde::{Deserialize, Serialize};
 
 use utoipa::ToSchema;
@@ -122,6 +123,15 @@ pub struct MediaInstallation {
     pub path: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq)]
+pub struct GameplayPillar {
+    pub id: String,
+    pub title: String,
+    pub description: String,
+    pub icon: String,
+    pub asset_id: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[serde(untagged)]
 pub enum MediaDetails {
@@ -135,7 +145,9 @@ pub struct MediaGameDetails {
     pub series: Option<String>,
     pub developers: Vec<String>,
     pub publishers: Vec<String>,
+    pub pillars: Vec<GameplayPillar>,
 }
+
 
 impl TryFrom<MediaAssetRow> for Asset {
     type Error = AssetError;
@@ -225,6 +237,18 @@ impl TryFrom<MediaRow> for Media {
     }
 }
 
+impl From<MediaGameplayPillarRow> for GameplayPillar {
+    fn from(row: MediaGameplayPillarRow) -> Self {
+        Self {
+            id: row.pillar_id,
+            title: row.title,
+            description: row.description,
+            icon: row.icon,
+            asset_id: row.asset_id,
+        }
+    }
+}
+
 impl From<MediaGameDetailsRow> for MediaGameDetails {
     fn from(row: MediaGameDetailsRow) -> Self {
         Self {
@@ -233,6 +257,8 @@ impl From<MediaGameDetailsRow> for MediaGameDetails {
             series: row.series,
             developers: Vec::new(),
             publishers: Vec::new(),
+            pillars: Vec::new(),
         }
     }
 }
+

@@ -247,7 +247,9 @@ impl GeneralInfoFetcher for FakeMetadataFetcher {
                     publishers: vec!["Team Cherry".into()],
                     platforms: vec!["PC".into()],
                     series: Some("Hollow Knight Series".into()),
+                    pillars: Vec::new(),
                 },
+
             )))
         } else {
             Ok(None)
@@ -388,6 +390,7 @@ impl GeneralInfoFetcher for PartialMetadataFetcher1 {
                 publishers: vec![],
                 platforms: vec!["PC".into()],
                 series: None,
+                pillars: Vec::new(),
             },
         )))
     }
@@ -425,9 +428,11 @@ impl GeneralInfoFetcher for PartialMetadataFetcher2 {
                 publishers: vec!["Pub B".into()],
                 platforms: vec!["Switch".into()],
                 series: Some("Awesome Series".into()),
+                pillars: Vec::new(),
             },
         )))
     }
+
 }
 
 #[tokio::test]
@@ -489,3 +494,46 @@ async fn test_metadata_step_multi_provider_merge() {
         panic!("Expected Game details");
     }
 }
+
+#[tokio::test]
+async fn test_sync_single_media() {
+    let pool = setup_db().await;
+
+    let storefronts =
+        test_storefront_registry(Arc::new(FakeSteamStorefront::new(vec![discovered_game(
+            "Hollow Knight",
+        )])));
+    let events = EventBus::new();
+    let assets = AssetRegistry::new();
+    let mut metadata = MetadataRegistry::new();
+    metadata.register(Arc::new(FakeMetadataFetcher));
+
+    let service = LibrarySyncService::new(
+        uuid::Uuid::new_v4(),
+        pool.clone(),
+        events,
+        crate::agents::AgentManager::new(),
+        storefronts,
+        assets,
+        metadata,
+    );
+
+    service.sync_all(false).await.unwrap();
+
+    let media = find_media_by_title(&pool, "Hollow Knight".into())
+        .await
+        .unwrap()
+        .expect("media should exist");
+
+    service.sync_media(&media.id, true).await.unwrap();
+
+    let updated_media = find_media_by_title(&pool, "Hollow Knight".into())
+        .await
+        .unwrap()
+        .expect("media should exist");
+
+    assert_eq!(updated_media.summary.as_deref(), Some("A bug adventure"));
+    assert_eq!(updated_media.description.as_deref(), Some("Epic storyline"));
+}
+
+

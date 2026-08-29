@@ -10,11 +10,12 @@ use crate::{
     media::{
         MediaAssetInsert, MediaAssetRow, MediaAssetSearchInsert, MediaAssetSearchRow,
         MediaExternalIdRow, MediaExternalIdUpsert, MediaGameDetailsRow, MediaGameDetailsUpsert,
-        MediaInsert, MediaInstallationRow, MediaInstallationUpsert, MediaLaunchRow,
-        MediaLaunchSessionInsert, MediaLaunchSessionRow, MediaLaunchUpsert,
-        MediaMetadataSearchInsert, MediaMetadataSearchRow, MediaStatusHistoryRow,
-        MediaStorefrontRow, MediaStorefrontUpsert,
+        MediaGameplayPillarInsert, MediaGameplayPillarRow, MediaInsert, MediaInstallationRow,
+        MediaInstallationUpsert, MediaLaunchRow, MediaLaunchSessionInsert, MediaLaunchSessionRow,
+        MediaLaunchUpsert, MediaMetadataSearchInsert, MediaMetadataSearchRow,
+        MediaStatusHistoryRow, MediaStorefrontRow, MediaStorefrontUpsert,
     },
+
     models::{UpsertAction, UpsertResult},
 };
 
@@ -1849,3 +1850,138 @@ pub async fn delete_media_external_id(
     .map_err(DatabaseError::from)?;
     Ok(())
 }
+
+pub async fn find_gameplay_pillars_by_media_id(
+    pool: &SqlitePool,
+    media_id: &str,
+) -> Result<Vec<MediaGameplayPillarRow>, DatabaseError> {
+    sqlx::query_as::<Sqlite, MediaGameplayPillarRow>(
+        r#"
+        SELECT
+            id,
+            media_id,
+            position,
+            pillar_id,
+            title,
+            description,
+            icon,
+            asset_id,
+            source,
+            created_at
+        FROM media_gameplay_pillars
+        WHERE media_id = ?
+        ORDER BY position ASC
+        "#,
+    )
+    .bind(media_id)
+    .fetch_all(pool)
+    .await
+    .map_err(DatabaseError::from)
+}
+
+pub async fn find_gameplay_pillars_by_media_ids(
+    pool: &SqlitePool,
+    media_ids: &[String],
+) -> Result<Vec<MediaGameplayPillarRow>, DatabaseError> {
+    if media_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+    let placeholders = media_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+    let query = format!(
+        r#"
+        SELECT
+            id,
+            media_id,
+            position,
+            pillar_id,
+            title,
+            description,
+            icon,
+            asset_id,
+            source,
+            created_at
+        FROM media_gameplay_pillars
+        WHERE media_id IN ({})
+        ORDER BY media_id, position ASC
+        "#,
+        placeholders
+    );
+    let mut q = sqlx::query_as::<Sqlite, MediaGameplayPillarRow>(&query);
+    for id in media_ids {
+        q = q.bind(id);
+    }
+    q.fetch_all(pool).await.map_err(DatabaseError::from)
+}
+
+pub async fn sync_gameplay_pillars(
+    pool: &SqlitePool,
+    media_id: &str,
+    pillars: &[MediaGameplayPillarInsert],
+) -> Result<(), DatabaseError> {
+    let mut tx = pool.begin().await.map_err(DatabaseError::from)?;
+
+    sqlx::query(r#"DELETE FROM media_gameplay_pillars WHERE media_id = ?"#)
+        .bind(media_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(DatabaseError::from)?;
+
+    for pillar in pillars {
+        let id = Uuid::new_v4().to_string();
+        sqlx::query(
+            r#"
+            INSERT INTO media_gameplay_pillars (
+                id,
+                media_id,
+                position,
+                pillar_id,
+                title,
+                description,
+                icon,
+                asset_id,
+                source
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+        )
+        .bind(&id)
+        .bind(media_id)
+        .bind(pillar.position)
+        .bind(&pillar.pillar_id)
+        .bind(&pillar.title)
+        .bind(&pillar.description)
+        .bind(&pillar.icon)
+        .bind(&pillar.asset_id)
+        .bind(&pillar.source)
+        .execute(&mut *tx)
+        .await
+        .map_err(DatabaseError::from)?;
+    }
+
+    tx.commit().await.map_err(DatabaseError::from)?;
+    Ok(())
+}
+
+pub async fn update_gameplay_pillar_asset_id(
+    pool: &SqlitePool,
+    media_id: &str,
+    pillar_id: &str,
+    asset_id: &str,
+) -> Result<(), DatabaseError> {
+    sqlx::query(
+        r#"
+        UPDATE media_gameplay_pillars
+        SET asset_id = ?
+        WHERE media_id = ? AND pillar_id = ?
+        "#,
+    )
+    .bind(asset_id)
+    .bind(media_id)
+    .bind(pillar_id)
+    .execute(pool)
+    .await
+    .map_err(DatabaseError::from)?;
+
+    Ok(())
+}
+

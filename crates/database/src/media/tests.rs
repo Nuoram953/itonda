@@ -1012,3 +1012,60 @@ async fn test_media_external_ids_crud() {
     assert_eq!(remaining.len(), 1);
     assert_eq!(remaining[0].provider, "steam");
 }
+
+#[tokio::test]
+async fn test_gameplay_pillars_sync_and_find() {
+    let pool = setup_db().await;
+
+    let media = MediaQueries::insert_media(
+        &pool,
+        MediaQueries::MediaInsert {
+            title: "Gears of War 3".to_string(),
+            media_type: "game".to_string(),
+            status_id: 1,
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    let pillars = vec![
+        MediaQueries::MediaGameplayPillarInsert {
+            position: 0,
+            pillar_id: "combat".to_string(),
+            title: "Cover Combat & Active Reload".to_string(),
+            description: "Emphasizes third-person cover shooting and active reload.".to_string(),
+            icon: "combat".to_string(),
+            asset_id: None,
+            source: "wikipedia".to_string(),
+        },
+        MediaQueries::MediaGameplayPillarInsert {
+            position: 1,
+            pillar_id: "survival".to_string(),
+            title: "Crimson Omen & Destructible Cover".to_string(),
+            description: "Health regenerates behind cover.".to_string(),
+            icon: "survival".to_string(),
+            asset_id: None,
+            source: "wikipedia".to_string(),
+        },
+    ];
+
+    MediaQueries::sync_gameplay_pillars(&pool, &media.id, &pillars)
+        .await
+        .unwrap();
+
+    let fetched = MediaQueries::find_gameplay_pillars_by_media_id(&pool, &media.id)
+        .await
+        .unwrap();
+    assert_eq!(fetched.len(), 2);
+    assert_eq!(fetched[0].title, "Cover Combat & Active Reload");
+    assert_eq!(fetched[0].position, 0);
+    assert_eq!(fetched[1].title, "Crimson Omen & Destructible Cover");
+    assert_eq!(fetched[1].position, 1);
+
+    let batch = MediaQueries::find_gameplay_pillars_by_media_ids(&pool, &[media.id.clone()])
+        .await
+        .unwrap();
+    assert_eq!(batch.len(), 2);
+}
+

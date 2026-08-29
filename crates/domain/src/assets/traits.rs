@@ -65,3 +65,34 @@ pub trait BannerFetcher: AssetFetcher {
         options: &PosterSearchOptions,
     ) -> Result<Vec<DiscoveredAsset>, AssetError>;
 }
+
+#[async_trait]
+pub trait ScreenshotFetcher: AssetFetcher {
+    fn discovered_asset_types(&self) -> Vec<AssetType> {
+        vec![AssetType::Screenshot]
+    }
+
+    async fn discover_screenshot(
+        &self,
+        media_type: Option<MediaType>,
+        storefront: Option<StorefrontId>,
+        external_id: Option<&str>,
+        title: &str,
+    ) -> Result<Option<DiscoveredAsset>, AssetError>;
+}
+
+#[async_trait]
+pub trait PillarScreenshotFetcher: AssetFetcher {
+    fn discovered_asset_types(&self) -> Vec<AssetType> {
+        vec![AssetType::Screenshot]
+    }
+
+    async fn discover_pillar_screenshot(
+        &self,
+        media_type: Option<MediaType>,
+        storefront: Option<StorefrontId>,
+        external_id: Option<&str>,
+        game_title: &str,
+        pillar_title: &str,
+    ) -> Result<Option<DiscoveredAsset>, AssetError>;
+}

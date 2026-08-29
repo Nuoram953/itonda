@@ -113,6 +113,7 @@ impl TmdbImagesResponse {
                 asset_type: AssetType::Poster,
                 url: format!("https://image.tmdb.org/t/p/original{}", item.file_path),
                 provider_external_id: provider_external_id.clone(),
+                pillar_id: None,
             })
             .collect()
     }
