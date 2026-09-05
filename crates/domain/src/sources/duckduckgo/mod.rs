@@ -108,6 +108,13 @@ impl PillarScreenshotFetcher for DuckDuckGo {
                     }
                 }
             }
+
+            if all_results
+                .iter()
+                .any(|r| score_pillar_image(r, game_title, pillar_title) >= 120)
+            {
+                break;
+            }
         }
 
         let best = pick_best_image(&all_results, game_title, pillar_title);

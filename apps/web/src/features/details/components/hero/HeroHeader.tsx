@@ -127,48 +127,33 @@ export function HeroHeader({ media }: HeroHeaderProps) {
                 </span>
               </div>
 
-              <p className="text-xs sm:text-sm text-text-muted max-w-lg leading-relaxed font-normal">
-                {media.description}
-              </p>
+              <div className="flex flex-wrap items-end justify-between gap-4 pt-1">
+                {media.media_type == "game" && (
+                  <div className="flex flex-wrap items-center gap-6 text-xs">
+                    <div>
+                      <span className="block text-xs font-semibold uppercase tracking-wider text-text-muted">
+                        Playtime
+                      </span>
+                      <span className="text-md font-bold text-foreground">
+                        {playtimeHours}
+                      </span>
+                    </div>
 
-              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                {DEFAULT_TAGS.map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-surface-hover border border-white/10 text-text-muted"
-                  >
-                    #{tag}
-                  </span>
-                ))}
+                    <div className="w-px h-6 bg-border/60" />
+
+                    <div>
+                      <span className="block text-xs font-semibold uppercase tracking-wider text-text-muted">
+                        Last Played
+                      </span>
+                      <span className="text-md font-semibold text-foreground">
+                        {lastPlayedDate}
+                      </span>
+                    </div>
+
+                    <div className="w-px h-6 bg-border/60" />
+                  </div>
+                )}
               </div>
-            </div>
-
-            <div className="flex flex-wrap items-end justify-between gap-4 pt-1">
-              {media.media_type == "game" && (
-                <div className="flex flex-wrap items-center gap-6 text-xs">
-                  <div>
-                    <span className="block text-xs font-semibold uppercase tracking-wider text-text-muted">
-                      Playtime
-                    </span>
-                    <span className="text-md font-bold text-foreground">
-                      {playtimeHours}
-                    </span>
-                  </div>
-
-                  <div className="w-px h-6 bg-border/60" />
-
-                  <div>
-                    <span className="block text-xs font-semibold uppercase tracking-wider text-text-muted">
-                      Last Played
-                    </span>
-                    <span className="text-md font-semibold text-foreground">
-                      {lastPlayedDate}
-                    </span>
-                  </div>
-
-                  <div className="w-px h-6 bg-border/60" />
-                </div>
-              )}
             </div>
           </div>
 

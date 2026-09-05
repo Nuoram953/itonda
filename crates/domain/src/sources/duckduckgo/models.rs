@@ -9,6 +9,10 @@ pub enum DuckDuckGoError {
     Reqwest(#[from] reqwest::Error),
     #[error("VQD token not found in response")]
     VqdNotFound,
+    #[error("DuckDuckGo request forbidden or blocked (status 403)")]
+    Forbidden,
+    #[error("DuckDuckGo rate limited (status 429)")]
+    RateLimited,
     #[error("No image results found")]
     NoResults,
 }

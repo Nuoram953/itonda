@@ -273,3 +273,110 @@ fn test_score_pillar_image_requires_game_title() {
     assert!(score1 > 100);
     assert!(score2 < 50);
 }
+
+#[tokio::test]
+async fn test_duckduckgo_client_retries_on_403_and_succeeds() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(query_param("iax", "images"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_string(r#"<html><script>vqd="token-retry";</script></html>"#),
+        )
+        .mount(&server)
+        .await;
+
+    Mock::given(method("GET"))
+        .and(query_param("vqd", "token-retry"))
+        .respond_with(ResponseTemplate::new(403))
+        .up_to_n_times(1)
+        .mount(&server)
+        .await;
+
+
+    Mock::given(method("GET"))
+        .and(query_param("vqd", "token-retry"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "results": [
+                {
+                    "image": "https://images.com/recovered.jpg",
+                    "title": "Recovered Screenshot",
+                    "width": 1920,
+                    "height": 1080
+                }
+            ]
+        })))
+        .mount(&server)
+        .await;
+
+    let client = DuckDuckGoImageClient::new().with_urls(server.uri(), server.uri());
+    let res = client.search_images("retry query").await.unwrap();
+    assert_eq!(res.len(), 1);
+    assert_eq!(res[0].image, "https://images.com/recovered.jpg");
+}
+
+#[tokio::test]
+async fn test_duckduckgo_client_returns_forbidden_after_retries_exhausted() {
+    use crate::sources::duckduckgo::models::DuckDuckGoError;
+
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(query_param("iax", "images"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_string(r#"<html><script>vqd="token-403";</script></html>"#),
+        )
+        .mount(&server)
+        .await;
+
+    Mock::given(method("GET"))
+        .and(query_param("vqd", "token-403"))
+        .respond_with(ResponseTemplate::new(403))
+        .mount(&server)
+        .await;
+
+    let client = DuckDuckGoImageClient::new().with_urls(server.uri(), server.uri());
+    let res = client.search_images("forbidden query").await;
+    assert!(matches!(res, Err(DuckDuckGoError::Forbidden)));
+}
+
+#[tokio::test]
+async fn test_duckduckgo_client_returns_rate_limited_on_429() {
+    use crate::sources::duckduckgo::models::DuckDuckGoError;
+
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(query_param("iax", "images"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_string(r#"<html><script>vqd="token-429";</script></html>"#),
+        )
+        .mount(&server)
+        .await;
+
+    Mock::given(method("GET"))
+        .and(query_param("vqd", "token-429"))
+        .respond_with(ResponseTemplate::new(429))
+        .mount(&server)
+        .await;
+
+    let client = DuckDuckGoImageClient::new().with_urls(server.uri(), server.uri());
+    let res = client.search_images("rate limited query").await;
+    assert!(matches!(res, Err(DuckDuckGoError::RateLimited)));
+}
+
+#[tokio::test]
+#[ignore]
+async fn test_live_duckduckgo_real_fetch() {
+    let client = DuckDuckGoImageClient::new();
+    let res = client.search_images("Hollow Knight gameplay screenshot").await;
+    assert!(res.is_ok(), "Failed to search images: {:?}", res.err());
+    let images = res.unwrap();
+    assert!(!images.is_empty(), "Expected at least one image result");
+    eprintln!("Successfully fetched {} images from DuckDuckGo", images.len());
+}
+
+
