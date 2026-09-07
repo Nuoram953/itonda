@@ -159,14 +159,6 @@ async fn run_agent_loop(
                                         duration_seconds: payload.duration_seconds.to_string()
                                     }).await?;
 
-                                    jobs
-                                    .send(Job::Sync(SyncJob {
-                                        id: Uuid::new_v4(),
-                                        storefront: None,
-                                        force: false,
-                                    }))
-                                    .await?;
-
                                 }
                                 _ => {}
                             }
