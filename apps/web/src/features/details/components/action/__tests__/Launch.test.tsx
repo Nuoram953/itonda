@@ -5,9 +5,12 @@ import {
   screen,
   createLaunch,
   createActiveMediaSession,
+  createAgent,
 } from "@/test/test-utils";
 import { Launch } from "../Launch";
 import { useActiveMedia } from "@/hooks/use-active-media";
+import { useAgents } from "@/api/get-agents";
+import { useWebSocketStatus } from "@/hooks/use-websocket-status";
 
 const mockMutate = vi.fn();
 
@@ -25,6 +28,15 @@ vi.mock("@/hooks/use-active-media", () => ({
   })),
 }));
 
+vi.mock("@/hooks/use-websocket-status", () => ({
+  useWebSocketStatus: vi.fn(() => "connected"),
+}));
+
+vi.mock("@/api/get-agents", () => ({
+  useAgents: vi.fn(),
+  getAgentsQueryOptions: () => ({ queryKey: ["agents"] }),
+}));
+
 describe("Launch Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -37,6 +49,18 @@ describe("Launch Component", () => {
       elapsedSeconds: 0,
       setActiveSession: vi.fn(),
     });
+    vi.mocked(useWebSocketStatus).mockReturnValue("connected");
+    vi.mocked(useAgents).mockReturnValue({
+      data: {
+        agents: [
+          createAgent({
+            id: "agent-1",
+            is_connected: true,
+          }),
+        ],
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useAgents>);
   });
 
   const singleProfile = [
@@ -188,5 +212,140 @@ describe("Launch Component", () => {
 
     expect(screen.getByRole("button", { name: "Now Playing" })).toBeDefined();
     expect(screen.getByText("Playing (00:30)")).toBeDefined();
+  });
+
+  it("disables the button and prevents launch when no agents exist", () => {
+    vi.mocked(useAgents).mockReturnValue({
+      data: { agents: [] },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useAgents>);
+
+    render(<Launch profiles={singleProfile} />);
+
+    const playButton = screen.getByRole("button", {
+      name: "Play",
+    }) as HTMLButtonElement;
+    expect(playButton.disabled).toBe(true);
+    expect(playButton.getAttribute("title")).toBe("No agent connected");
+
+    fireEvent.click(playButton);
+    expect(mockMutate).not.toHaveBeenCalled();
+    expect(screen.queryByText("Select launch profile")).toBeNull();
+  });
+
+  it("disables the button when all agents are disconnected", () => {
+    vi.mocked(useAgents).mockReturnValue({
+      data: {
+        agents: [
+          createAgent({ id: "agent-1", is_connected: false }),
+          createAgent({ id: "agent-2", is_connected: false }),
+        ],
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useAgents>);
+
+    render(<Launch profiles={singleProfile} />);
+
+    const playButton = screen.getByRole("button", {
+      name: "Play",
+    }) as HTMLButtonElement;
+    expect(playButton.disabled).toBe(true);
+    expect(playButton.getAttribute("title")).toBe("No agent connected");
+
+    fireEvent.click(playButton);
+    expect(mockMutate).not.toHaveBeenCalled();
+    expect(screen.queryByText("Select launch profile")).toBeNull();
+  });
+
+  it("disables the button when profile requires an agent that is disconnected", () => {
+    vi.mocked(useAgents).mockReturnValue({
+      data: {
+        agents: [
+          createAgent({ id: "agent-connected", is_connected: true }),
+        ],
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useAgents>);
+
+    const profileForOfflineAgent = [
+      createLaunch({
+        id: "profile-1",
+        name: "Offline Profile",
+        agent_id: "agent-offline",
+      }),
+    ];
+
+    render(<Launch profiles={profileForOfflineAgent} />);
+
+    const playButton = screen.getByRole("button", {
+      name: "Play",
+    }) as HTMLButtonElement;
+    expect(playButton.disabled).toBe(true);
+    expect(playButton.getAttribute("title")).toBe(
+      "Required agent not connected",
+    );
+
+    fireEvent.click(playButton);
+    expect(mockMutate).not.toHaveBeenCalled();
+  });
+
+  it("disables specific profile options in modal if their assigned agent is disconnected", () => {
+    vi.mocked(useAgents).mockReturnValue({
+      data: {
+        agents: [
+          createAgent({ id: "agent-online", is_connected: true }),
+          createAgent({ id: "agent-offline", is_connected: false }),
+        ],
+      },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useAgents>);
+
+    const mixedProfiles = [
+      createLaunch({
+        id: "profile-online",
+        name: "Online Profile",
+        agent_id: "agent-online",
+      }),
+      createLaunch({
+        id: "profile-offline",
+        name: "Offline Profile",
+        agent_id: "agent-offline",
+      }),
+    ];
+
+    render(<Launch profiles={mixedProfiles} />);
+
+    const playButton = screen.getByRole("button", {
+      name: "Play",
+    }) as HTMLButtonElement;
+    expect(playButton.disabled).toBe(false);
+
+    fireEvent.click(playButton);
+
+    const onlineButton = screen.getByRole("button", {
+      name: "Online Profile",
+    }) as HTMLButtonElement;
+    const offlineButton = screen.getByRole("button", {
+      name: "Offline Profile",
+    }) as HTMLButtonElement;
+
+    expect(onlineButton.disabled).toBe(false);
+    expect(offlineButton.disabled).toBe(true);
+    expect(offlineButton.getAttribute("title")).toBe("Agent not connected");
+  });
+
+  it("disables the button when server websocket is disconnected", () => {
+    vi.mocked(useWebSocketStatus).mockReturnValue("disconnected");
+
+    render(<Launch profiles={singleProfile} />);
+
+    const playButton = screen.getByRole("button", {
+      name: "Play",
+    }) as HTMLButtonElement;
+    expect(playButton.disabled).toBe(true);
+    expect(playButton.getAttribute("title")).toBe("Server disconnected");
+
+    fireEvent.click(playButton);
+    expect(mockMutate).not.toHaveBeenCalled();
   });
 });

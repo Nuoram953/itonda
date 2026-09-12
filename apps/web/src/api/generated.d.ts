@@ -324,6 +324,8 @@ export interface components {
         };
         /** @enum {string} */
         CommandStatus: "accepted" | "sent";
+        /** @enum {string} */
+        ExternalIdProvider: "steam" | "igdb" | "steam_grid_db" | "tmdb";
         GetAgentsResponse: {
             agents: components["schemas"]["Agent"][];
         };
@@ -342,6 +344,7 @@ export interface components {
             assets: components["schemas"]["Asset"][];
             description?: string | null;
             details?: null | components["schemas"]["MediaDetails"];
+            external_ids: components["schemas"]["MediaExternalId"][];
             genres: string[];
             id: string;
             installations: components["schemas"]["MediaInstallation"][];
@@ -356,6 +359,10 @@ export interface components {
             title: string;
         };
         MediaDetails: components["schemas"]["MediaGameDetails"];
+        MediaExternalId: {
+            external_id: string;
+            provider: components["schemas"]["ExternalIdProvider"];
+        };
         MediaGameDetails: {
             developers: string[];
             /** Format: int64 */

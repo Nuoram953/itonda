@@ -21,7 +21,7 @@ type UseAgentsOptions = {
   queryConfig?: QueryConfig<typeof getAgentsQueryOptions>;
 };
 
-export const useAgents = ({ queryConfig }: UseAgentsOptions) => {
+export const useAgents = ({ queryConfig }: UseAgentsOptions = {}) => {
   return useQuery({
     ...getAgentsQueryOptions(),
     ...queryConfig,

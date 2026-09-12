@@ -12,6 +12,8 @@ import { LoaderCircle, Play } from "lucide-react";
 import { useState } from "react";
 import { useLaunchMedia } from "../../api/post-media-launch";
 import { useActiveMedia } from "@/hooks/use-active-media";
+import { useAgents } from "@/api/get-agents";
+import { useWebSocketStatus } from "@/hooks/use-websocket-status";
 import { cn } from "@/lib/utils";
 
 type LaunchProps = {
@@ -24,6 +26,25 @@ export const Launch = ({ profiles = [], mediaId }: LaunchProps) => {
   const [isLaunching, setIsLaunching] = useState(false);
   const launchMediaMutation = useLaunchMedia({});
   const { session, isPlaying, formattedElapsed } = useActiveMedia();
+  const wsStatus = useWebSocketStatus();
+  const { data: agentsData } = useAgents({});
+
+  const agents = agentsData?.agents ?? [];
+  const connectedAgents = agents.filter((agent) => agent.is_connected);
+  const isServerConnected = wsStatus === "connected";
+  const hasConnectedAgent = isServerConnected && connectedAgents.length > 0;
+
+  const isProfileAvailable = (profile: components["schemas"]["Launch"]) => {
+    if (!isServerConnected) {
+      return false;
+    }
+    if (profile.agent_id) {
+      return connectedAgents.some((agent) => agent.id === profile.agent_id);
+    }
+    return hasConnectedAgent;
+  };
+
+  const canLaunch = profiles.length > 0 && profiles.some(isProfileAvailable);
 
   const isCurrentMediaPlaying = Boolean(
     isPlaying && mediaId && session?.mediaId === mediaId,
@@ -36,6 +57,11 @@ export const Launch = ({ profiles = [], mediaId }: LaunchProps) => {
   const isLoading = isLaunching || launchMediaMutation.isPending;
 
   function launch(id: string) {
+    const profile = profiles.find((p) => p.id === id);
+    if (profile && !isProfileAvailable(profile)) {
+      return;
+    }
+
     setIsLaunching(true);
     launchMediaMutation.mutate(id, {
       onSuccess: () => setOpen(false),
@@ -44,7 +70,7 @@ export const Launch = ({ profiles = [], mediaId }: LaunchProps) => {
   }
 
   function handleClick() {
-    if (profiles.length === 0) {
+    if (!canLaunch || profiles.length === 0) {
       return;
     }
 
@@ -56,12 +82,23 @@ export const Launch = ({ profiles = [], mediaId }: LaunchProps) => {
     setOpen(true);
   }
 
+  const disabledReason = !profiles.length
+    ? "No launch profiles available"
+    : !isServerConnected
+      ? "Server disconnected"
+      : !hasConnectedAgent
+        ? "No agent connected"
+        : !canLaunch
+          ? "Required agent not connected"
+          : undefined;
+
   return (
     <>
       <button
         type="button"
-        disabled={!profiles.length || isLoading}
+        disabled={!canLaunch || isLoading}
         onClick={handleClick}
+        title={disabledReason}
         aria-label={isCurrentMediaPlaying ? "Now Playing" : "Play"}
         className={cn(
           "inline-flex items-center gap-2 px-5 py-2 rounded-xl font-extrabold text-xs sm:text-sm shadow-lg transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer",
@@ -94,16 +131,20 @@ export const Launch = ({ profiles = [], mediaId }: LaunchProps) => {
           </DialogHeader>
 
           <div className="flex flex-col gap-2">
-            {profiles.map((profile) => (
-              <Button
-                key={profile.id}
-                variant="outline"
-                disabled={isLoading}
-                onClick={() => launch(profile.id)}
-              >
-                {profile.name}
-              </Button>
-            ))}
+            {profiles.map((profile) => {
+              const available = isProfileAvailable(profile);
+              return (
+                <Button
+                  key={profile.id}
+                  variant="outline"
+                  disabled={isLoading || !available}
+                  onClick={() => launch(profile.id)}
+                  title={!available ? "Agent not connected" : undefined}
+                >
+                  {profile.name}
+                </Button>
+              );
+            })}
           </div>
 
           <DialogFooter>
