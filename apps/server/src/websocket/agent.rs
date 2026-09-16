@@ -30,10 +30,7 @@ use tokio::sync::mpsc::{self, Sender};
 use tracing::{debug, info, warn};
 use uuid::Uuid;
 
-use crate::{
-    state::AppState,
-    workers::jobs::{Job, SyncJob},
-};
+use crate::{state::AppState, workers::jobs::Job};
 
 pub async fn agent_ws(ws: WebSocketUpgrade, State(state): State<AppState>) -> Response {
     let manager = state.agent_manager.clone();
@@ -117,7 +114,7 @@ async fn run_agent_loop(
     pool: &SqlitePool,
     events: &EventBus,
     agent_id: &str,
-    jobs: &Sender<Job>,
+    _jobs: &Sender<Job>,
 ) -> anyhow::Result<()> {
     loop {
         tokio::select! {

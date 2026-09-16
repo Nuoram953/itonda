@@ -196,6 +196,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/media/{media_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_review_overview"];
+        put: operations["upsert_review"];
+        post?: never;
+        delete: operations["delete_review"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/media/{media_id}/status/{status_id}": {
         parameters: {
             query?: never;
@@ -210,6 +226,38 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["update_status"];
+        trace?: never;
+    };
+    "/media/{media_id}/thoughts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_thoughts"];
+        put?: never;
+        post: operations["create_thought"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/media/{media_id}/thoughts/{thought_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["update_thought"];
+        post?: never;
+        delete: operations["delete_thought"];
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
 }
@@ -324,8 +372,37 @@ export interface components {
         };
         /** @enum {string} */
         CommandStatus: "accepted" | "sent";
+        CreateThoughtPayload: {
+            category?: string | null;
+            content: string;
+            /** Format: int64 */
+            playtime_minutes?: number | null;
+            title: string;
+        };
         /** @enum {string} */
         ExternalIdProvider: "steam" | "igdb" | "steam_grid_db" | "tmdb";
+        GameReview: {
+            created_at: string;
+            media_id: string;
+            summary?: string | null;
+            updated_at: string;
+            verdict: components["schemas"]["ReviewVerdict"];
+        };
+        GameReviewOverview: {
+            review?: null | components["schemas"]["GameReview"];
+            thoughts: components["schemas"]["GameThought"][];
+        };
+        GameThought: {
+            category: string;
+            content: string;
+            created_at: string;
+            id: string;
+            media_id: string;
+            /** Format: int64 */
+            playtime_minutes?: number | null;
+            title: string;
+            updated_at: string;
+        };
         GetAgentsResponse: {
             agents: components["schemas"]["Agent"][];
         };
@@ -524,6 +601,8 @@ export interface components {
         PatchTheMovieDatabaseSettings: {
             api_key?: string | null;
         };
+        /** @enum {string} */
+        ReviewVerdict: "masterpiece" | "recommended" | "neutral" | "do_not_recommend";
         Secrets: {
             /**
              * @default {
@@ -634,6 +713,15 @@ export interface components {
         TheMovieDatabaseSettings: {
             /** @default  */
             api_key: string;
+        };
+        UpdateThoughtPayload: {
+            category?: string | null;
+            content: string;
+            title: string;
+        };
+        UpsertReviewPayload: {
+            summary?: string | null;
+            verdict: components["schemas"]["ReviewVerdict"];
         };
     };
     responses: never;
@@ -947,6 +1035,77 @@ export interface operations {
             };
         };
     };
+    get_review_overview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Media ID */
+                media_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Game review and thoughts overview */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameReviewOverview"];
+                };
+            };
+        };
+    };
+    upsert_review: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Media ID */
+                media_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertReviewPayload"];
+            };
+        };
+        responses: {
+            /** @description Upserted game review */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameReview"];
+                };
+            };
+        };
+    };
+    delete_review: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Media ID */
+                media_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Review successfully deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     update_status: {
         parameters: {
             query?: never;
@@ -961,6 +1120,108 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_thoughts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Media ID */
+                media_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of thoughts for the game */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameThought"][];
+                };
+            };
+        };
+    };
+    create_thought: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Media ID */
+                media_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateThoughtPayload"];
+            };
+        };
+        responses: {
+            /** @description Created thought */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameThought"];
+                };
+            };
+        };
+    };
+    update_thought: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Media ID */
+                media_id: string;
+                /** @description Thought ID */
+                thought_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateThoughtPayload"];
+            };
+        };
+        responses: {
+            /** @description Updated thought */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GameThought"];
+                };
+            };
+        };
+    };
+    delete_thought: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Media ID */
+                media_id: string;
+                /** @description Thought ID */
+                thought_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Thought successfully deleted */
             204: {
                 headers: {
                     [name: string]: unknown;

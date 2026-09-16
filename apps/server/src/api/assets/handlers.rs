@@ -31,7 +31,7 @@ pub async fn get_asset(
 ) -> Result<Response, ApiError> {
     let asset = find_asset_by_id(&state.db, asset_id)
         .await?
-        .ok_or(ApiError::AssetNotFound)?;
+        .ok_or_else(|| ApiError::not_found("Asset not found"))?;
 
     let media_id = Uuid::parse_str(&asset.media_id).unwrap();
 
@@ -39,7 +39,7 @@ pub async fn get_asset(
 
     let file = File::open(path.clone())
         .await
-        .map_err(|_| ApiError::AssetNotFound)?;
+        .map_err(|_| ApiError::not_found("Asset not found"))?;
 
     let stream = ReaderStream::new(file);
 

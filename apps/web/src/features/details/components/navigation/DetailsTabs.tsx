@@ -1,4 +1,4 @@
-import { LayoutDashboard, Image, Info } from "lucide-react";
+import { LayoutDashboard, Image, Info, MessageSquareQuote } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +22,7 @@ export function DetailsTabs({ activeTab, onChange }: DetailsTabsProps) {
     badge?: number;
   }> = [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
+    { id: "reviews", label: "Reviews & Notes", icon: MessageSquareQuote },
     {
       id: "gallery",
       label: "Gallery & Clips",
@@ -31,16 +32,19 @@ export function DetailsTabs({ activeTab, onChange }: DetailsTabsProps) {
   ];
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-6 py-4">
-      <div className="rounded-2xl bg-surface-card/60 border border-white/5 p-2 px-3 shadow-lg">
+    <nav
+      aria-label="Media navigation"
+      className="w-full border-b border-white/10 bg-background/80 backdrop-blur-md sticky top-0 z-20"
+    >
+      <div className="max-w-7xl mx-auto px-6">
         <Tabs
           value={activeTab}
           onValueChange={(value) => onChange(value as TabId)}
-          className="w-full "
+          className="w-full"
         >
           <TabsList
             variant="line"
-            className="h-12 w-full text-accent-gold justify-start gap-2 bg-transparent p-0 no-scrollbar overflow-x-auto border-none"
+            className="h-13 sm:h-14 w-full text-accent-gold justify-start gap-1 sm:gap-2 bg-transparent p-0 no-scrollbar overflow-x-auto border-none"
           >
             {tabs.map((tab) => {
               const Icon = tab.icon;
@@ -51,7 +55,7 @@ export function DetailsTabs({ activeTab, onChange }: DetailsTabsProps) {
                   key={tab.id}
                   value={tab.id}
                   className={cn(
-                    "group relative inline-flex items-center gap-2.5 px-5 py-2.5 text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer select-none outline-none rounded-xl",
+                    "group relative inline-flex flex-none items-center gap-2 px-3.5 sm:px-5 py-3 text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer select-none outline-none rounded-xl",
                     isActive
                       ? "text-accent-gold font-bold bg-transparent"
                       : "text-text-muted hover:text-white/90 hover:bg-white/5",
@@ -79,7 +83,7 @@ export function DetailsTabs({ activeTab, onChange }: DetailsTabsProps) {
                   )}
 
                   {isActive && (
-                    <div className="absolute inset-x-3 bottom-0.5 h-0.5 bg-accent-gold rounded-full shadow-accent-gold/50 animate-in fade-in" />
+                    <div className="absolute inset-x-2 -bottom-[1px] h-0.5 bg-accent-gold rounded-full shadow-[0_0_8px_rgba(212,163,89,0.5)] animate-in fade-in" />
                   )}
                 </TabsTrigger>
               );
@@ -87,6 +91,6 @@ export function DetailsTabs({ activeTab, onChange }: DetailsTabsProps) {
           </TabsList>
         </Tabs>
       </div>
-    </div>
+    </nav>
   );
 }

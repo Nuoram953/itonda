@@ -57,7 +57,7 @@ async fn launch_media_returns_404_for_invalid_launch_id() {
 
     let error: ErrorResponse = json(response).await;
 
-    let expected = ApiError::LaunchNotFound.error_body();
+    let expected = ApiError::not_found("Media launch not found").error_body();
 
     assert_eq!(error.code, expected.code);
 

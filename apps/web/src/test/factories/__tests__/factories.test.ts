@@ -22,6 +22,7 @@ describe("Test Factories", () => {
         title: "Test Media",
         media_type: "game",
         status: "not_started",
+        external_ids: [],
         assets: [],
         genres: [],
         tags: [],

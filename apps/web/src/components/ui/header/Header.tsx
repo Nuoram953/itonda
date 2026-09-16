@@ -1,4 +1,4 @@
-import { Bell, Plus, Search } from "lucide-react";
+import { Bell, Search } from "lucide-react";
 
 export const Header = () => {
   return (
@@ -16,13 +16,6 @@ export const Header = () => {
       </div>
 
       <div className="flex items-center gap-3">
-        <button
-          type="button"
-          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-medium hover:bg-primary-hover active:bg-primary-active transition-colors shadow-sm cursor-pointer"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Add Media</span>
-        </button>
 
         <button
           type="button"
