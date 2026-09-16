@@ -24,6 +24,9 @@ pub enum ApiError {
     #[error("media launch not found")]
     LaunchNotFound,
 
+    #[error("thought not found")]
+    ThoughtNotFound,
+
     #[error("{0}")]
     Validation(String),
 
@@ -70,6 +73,7 @@ impl ApiError {
             Self::MediaNotFound
             | Self::CollectionNotFound
             | Self::LaunchNotFound
+            | Self::ThoughtNotFound
             | Self::AssetNotFound => StatusCode::NOT_FOUND,
 
             Self::Validation(_) => StatusCode::UNPROCESSABLE_ENTITY,
@@ -92,6 +96,7 @@ impl ApiError {
             Self::AssetNotFound => "ASSET_NOT_FOUND",
             Self::CollectionNotFound => "COLLECTION_NOT_FOUND",
             Self::LaunchNotFound => "LAUNCH_NOT_FOUND",
+            Self::ThoughtNotFound => "THOUGHT_NOT_FOUND",
             Self::Validation(_) => "VALIDATION_FAILED",
             Self::Database(_) => "DATABASE_ERROR",
             Self::WorkerUnavailable => "WORKER_UNAVAILABLE",
@@ -109,6 +114,7 @@ impl ApiError {
             Self::AssetNotFound => "Asset not found".into(),
             Self::CollectionNotFound => "Collection not found".into(),
             Self::LaunchNotFound => "Media launch not found".into(),
+            Self::ThoughtNotFound => "Thought not found".into(),
             Self::Database(_) => "An unexpected error occurred.".into(),
             Self::WorkerUnavailable => "No agent is currently available.".into(),
             Self::Unauthorized => "Unauthorized".into(),
@@ -166,3 +172,18 @@ impl From<itonda_domain::storefronts::auth::AuthError> for ApiError {
         ApiError::Validation(err.to_string())
     }
 }
+
+impl From<itonda_domain::reviews::ReviewError> for ApiError {
+    fn from(err: itonda_domain::reviews::ReviewError) -> Self {
+        match err {
+            itonda_domain::reviews::ReviewError::MediaNotFound(_) => ApiError::MediaNotFound,
+            itonda_domain::reviews::ReviewError::ThoughtNotFound(_) => ApiError::ThoughtNotFound,
+            itonda_domain::reviews::ReviewError::InvalidVerdict(msg) => {
+                ApiError::Validation(format!("Invalid verdict: {msg}"))
+            }
+            itonda_domain::reviews::ReviewError::Validation(msg) => ApiError::Validation(msg),
+            itonda_domain::reviews::ReviewError::Database(err) => ApiError::Database(err),
+        }
+    }
+}
+

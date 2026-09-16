@@ -1012,3 +1012,135 @@ async fn test_media_external_ids_crud() {
     assert_eq!(remaining.len(), 1);
     assert_eq!(remaining[0].provider, "steam");
 }
+
+#[tokio::test]
+async fn review_and_thought_lifecycle() {
+    let pool = setup_db().await;
+
+    let media = MediaQueries::insert_media(
+        &pool,
+        MediaQueries::MediaInsert {
+            title: "Gears".to_string(),
+            media_type: "game".to_string(),
+            status_id: 1,
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    // 1. Initially no review
+    let review = MediaQueries::find_review_by_media_id(&pool, &media.id)
+        .await
+        .unwrap();
+    assert!(review.is_none());
+
+    // 2. Upsert review
+    let inserted_review = MediaQueries::upsert_review(
+        &pool,
+        MediaQueries::MediaReviewUpsert {
+            media_id: media.id.clone(),
+            verdict: "masterpiece".to_string(),
+            summary: Some("Phenomenal tactical shooter".to_string()),
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(inserted_review.verdict, "masterpiece");
+    assert_eq!(
+        inserted_review.summary,
+        Some("Phenomenal tactical shooter".to_string())
+    );
+
+    // 3. Update review
+    let updated_review = MediaQueries::upsert_review(
+        &pool,
+        MediaQueries::MediaReviewUpsert {
+            media_id: media.id.clone(),
+            verdict: "recommended".to_string(),
+            summary: Some("Updated review summary".to_string()),
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(updated_review.verdict, "recommended");
+    assert_eq!(
+        updated_review.summary,
+        Some("Updated review summary".to_string())
+    );
+
+    // 4. Insert thoughts
+    let thought1 = MediaQueries::insert_thought(
+        &pool,
+        MediaQueries::MediaThoughtInsert {
+            media_id: media.id.clone(),
+            title: "Music in Gears".to_string(),
+            content: "Soundtrack during combat was surprisingly good.".to_string(),
+            category: "audio".to_string(),
+            playtime_minutes: Some(180),
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(thought1.title, "Music in Gears");
+    assert_eq!(thought1.category, "audio");
+    assert_eq!(thought1.playtime_minutes, Some(180));
+
+    let thought2 = MediaQueries::insert_thought(
+        &pool,
+        MediaQueries::MediaThoughtInsert {
+            media_id: media.id.clone(),
+            title: "Boss fight mechanics".to_string(),
+            content: "Tight controls and great cover system.".to_string(),
+            category: "gameplay".to_string(),
+            playtime_minutes: Some(240),
+        },
+    )
+    .await
+    .unwrap();
+
+    // 5. Find thoughts by media id
+    let thoughts = MediaQueries::find_thoughts_by_media_id(&pool, &media.id)
+        .await
+        .unwrap();
+    assert_eq!(thoughts.len(), 2);
+
+    // 6. Update a thought
+    let updated_thought = MediaQueries::update_thought(
+        &pool,
+        &thought1.id,
+        MediaQueries::MediaThoughtUpdate {
+            title: "Orchestral Score".to_string(),
+            content: "Updated music thoughts.".to_string(),
+            category: "audio".to_string(),
+        },
+    )
+    .await
+    .unwrap();
+    assert!(updated_thought.is_some());
+    assert_eq!(updated_thought.unwrap().title, "Orchestral Score");
+
+    // 7. Delete thought
+    let deleted = MediaQueries::delete_thought(&pool, &thought2.id)
+        .await
+        .unwrap();
+    assert!(deleted);
+
+    let thoughts_after = MediaQueries::find_thoughts_by_media_id(&pool, &media.id)
+        .await
+        .unwrap();
+    assert_eq!(thoughts_after.len(), 1);
+    assert_eq!(thoughts_after[0].id, thought1.id);
+
+    // 8. Delete review
+    let review_deleted = MediaQueries::delete_review(&pool, &media.id)
+        .await
+        .unwrap();
+    assert!(review_deleted);
+
+    let review_after = MediaQueries::find_review_by_media_id(&pool, &media.id)
+        .await
+        .unwrap();
+    assert!(review_after.is_none());
+}
+

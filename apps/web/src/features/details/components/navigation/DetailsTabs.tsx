@@ -1,4 +1,4 @@
-import { LayoutDashboard, Image, Info } from "lucide-react";
+import { LayoutDashboard, Image, Info, MessageSquareQuote } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +22,7 @@ export function DetailsTabs({ activeTab, onChange }: DetailsTabsProps) {
     badge?: number;
   }> = [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
+    { id: "reviews", label: "Reviews & Notes", icon: MessageSquareQuote },
     {
       id: "gallery",
       label: "Gallery & Clips",

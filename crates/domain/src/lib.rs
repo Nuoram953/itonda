@@ -6,6 +6,7 @@ pub mod launch;
 pub mod media;
 pub mod metadata;
 pub mod protocol;
+pub mod reviews;
 pub mod scanner;
 pub mod sources;
 pub mod storage;
