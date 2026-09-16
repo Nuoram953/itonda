@@ -38,6 +38,13 @@ use crate::api::{
         crate::api::auth::handlers::steam_callback,
         crate::api::auth::handlers::steam_status,
         crate::api::auth::handlers::steam_disconnect,
+        crate::api::reviews::handlers::get_review_overview,
+        crate::api::reviews::handlers::upsert_review,
+        crate::api::reviews::handlers::delete_review,
+        crate::api::reviews::handlers::get_thoughts,
+        crate::api::reviews::handlers::create_thought,
+        crate::api::reviews::handlers::update_thought,
+        crate::api::reviews::handlers::delete_thought,
     ),
 
     components(
@@ -99,6 +106,13 @@ use crate::api::{
             crate::config::PatchAppConfig,
             crate::config::app::ServerConfig,
             crate::config::app::PatchServerConfig,
+            itonda_domain::reviews::models::GameReviewOverview,
+            itonda_domain::reviews::models::GameReview,
+            itonda_domain::reviews::models::ReviewVerdict,
+            itonda_domain::reviews::models::GameThought,
+            crate::api::reviews::schemas::UpsertReviewPayload,
+            crate::api::reviews::schemas::CreateThoughtPayload,
+            crate::api::reviews::schemas::UpdateThoughtPayload,
         )
     ),
     servers(

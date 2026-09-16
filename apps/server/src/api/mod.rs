@@ -8,6 +8,7 @@ pub mod media;
 pub mod middleware;
 pub mod openapi;
 pub mod response;
+pub mod reviews;
 
 use axum::Router;
 
@@ -16,6 +17,7 @@ use crate::state::AppState;
 pub fn router() -> Router<AppState> {
     Router::new()
         .merge(media::routes::router())
+        .merge(reviews::routes::router())
         .merge(assets::routes::router())
         .merge(agents::routes::router())
         .merge(config::routes::router())

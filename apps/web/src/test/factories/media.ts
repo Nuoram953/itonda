@@ -76,6 +76,7 @@ export function createMedia(overrides?: Partial<Media>): Media {
     launches: [],
     installations: [],
     storefronts: [],
+    external_ids: [],
     details: null,
     description: null,
     summary: null,

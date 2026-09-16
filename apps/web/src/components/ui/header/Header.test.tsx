@@ -7,7 +7,7 @@ describe("Header", () => {
     render(<Header />);
 
     expect(screen.getByPlaceholderText("Search media, games, movies...")).toBeDefined();
-    expect(screen.getByText("Add Media")).toBeDefined();
+    expect(screen.queryByText("Add Media")).toBeNull();
     expect(screen.getByLabelText("Notifications")).toBeDefined();
   });
 });

@@ -10,6 +10,7 @@ import { Status } from "./components/action/status";
 import { HeroHeader } from "./components/hero/HeroHeader";
 import { DetailsTabs, type TabId } from "./components/navigation/DetailsTabs";
 import { OverviewTab } from "./components/overview/OverviewTab";
+import { ReviewsTab } from "./components/tabs/ReviewsTab";
 import { GalleryTab } from "./components/tabs/GalleryTab";
 import { DetailsInfoTab } from "./components/tabs/DetailsInfoTab";
 
@@ -86,10 +87,11 @@ export const MediaDetails = () => {
         <HeroHeader media={media} />
         <DetailsTabs activeTab={activeTab} onChange={setActiveTab} />
 
-        <div className="flex-1 max-w-7xl w-full mx-auto px-6">
+        <div className="flex-1 max-w-7xl w-full mx-auto px-6 pt-6 sm:pt-8 pb-16">
           {activeTab === "overview" && (
             <OverviewTab media={media} onNavigateTab={setActiveTab} />
           )}
+          {activeTab === "reviews" && <ReviewsTab media={media} />}
           {activeTab === "gallery" && <GalleryTab media={media} />}
           {activeTab === "details" && <DetailsInfoTab media={media} />}
         </div>

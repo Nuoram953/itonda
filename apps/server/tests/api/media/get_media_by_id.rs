@@ -55,7 +55,7 @@ async fn returns_404_when_media_not_exist() {
 
     let error: ErrorResponse = json(response).await;
 
-    let expected = ApiError::MediaNotFound.error_body();
+    let expected = ApiError::not_found("Media not found").error_body();
 
     assert_eq!(error.code, expected.code);
 

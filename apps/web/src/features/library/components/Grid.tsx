@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useMediaGrid } from "../hooks/useMediaGrid";
 import { Card } from "./card";
 import { Workspace } from "@/components/workspace/Workspace";
+import { AddMedia } from "./action/AddMedia";
 import { Filters } from "./action/Filters";
 import { Sort } from "./action/sort";
 import { Refresh } from "./action/refresh";
@@ -24,6 +25,7 @@ export const MediaGrid = () => {
     <Workspace>
       <Workspace.Header title={title} subtitle={`${totalItems} items`}>
         <Workspace.Actions>
+          <AddMedia />
           <Filters />
           <Sort />
           <Refresh />
