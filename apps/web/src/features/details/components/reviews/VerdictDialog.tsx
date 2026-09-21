@@ -54,7 +54,7 @@ function VerdictForm({
           <label className="text-xs font-semibold uppercase tracking-wider text-text-muted">
             Select Verdict
           </label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div className="flex gap-2.5">
             {VERDICT_OPTIONS.map((opt) => {
               const Icon = opt.icon;
               const isSelected = verdict === opt.id;
@@ -110,11 +110,7 @@ function VerdictForm({
       </div>
 
       <DialogFooter className="gap-2">
-        <Button
-          variant="ghost"
-          onClick={onCancel}
-          disabled={isSaving}
-        >
+        <Button variant="ghost" onClick={onCancel} disabled={isSaving}>
           Cancel
         </Button>
         <Button
@@ -138,7 +134,7 @@ export function VerdictDialog({
 }: VerdictDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-1/2">
         <DialogHeader>
           <DialogTitle>Game Verdict & Overall Review</DialogTitle>
           <DialogDescription>
