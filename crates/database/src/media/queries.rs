@@ -826,7 +826,7 @@ pub async fn find_asset_searches_by_media_ids(
     }
 
     let mut qb = QueryBuilder::<Sqlite>::new(
-        "SELECT media_id, asset_id, searched_at FROM media_asset_searches WHERE media_id IN (",
+        "SELECT media_id, store_id, asset_id, searched_at, idempotency_key FROM media_assets_searches WHERE media_id IN (",
     );
 
     let mut separated = qb.separated(", ");
@@ -847,18 +847,19 @@ pub async fn find_asset_searches_by_media_id(
     pool: &SqlitePool,
     media_id: &str,
 ) -> Result<Vec<MediaAssetSearchRow>, DatabaseError> {
-    sqlx::query_as!(
-        MediaAssetSearchRow,
+    sqlx::query_as::<Sqlite, MediaAssetSearchRow>(
         r#"
         SELECT
             media_id,
+            store_id,
             asset_id,
-            searched_at
-        FROM media_asset_searches
+            searched_at,
+            idempotency_key
+        FROM media_assets_searches
         WHERE media_id = ?
         "#,
-        media_id
     )
+    .bind(media_id)
     .fetch_all(pool)
     .await
     .map_err(DatabaseError::from)
@@ -868,23 +869,26 @@ pub async fn insert_media_asset_search(
     pool: &SqlitePool,
     search: MediaAssetSearchInsert,
 ) -> Result<MediaAssetSearchRow, DatabaseError> {
-    sqlx::query_as!(
-        MediaAssetSearchRow,
+    sqlx::query_as::<Sqlite, MediaAssetSearchRow>(
         r#"
-        INSERT INTO media_asset_searches (
+        INSERT INTO media_assets_searches (
             media_id,
+            store_id,
             asset_id
         )
-        VALUES (?, ?)
-        ON CONFLICT(media_id, asset_id) DO UPDATE SET searched_at = CURRENT_TIMESTAMP
+        VALUES (?, ?, ?)
+        ON CONFLICT(media_id, store_id, asset_id) DO UPDATE SET searched_at = CURRENT_TIMESTAMP
         RETURNING
             media_id,
+            store_id,
             asset_id,
-            searched_at
+            searched_at,
+            idempotency_key
         "#,
-        search.media_id,
-        search.asset_id
     )
+    .bind(search.media_id)
+    .bind(search.store_id)
+    .bind(search.asset_id)
     .fetch_one(pool)
     .await
     .map_err(DatabaseError::from)
@@ -899,7 +903,7 @@ pub async fn find_metadata_searches_by_media_ids(
     }
 
     let mut qb = QueryBuilder::<Sqlite>::new(
-        "SELECT media_id, searched_at FROM media_metadata_searches WHERE media_id IN (",
+        "SELECT media_id, store_id, metadata_type, searched_at, idempotency_key FROM media_metadata_searches WHERE media_id IN (",
     );
 
     let mut separated = qb.separated(", ");
@@ -916,6 +920,28 @@ pub async fn find_metadata_searches_by_media_ids(
         .map_err(DatabaseError::from)
 }
 
+pub async fn find_metadata_searches_by_media_id(
+    pool: &SqlitePool,
+    media_id: &str,
+) -> Result<Vec<MediaMetadataSearchRow>, DatabaseError> {
+    sqlx::query_as::<_, MediaMetadataSearchRow>(
+        r#"
+        SELECT
+            media_id,
+            store_id,
+            metadata_type,
+            searched_at,
+            idempotency_key
+        FROM media_metadata_searches
+        WHERE media_id = ?
+        "#,
+    )
+    .bind(media_id)
+    .fetch_all(pool)
+    .await
+    .map_err(DatabaseError::from)
+}
+
 pub async fn find_metadata_search_by_media_id(
     pool: &SqlitePool,
     media_id: &str,
@@ -924,9 +950,13 @@ pub async fn find_metadata_search_by_media_id(
         r#"
         SELECT
             media_id,
-            searched_at
+            store_id,
+            metadata_type,
+            searched_at,
+            idempotency_key
         FROM media_metadata_searches
         WHERE media_id = ?
+        LIMIT 1
         "#,
     )
     .bind(media_id)
@@ -942,16 +972,23 @@ pub async fn insert_media_metadata_search(
     sqlx::query_as::<_, MediaMetadataSearchRow>(
         r#"
         INSERT INTO media_metadata_searches (
-            media_id
+            media_id,
+            store_id,
+            metadata_type
         )
-        VALUES (?)
-        ON CONFLICT(media_id) DO UPDATE SET searched_at = CURRENT_TIMESTAMP
+        VALUES (?, ?, ?)
+        ON CONFLICT(media_id, store_id, metadata_type) DO UPDATE SET searched_at = CURRENT_TIMESTAMP
         RETURNING
             media_id,
-            searched_at
+            store_id,
+            metadata_type,
+            searched_at,
+            idempotency_key
         "#,
     )
     .bind(search.media_id)
+    .bind(search.store_id)
+    .bind(search.metadata_type)
     .fetch_one(pool)
     .await
     .map_err(DatabaseError::from)

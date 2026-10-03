@@ -197,25 +197,33 @@ pub struct PaginatedMediaRows {
 #[derive(Debug, Clone, Serialize, FromRow)]
 pub struct MediaAssetSearchRow {
     pub media_id: String,
+    pub store_id: String,
     pub asset_id: i64,
     pub searched_at: String,
+    pub idempotency_key: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 pub struct MediaAssetSearchInsert {
     pub media_id: String,
+    pub store_id: String,
     pub asset_id: i64,
 }
 
 #[derive(Debug, Clone, Serialize, FromRow)]
 pub struct MediaMetadataSearchRow {
     pub media_id: String,
+    pub store_id: String,
+    pub metadata_type: String,
     pub searched_at: String,
+    pub idempotency_key: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 pub struct MediaMetadataSearchInsert {
     pub media_id: String,
+    pub store_id: String,
+    pub metadata_type: String,
 }
 
 #[derive(Debug, Clone, FromRow)]

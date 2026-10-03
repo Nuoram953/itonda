@@ -1,14 +1,18 @@
 use async_trait::async_trait;
 use itonda_database::media::{
     MediaExternalIdUpsert, MediaGameDetailsUpsert, MediaMetadataSearchInsert, MediaMetadataUpdate,
-    find_game_details, find_metadata_search_by_media_id, insert_media_metadata_search,
+    find_game_details, find_metadata_searches_by_media_ids, insert_media_metadata_search,
     sync_media_companies, sync_media_genres, sync_media_tags, update_media_metadata,
     upsert_media_external_id, upsert_media_game_details,
 };
 use sqlx::SqlitePool;
 
 use crate::{
-    metadata::{models::MetadataQuery, policy::MetadataPolicy, registry::MetadataRegistry},
+    metadata::{
+        models::{MetadataQuery, MetadataType},
+        policy::MetadataPolicy,
+        registry::MetadataRegistry,
+    },
     sync::{context::SyncContext, errors::SyncError, pipeline::SyncStep},
 };
 
@@ -51,19 +55,22 @@ impl SyncStep for MetadataStep {
             return Ok(());
         };
 
-        if !context.force {
-            let already_searched = find_metadata_search_by_media_id(&self.pool, &media.id)
-                .await?
-                .is_some();
-
-            if already_searched {
-                tracing::debug!(
-                    "Skipping metadata step for '{}' (already searched)",
-                    media.title
-                );
-                return Ok(());
-            }
+        if !context.force && self.policy.is_media_satisfied(media) {
+            tracing::debug!(
+                "Skipping metadata step for '{}' (data already complete per policy)",
+                media.title
+            );
+            return Ok(());
         }
+
+        let existing_searches =
+            find_metadata_searches_by_media_ids(&self.pool, std::slice::from_ref(&media.id))
+                .await?;
+        let searched_stores: std::collections::HashSet<String> = existing_searches
+            .into_iter()
+            .filter(|s| s.metadata_type == MetadataType::General.as_str())
+            .map(|s| s.store_id)
+            .collect();
 
         let storefront = context.discovered.as_ref().map(|d| d.storefront);
         let external_id = context.discovered.as_ref().map(|d| d.external_id.as_str());
@@ -77,26 +84,32 @@ impl SyncStep for MetadataStep {
             external_ids: &media.external_ids,
         };
 
-        let metadata = match self
+        let (metadata_opt, attempted_stores) = match self
             .registry
-            .fetch_general_info_with_policy(&query, self.policy)
+            .fetch_general_info_with_policy(&query, self.policy, &searched_stores)
             .await
         {
-            Ok(Some(meta)) => meta,
-            Ok(None) => {
-                insert_media_metadata_search(
-                    &self.pool,
-                    MediaMetadataSearchInsert {
-                        media_id: media.id.clone(),
-                    },
-                )
-                .await?;
-                return Ok(());
-            }
+            Ok(res) => res,
             Err(err) => {
                 tracing::warn!("Metadata fetch failed for {}: {err}", media.title);
-                return Ok(());
+                (None, Vec::new())
             }
+        };
+
+        for store in attempted_stores {
+            insert_media_metadata_search(
+                &self.pool,
+                MediaMetadataSearchInsert {
+                    media_id: media.id.clone(),
+                    store_id: store.as_str().to_string(),
+                    metadata_type: MetadataType::General.as_str().to_string(),
+                },
+            )
+            .await?;
+        }
+
+        let Some(metadata) = metadata_opt else {
+            return Ok(());
         };
 
         let common = metadata.common();
@@ -206,14 +219,6 @@ impl SyncStep for MetadataStep {
                 }
             }
         }
-
-        insert_media_metadata_search(
-            &self.pool,
-            MediaMetadataSearchInsert {
-                media_id: media.id.clone(),
-            },
-        )
-        .await?;
 
         Ok(())
     }

@@ -33,6 +33,29 @@ impl MetadataPolicy {
             }
         }
     }
+
+    pub fn is_media_satisfied(&self, media: &crate::media::models::Media) -> bool {
+        match self {
+            Self::FirstOnly => media.description.is_some() || media.summary.is_some(),
+            Self::All => false,
+            Self::Complete => {
+                let basic = media.description.is_some()
+                    && media.summary.is_some()
+                    && media.release_date.is_some()
+                    && !media.genres.is_empty()
+                    && !media.tags.is_empty();
+
+                let game_complete = match &media.details {
+                    Some(crate::media::models::MediaDetails::Game(g)) => {
+                        !g.developers.is_empty() && !g.publishers.is_empty() && g.series.is_some()
+                    }
+                    None => false,
+                };
+
+                basic && game_complete
+            }
+        }
+    }
 }
 
 #[cfg(test)]

@@ -4,7 +4,7 @@ use crate::{
     media::types::MediaType,
     metadata::{
         error::MetadataError,
-        models::{GeneralMetadata, MetadataProviderId, MetadataQuery},
+        models::{GeneralMetadata, MetadataProviderId, MetadataQuery, MetadataType},
     },
 };
 
@@ -12,8 +12,11 @@ use crate::{
 pub trait MetadataFetcher: Send + Sync {
     fn id(&self) -> MetadataProviderId;
     fn name(&self) -> &'static str;
-    fn supports_media_type(&self, _media_type: MediaType) -> bool {
-        true
+    fn metadata_type(&self) -> MetadataType {
+        MetadataType::General
+    }
+    fn supports_media_type(&self, media_type: MediaType) -> bool {
+        self.metadata_type().supports_media_type(media_type)
     }
 }
 
