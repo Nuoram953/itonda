@@ -16,9 +16,41 @@ pub struct MetadataQuery<'a> {
     pub external_ids: &'a [MediaExternalId],
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, ToSchema)]
+pub enum MetadataType {
+    General,
+    HowLongToBeat,
+}
+
+impl MetadataType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::General => "general",
+            Self::HowLongToBeat => "how_long_to_beat",
+        }
+    }
+
+    pub fn supports_media_type(&self, media_type: MediaType) -> bool {
+        match self {
+            Self::General => true,
+            Self::HowLongToBeat => matches!(media_type, MediaType::Game),
+        }
+    }
+}
+
 #[derive(Hash, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub enum MetadataProviderId {
     TheInternetGameDatabase,
+    HowLongToBeat,
+}
+
+impl MetadataProviderId {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::TheInternetGameDatabase => "igdb",
+            Self::HowLongToBeat => "howlongtobeat",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
@@ -186,5 +218,16 @@ mod tests {
         assert_eq!(base.publishers, vec!["Pub 1"]);
         assert_eq!(base.platforms, vec!["PC", "Switch"]);
         assert_eq!(base.series.as_deref(), Some("Cool Series"));
+    }
+
+    #[test]
+    fn test_metadata_type_supports_media_type() {
+        assert!(MetadataType::General.supports_media_type(MediaType::Game));
+        assert!(MetadataType::General.supports_media_type(MediaType::Movie));
+        assert!(MetadataType::General.supports_media_type(MediaType::TvShow));
+
+        assert!(MetadataType::HowLongToBeat.supports_media_type(MediaType::Game));
+        assert!(!MetadataType::HowLongToBeat.supports_media_type(MediaType::Movie));
+        assert!(!MetadataType::HowLongToBeat.supports_media_type(MediaType::TvShow));
     }
 }

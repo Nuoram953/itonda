@@ -74,7 +74,7 @@ impl AssetRegistry {
                 title,
                 DiscoverOptions {
                     existing_counts: &HashMap::new(),
-                    searched_types: &HashSet::new(),
+                    searched: &HashSet::new(),
                     limit: None,
                     force: true,
                     external_ids: &[],
@@ -91,35 +91,39 @@ impl AssetRegistry {
         external_id: Option<&str>,
         title: &str,
         options: DiscoverOptions<'_>,
-    ) -> Result<(Vec<DiscoveredAsset>, HashSet<i64>), AssetError> {
+    ) -> Result<(Vec<DiscoveredAsset>, HashSet<(String, i64)>), AssetError> {
         let mut results = Vec::new();
         let mut attempted = HashSet::new();
+        let mut current_counts = options.existing_counts.clone();
 
         for poster in &self.posters {
             if poster.supports_media_type(media_type) {
+                let store_id = poster.id().as_str();
                 let asset_types = poster.discovered_asset_types();
                 let needed = options.force
                     || match options.limit {
                         Some(max) => asset_types.iter().any(|asset_type| {
-                            !options.searched_types.contains(&asset_type.id())
-                                && options
-                                    .existing_counts
-                                    .get(&asset_type.id())
-                                    .copied()
-                                    .unwrap_or(0)
-                                    < max
+                            !options
+                                .searched
+                                .contains(&(store_id.to_string(), asset_type.id()))
+                                && current_counts.get(&asset_type.id()).copied().unwrap_or(0) < max
                         }),
-                        None => true,
+                        None => asset_types.iter().any(|asset_type| {
+                            !options
+                                .searched
+                                .contains(&(store_id.to_string(), asset_type.id()))
+                        }),
                     };
 
                 if needed {
                     for at in &asset_types {
-                        attempted.insert(at.id());
+                        attempted.insert((store_id.to_string(), at.id()));
                     }
                     if let Some(asset) = poster
                         .discover_poster(Some(media_type), storefront, external_id, title)
                         .await?
                     {
+                        *current_counts.entry(asset.asset_type.id()).or_default() += 1;
                         results.push(asset);
                     }
                 }
@@ -128,29 +132,32 @@ impl AssetRegistry {
 
         for banner in &self.banners {
             if banner.supports_media_type(media_type) {
+                let store_id = banner.id().as_str();
                 let asset_types = banner.discovered_asset_types();
                 let needed = options.force
                     || match options.limit {
                         Some(max) => asset_types.iter().any(|asset_type| {
-                            !options.searched_types.contains(&asset_type.id())
-                                && options
-                                    .existing_counts
-                                    .get(&asset_type.id())
-                                    .copied()
-                                    .unwrap_or(0)
-                                    < max
+                            !options
+                                .searched
+                                .contains(&(store_id.to_string(), asset_type.id()))
+                                && current_counts.get(&asset_type.id()).copied().unwrap_or(0) < max
                         }),
-                        None => true,
+                        None => asset_types.iter().any(|asset_type| {
+                            !options
+                                .searched
+                                .contains(&(store_id.to_string(), asset_type.id()))
+                        }),
                     };
 
                 if needed {
                     for at in &asset_types {
-                        attempted.insert(at.id());
+                        attempted.insert((store_id.to_string(), at.id()));
                     }
                     if let Some(asset) = banner
                         .discover_banner(Some(media_type), storefront, external_id, title)
                         .await?
                     {
+                        *current_counts.entry(asset.asset_type.id()).or_default() += 1;
                         results.push(asset);
                     }
                 }
@@ -319,7 +326,7 @@ mod tests {
                 "Test",
                 DiscoverOptions {
                     existing_counts: &existing,
-                    searched_types: &searched,
+                    searched: &searched,
                     limit: Some(1),
                     force: false,
                     external_ids: &[],
@@ -328,7 +335,10 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(discovered.len(), 1);
-        assert!(attempted.contains(&AssetType::Poster.id()));
+        assert!(attempted.contains(&(
+            AssetStoreId::SteamGridDb.as_str().to_string(),
+            AssetType::Poster.id()
+        )));
 
         existing.insert(AssetType::Poster.id(), 1);
         let (discovered, attempted) = registry
@@ -339,7 +349,7 @@ mod tests {
                 "Test",
                 DiscoverOptions {
                     existing_counts: &existing,
-                    searched_types: &searched,
+                    searched: &searched,
                     limit: Some(1),
                     force: false,
                     external_ids: &[],
@@ -358,7 +368,7 @@ mod tests {
                 "Test",
                 DiscoverOptions {
                     existing_counts: &existing,
-                    searched_types: &searched,
+                    searched: &searched,
                     limit: Some(2),
                     force: false,
                     external_ids: &[],
@@ -367,7 +377,10 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(discovered.len(), 1);
-        assert!(attempted.contains(&AssetType::Poster.id()));
+        assert!(attempted.contains(&(
+            AssetStoreId::SteamGridDb.as_str().to_string(),
+            AssetType::Poster.id()
+        )));
 
         let (discovered, _) = registry
             .discover_needed(
@@ -377,7 +390,7 @@ mod tests {
                 "Test",
                 DiscoverOptions {
                     existing_counts: &existing,
-                    searched_types: &searched,
+                    searched: &searched,
                     limit: Some(1),
                     force: false,
                     external_ids: &[],
@@ -448,7 +461,7 @@ mod tests {
                 "Test",
                 DiscoverOptions {
                     existing_counts: &existing,
-                    searched_types: &searched,
+                    searched: &searched,
                     limit: Some(1),
                     force: false,
                     external_ids: &[],
@@ -467,7 +480,7 @@ mod tests {
                 "Test",
                 DiscoverOptions {
                     existing_counts: &existing,
-                    searched_types: &searched,
+                    searched: &searched,
                     limit: Some(1),
                     force: false,
                     external_ids: &[],

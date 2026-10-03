@@ -890,22 +890,111 @@ async fn test_metadata_searches_crud() {
         &pool,
         MediaQueries::MediaMetadataSearchInsert {
             media_id: media.id.clone(),
+            store_id: "igdb".into(),
+            metadata_type: "general".into(),
         },
     )
     .await
     .unwrap();
     assert_eq!(inserted.media_id, media.id);
+    assert_eq!(inserted.store_id, "igdb");
+    assert_eq!(inserted.metadata_type, "general");
+    assert_eq!(
+        inserted.idempotency_key.as_deref(),
+        Some(format!("{}:igdb:general", media.id).as_str())
+    );
 
     let search_found = MediaQueries::find_metadata_search_by_media_id(&pool, &media.id)
         .await
         .unwrap();
     assert!(search_found.is_some());
-    assert_eq!(search_found.unwrap().media_id, media.id);
+    assert_eq!(search_found.unwrap().store_id, "igdb");
+
+    // Can add another metadata type for the same game
+    let hltb = MediaQueries::insert_media_metadata_search(
+        &pool,
+        MediaQueries::MediaMetadataSearchInsert {
+            media_id: media.id.clone(),
+            store_id: "howlongtobeat".into(),
+            metadata_type: "how_long_to_beat".into(),
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(hltb.metadata_type, "how_long_to_beat");
+
+    let all_searches = MediaQueries::find_metadata_searches_by_media_id(&pool, &media.id)
+        .await
+        .unwrap();
+    assert_eq!(all_searches.len(), 2);
 
     let batch = MediaQueries::find_metadata_searches_by_media_ids(&pool, &[media.id])
         .await
         .unwrap();
-    assert_eq!(batch.len(), 1);
+    assert_eq!(batch.len(), 2);
+}
+
+#[tokio::test]
+async fn test_asset_searches_crud() {
+    let pool = setup_db().await;
+
+    let media = MediaQueries::insert_media(
+        &pool,
+        MediaQueries::MediaInsert {
+            title: "Portal 2".into(),
+            media_type: "game".into(),
+            status_id: 1,
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    let none = MediaQueries::find_asset_searches_by_media_id(&pool, &media.id)
+        .await
+        .unwrap();
+    assert!(none.is_empty());
+
+    let inserted = MediaQueries::insert_media_asset_search(
+        &pool,
+        MediaQueries::MediaAssetSearchInsert {
+            media_id: media.id.clone(),
+            store_id: "steamgriddb".into(),
+            asset_id: 1,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(inserted.media_id, media.id);
+    assert_eq!(inserted.store_id, "steamgriddb");
+    assert_eq!(inserted.asset_id, 1);
+    assert_eq!(
+        inserted.idempotency_key.as_deref(),
+        Some(format!("{}:steamgriddb:1", media.id).as_str())
+    );
+
+    // Can add another store for the same media and asset_id
+    let inserted2 = MediaQueries::insert_media_asset_search(
+        &pool,
+        MediaQueries::MediaAssetSearchInsert {
+            media_id: media.id.clone(),
+            store_id: "tmdb".into(),
+            asset_id: 1,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(inserted2.store_id, "tmdb");
+
+    let all_searches = MediaQueries::find_asset_searches_by_media_id(&pool, &media.id)
+        .await
+        .unwrap();
+    assert_eq!(all_searches.len(), 2);
+
+    let batch = MediaQueries::find_asset_searches_by_media_ids(&pool, &[media.id])
+        .await
+        .unwrap();
+    assert_eq!(batch.len(), 2);
 }
 
 #[tokio::test]

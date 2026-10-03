@@ -41,10 +41,19 @@ impl MetadataRegistry {
         &self,
         query: &MetadataQuery<'_>,
         policy: crate::metadata::policy::MetadataPolicy,
-    ) -> Result<Option<GeneralMetadata>, MetadataError> {
+        searched_stores: &std::collections::HashSet<String>,
+    ) -> Result<(Option<GeneralMetadata>, Vec<MetadataProviderId>), MetadataError> {
         let mut accumulated: Option<GeneralMetadata> = None;
+        let mut attempted: Vec<MetadataProviderId> = Vec::new();
 
         for fetcher in self.fetchers_for_type(query.media_type) {
+            let store_id = fetcher.id().as_str();
+            if !query.force && searched_stores.contains(store_id) {
+                continue;
+            }
+
+            attempted.push(fetcher.id());
+
             match fetcher.fetch_general_info(query).await {
                 Ok(Some(meta)) => {
                     if let Some(acc) = &mut accumulated {
@@ -67,17 +76,20 @@ impl MetadataRegistry {
             }
         }
 
-        Ok(accumulated)
+        Ok((accumulated, attempted))
     }
 
     pub async fn fetch_general_info(
         &self,
         query: &MetadataQuery<'_>,
     ) -> Result<Option<GeneralMetadata>, MetadataError> {
-        self.fetch_general_info_with_policy(
-            query,
-            crate::metadata::policy::MetadataPolicy::default(),
-        )
-        .await
+        let (meta, _) = self
+            .fetch_general_info_with_policy(
+                query,
+                crate::metadata::policy::MetadataPolicy::default(),
+                &std::collections::HashSet::new(),
+            )
+            .await?;
+        Ok(meta)
     }
 }

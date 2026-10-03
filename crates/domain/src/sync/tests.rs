@@ -489,3 +489,249 @@ async fn test_metadata_step_multi_provider_merge() {
         panic!("Expected Game details");
     }
 }
+
+struct CountingMetadataFetcher {
+    provider_id: MetadataProviderId,
+    name: &'static str,
+    meta: Option<GeneralMetadata>,
+    calls: Arc<std::sync::atomic::AtomicUsize>,
+}
+
+impl MetadataFetcher for CountingMetadataFetcher {
+    fn id(&self) -> MetadataProviderId {
+        self.provider_id
+    }
+    fn name(&self) -> &'static str {
+        self.name
+    }
+    fn supports_media_type(&self, media_type: MediaType) -> bool {
+        media_type == MediaType::Game
+    }
+}
+
+#[async_trait]
+impl GeneralInfoFetcher for CountingMetadataFetcher {
+    async fn fetch_general_info(
+        &self,
+        _query: &MetadataQuery<'_>,
+    ) -> Result<Option<GeneralMetadata>, crate::metadata::error::MetadataError> {
+        self.calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        Ok(self.meta.clone())
+    }
+}
+
+#[tokio::test]
+async fn test_metadata_step_skips_when_media_already_complete() {
+    use crate::sync::pipeline::SyncStep;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    let pool = setup_db().await;
+    let calls = Arc::new(AtomicUsize::new(0));
+
+    let media_row = itonda_database::media::insert_media(
+        &pool,
+        itonda_database::media::MediaInsert {
+            title: "Complete Game".into(),
+            media_type: "game".into(),
+            status_id: 1,
+            description: Some("Description".into()),
+            summary: Some("Summary".into()),
+            release_date: Some(12345),
+        },
+    )
+    .await
+    .unwrap();
+
+    let mut media = crate::media::models::Media::try_from(media_row).unwrap();
+    media.genres = vec!["Action".into()];
+    media.tags = vec!["Singleplayer".into()];
+    media.details = Some(crate::media::models::MediaDetails::Game(
+        crate::media::models::MediaGameDetails {
+            playtime_minutes: None,
+            last_played_at: None,
+            series: Some("Series".into()),
+            developers: vec!["Dev".into()],
+            publishers: vec!["Pub".into()],
+        },
+    ));
+
+    let mut metadata = MetadataRegistry::new();
+    metadata.register(Arc::new(CountingMetadataFetcher {
+        provider_id: MetadataProviderId::TheInternetGameDatabase,
+        name: "CountingFetcher",
+        meta: None,
+        calls: calls.clone(),
+    }));
+
+    let step = crate::sync::steps::metadata::MetadataStep::new(pool.clone(), metadata);
+    let mut context = crate::sync::context::SyncContext::from_media(media);
+
+    step.execute(&mut context).await.unwrap();
+
+    // Because the game's metadata is already complete according to policy,
+    // the external metadata API should NOT be called at all.
+    assert_eq!(calls.load(Ordering::SeqCst), 0);
+}
+
+#[tokio::test]
+async fn test_metadata_step_skips_already_searched_store_but_calls_new_store() {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    let pool = setup_db().await;
+    let calls_a = Arc::new(AtomicUsize::new(0));
+    let calls_b = Arc::new(AtomicUsize::new(0));
+
+    let storefronts =
+        test_storefront_registry(Arc::new(FakeSteamStorefront::new(vec![discovered_game(
+            "Partial Game",
+        )])));
+    let events = EventBus::new();
+    let assets = AssetRegistry::new();
+
+    // 1st sync: only Store A registered, finds nothing
+    let mut metadata1 = MetadataRegistry::new();
+    metadata1.register(Arc::new(CountingMetadataFetcher {
+        provider_id: MetadataProviderId::TheInternetGameDatabase,
+        name: "StoreA",
+        meta: None,
+        calls: calls_a.clone(),
+    }));
+
+    let service1 = LibrarySyncService::new(
+        uuid::Uuid::new_v4(),
+        pool.clone(),
+        events.clone(),
+        crate::agents::AgentManager::new(),
+        storefronts.clone(),
+        assets.clone(),
+        metadata1,
+    );
+
+    service1.sync_all(false).await.unwrap();
+    assert_eq!(calls_a.load(Ordering::SeqCst), 1);
+
+    let media = find_media_by_title(&pool, "Partial Game".into())
+        .await
+        .unwrap()
+        .expect("media should exist");
+
+    let searches1 = itonda_database::media::find_metadata_searches_by_media_id(&pool, &media.id)
+        .await
+        .unwrap();
+    assert_eq!(searches1.len(), 1);
+    assert_eq!(searches1[0].store_id, "igdb");
+    assert_eq!(searches1[0].metadata_type, "general");
+
+    // 2nd sync: Store A and newly added Store B registered
+    let mut metadata2 = MetadataRegistry::new();
+    metadata2.register(Arc::new(CountingMetadataFetcher {
+        provider_id: MetadataProviderId::TheInternetGameDatabase,
+        name: "StoreA",
+        meta: None,
+        calls: calls_a.clone(),
+    }));
+    metadata2.register(Arc::new(CountingMetadataFetcher {
+        provider_id: MetadataProviderId::HowLongToBeat,
+        name: "StoreB",
+        meta: Some(GeneralMetadata::Game(
+            crate::metadata::models::GameGeneralMetadata {
+                common: crate::metadata::models::CommonMetadata {
+                    summary: Some("Found by Store B".into()),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        )),
+        calls: calls_b.clone(),
+    }));
+
+    let service2 = LibrarySyncService::new(
+        uuid::Uuid::new_v4(),
+        pool.clone(),
+        events,
+        crate::agents::AgentManager::new(),
+        storefronts,
+        assets,
+        metadata2,
+    );
+
+    service2.sync_all(false).await.unwrap();
+
+    // Store A was NOT called again (already tried), but Store B was called
+    assert_eq!(calls_a.load(Ordering::SeqCst), 1);
+    assert_eq!(calls_b.load(Ordering::SeqCst), 1);
+
+    let searches2 = itonda_database::media::find_metadata_searches_by_media_id(&pool, &media.id)
+        .await
+        .unwrap();
+    assert_eq!(searches2.len(), 2);
+    let store_ids: Vec<String> = searches2.into_iter().map(|s| s.store_id).collect();
+    assert!(store_ids.contains(&"igdb".to_string()));
+    assert!(store_ids.contains(&"howlongtobeat".to_string()));
+}
+
+#[tokio::test]
+async fn test_metadata_step_searches_different_metadata_type_independently() {
+    let pool = setup_db().await;
+
+    let media = itonda_database::media::insert_media(
+        &pool,
+        itonda_database::media::MediaInsert {
+            title: "Test Game".into(),
+            media_type: "game".into(),
+            status_id: 1,
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    // Insert general search
+    itonda_database::media::insert_media_metadata_search(
+        &pool,
+        itonda_database::media::MediaMetadataSearchInsert {
+            media_id: media.id.clone(),
+            store_id: "igdb".into(),
+            metadata_type: "general".into(),
+        },
+    )
+    .await
+    .unwrap();
+
+    // New metadata type (e.g. HowLongToBeat) can be searched and recorded independently
+    itonda_database::media::insert_media_metadata_search(
+        &pool,
+        itonda_database::media::MediaMetadataSearchInsert {
+            media_id: media.id.clone(),
+            store_id: "howlongtobeat".into(),
+            metadata_type: "how_long_to_beat".into(),
+        },
+    )
+    .await
+    .unwrap();
+
+    let all_searches = itonda_database::media::find_metadata_searches_by_media_id(&pool, &media.id)
+        .await
+        .unwrap();
+    assert_eq!(all_searches.len(), 2);
+
+    let general_search = all_searches
+        .iter()
+        .find(|s| s.metadata_type == "general")
+        .unwrap();
+    assert_eq!(general_search.store_id, "igdb");
+    assert_eq!(
+        general_search.idempotency_key.as_deref(),
+        Some(format!("{}:igdb:general", media.id).as_str())
+    );
+
+    let hltb_search = all_searches
+        .iter()
+        .find(|s| s.metadata_type == "how_long_to_beat")
+        .unwrap();
+    assert_eq!(hltb_search.store_id, "howlongtobeat");
+    assert_eq!(
+        hltb_search.idempotency_key.as_deref(),
+        Some(format!("{}:howlongtobeat:how_long_to_beat", media.id).as_str())
+    );
+}

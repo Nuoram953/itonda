@@ -71,8 +71,10 @@ impl SyncStep for AssetStep {
 
         let existing_searches =
             find_asset_searches_by_media_ids(&self.pool, from_ref(&media.id)).await?;
-        let searched_types: HashSet<i64> =
-            existing_searches.into_iter().map(|s| s.asset_id).collect();
+        let searched: HashSet<(String, i64)> = existing_searches
+            .into_iter()
+            .map(|s| (s.store_id, s.asset_id))
+            .collect();
 
         let (media_type, storefront, external_id, title) = match &context.discovered {
             Some(discovered) => (
@@ -95,7 +97,7 @@ impl SyncStep for AssetStep {
         let limit = self.policy.max_items();
         let force = context.force;
 
-        let (discovered_assets, attempted_types) = self
+        let (discovered_assets, attempted_searches) = self
             .registry
             .discover_needed(
                 media_type,
@@ -104,7 +106,7 @@ impl SyncStep for AssetStep {
                 title,
                 DiscoverOptions {
                     existing_counts: &existing_counts,
-                    searched_types: &searched_types,
+                    searched: &searched,
                     limit,
                     force,
                     external_ids: &media.external_ids,
@@ -170,11 +172,12 @@ impl SyncStep for AssetStep {
             .await?;
         }
 
-        for asset_type_id in attempted_types {
+        for (store_id, asset_type_id) in attempted_searches {
             insert_media_asset_search(
                 &self.pool,
                 MediaAssetSearchInsert {
                     media_id: media.id.clone(),
+                    store_id,
                     asset_id: asset_type_id,
                 },
             )
@@ -196,7 +199,9 @@ mod tests {
     };
 
     use itonda_database::{
-        media::{MediaInsert, find_assets_by_media_ids, insert_media},
+        media::{
+            MediaInsert, find_asset_searches_by_media_id, find_assets_by_media_ids, insert_media,
+        },
         test_utils::setup_db,
     };
 
@@ -1029,5 +1034,148 @@ mod tests {
         let asset_ids: Vec<i64> = assets.iter().map(|a| a.asset_id).collect();
         assert!(asset_ids.contains(&AssetType::Poster.id()));
         assert!(asset_ids.contains(&AssetType::Banner.id()));
+    }
+
+    struct CountingPosterFetcher {
+        id: AssetStoreId,
+        url: Option<String>,
+        calls: Arc<std::sync::atomic::AtomicUsize>,
+    }
+
+    impl CountingPosterFetcher {
+        fn new(
+            id: AssetStoreId,
+            url: Option<String>,
+            calls: Arc<std::sync::atomic::AtomicUsize>,
+        ) -> Self {
+            Self { id, url, calls }
+        }
+    }
+
+    impl AssetFetcher for CountingPosterFetcher {
+        fn id(&self) -> AssetStoreId {
+            self.id
+        }
+
+        fn supports_media_type(&self, media_type: MediaType) -> bool {
+            matches!(media_type, MediaType::Game)
+        }
+    }
+
+    #[async_trait]
+    impl PosterFetcher for CountingPosterFetcher {
+        async fn discover_poster(
+            &self,
+            _media_type: Option<MediaType>,
+            _storefront: Option<StorefrontId>,
+            _external_id: Option<&str>,
+            _title: &str,
+        ) -> Result<Option<DiscoveredAsset>, AssetError> {
+            self.calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            Ok(self
+                .url
+                .as_ref()
+                .map(|u| DiscoveredAsset::new(AssetType::Poster, u.clone())))
+        }
+
+        async fn search_poster(
+            &self,
+            _media_type: Option<MediaType>,
+            _storefront: Option<StorefrontId>,
+            _external_id: Option<&str>,
+            _title: &str,
+            _options: &PosterSearchOptions,
+        ) -> Result<Vec<DiscoveredAsset>, AssetError> {
+            Ok(vec![])
+        }
+    }
+
+    #[tokio::test]
+    async fn step_skips_already_searched_store_but_searches_new_store() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        let pool = setup_db().await;
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/poster_from_b.png"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(b"poster_b"))
+            .mount(&server)
+            .await;
+
+        let temp = tempdir().unwrap();
+        let paths = AppPaths {
+            config_dir: temp.path().join("config"),
+            data_dir: temp.path().join("data"),
+        };
+
+        let calls_a = Arc::new(AtomicUsize::new(0));
+        let calls_b = Arc::new(AtomicUsize::new(0));
+
+        let media_row = insert_media(
+            &pool,
+            MediaInsert {
+                title: "Portal 2".into(),
+                media_type: "game".into(),
+                status_id: MediaStatus::NotStarted.id(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+        let media = Media::try_from(media_row).unwrap();
+
+        // 1st sync: only Store A is registered, but it finds no poster
+        let mut registry1 = AssetRegistry::new();
+        registry1.register_poster(Arc::new(CountingPosterFetcher::new(
+            AssetStoreId::SteamGridDb,
+            None,
+            calls_a.clone(),
+        )));
+        let downloader = AssetDownloader::new(paths.clone());
+        let step1 = AssetStep::new(pool.clone(), registry1, downloader);
+
+        let mut context = SyncContext::from_media(media.clone());
+        step1.execute(&mut context).await.unwrap();
+
+        assert_eq!(calls_a.load(Ordering::SeqCst), 1);
+        let searches1 = find_asset_searches_by_media_id(&pool, &media.id)
+            .await
+            .unwrap();
+        assert_eq!(searches1.len(), 1);
+        assert_eq!(searches1[0].store_id, "steamgriddb");
+        assert_eq!(searches1[0].asset_id, AssetType::Poster.id());
+
+        // 2nd sync: both Store A and newly added Store B are registered
+        let mut registry2 = AssetRegistry::new();
+        registry2.register_poster(Arc::new(CountingPosterFetcher::new(
+            AssetStoreId::SteamGridDb,
+            None,
+            calls_a.clone(),
+        )));
+        registry2.register_poster(Arc::new(CountingPosterFetcher::new(
+            AssetStoreId::TheMovieDatabase,
+            Some(format!("{}/poster_from_b.png", server.uri())),
+            calls_b.clone(),
+        )));
+        let downloader = AssetDownloader::new(paths);
+        let step2 = AssetStep::new(pool.clone(), registry2, downloader);
+
+        step2.execute(&mut context).await.unwrap();
+
+        // Store A was NOT called again (already tried), but Store B WAS called
+        assert_eq!(calls_a.load(Ordering::SeqCst), 1);
+        assert_eq!(calls_b.load(Ordering::SeqCst), 1);
+
+        let searches2 = find_asset_searches_by_media_id(&pool, &media.id)
+            .await
+            .unwrap();
+        assert_eq!(searches2.len(), 2);
+        let store_ids: Vec<String> = searches2.into_iter().map(|s| s.store_id).collect();
+        assert!(store_ids.contains(&"steamgriddb".to_string()));
+        assert!(store_ids.contains(&"tmdb".to_string()));
+
+        let assets = find_assets_by_media_ids(&pool, &[media.id]).await.unwrap();
+        assert_eq!(assets.len(), 1);
     }
 }
