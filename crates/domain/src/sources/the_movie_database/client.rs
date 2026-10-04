@@ -25,7 +25,10 @@ impl TheMovieDatabaseClient {
         }
     }
 
-    pub async fn search_movie_results(&self, title: &str) -> Result<Vec<TmdbMovieResult>, AssetError> {
+    pub async fn search_movie_results(
+        &self,
+        title: &str,
+    ) -> Result<Vec<TmdbMovieResult>, AssetError> {
         let response = self
             .client
             .get(format!("{}search/movie", self.base_url))
@@ -212,7 +215,10 @@ impl TheMovieDatabaseClient {
         let response = self
             .client
             .get(endpoint)
-            .query(&[("api_key", &self.api_key)])
+            .query(&[
+                ("api_key", &self.api_key),
+                ("include_image_language", &"en,null".to_string()),
+            ])
             .send()
             .await?;
 
