@@ -7,6 +7,7 @@ use crate::{
         traits::{AssetFetcher, PosterFetcher},
     },
     media::{discovered::DiscoveredAsset, types::MediaType},
+    metadata::{error::MetadataError, models::MediaSearchResult, traits::MediaSearcher},
     sources::the_movie_database::client::TheMovieDatabaseClient,
     storefronts::models::StorefrontId,
 };
@@ -26,6 +27,10 @@ impl TheMovieDatabase {
         Self {
             client: TheMovieDatabaseClient::new(api_key),
         }
+    }
+
+    pub fn supports_media_type(&self, media_type: MediaType) -> bool {
+        matches!(media_type, MediaType::TvShow | MediaType::Movie)
     }
 }
 
@@ -75,5 +80,41 @@ impl PosterFetcher for TheMovieDatabase {
         let response = self.client.get_media_images(tmdb_type, media_id).await?;
 
         Ok(response.into_poster_assets())
+    }
+}
+
+#[async_trait]
+impl MediaSearcher for TheMovieDatabase {
+    fn supports_media_type(&self, media_type: MediaType) -> bool {
+        matches!(media_type, MediaType::Movie | MediaType::TvShow)
+    }
+
+    async fn search(
+        &self,
+        query: &str,
+        media_type: MediaType,
+    ) -> Result<Vec<MediaSearchResult>, MetadataError> {
+        match media_type {
+            MediaType::Movie => {
+                let movies = self
+                    .client
+                    .search_movie_results(query)
+                    .await
+                    .map_err(|e| MetadataError::Other(e.to_string()))?;
+                Ok(movies.into_iter().map(|m| m.into_search_result()).collect())
+            }
+            MediaType::TvShow => {
+                let tv_shows = self
+                    .client
+                    .search_tv_results(query)
+                    .await
+                    .map_err(|e| MetadataError::Other(e.to_string()))?;
+                Ok(tv_shows
+                    .into_iter()
+                    .map(|t| t.into_search_result())
+                    .collect())
+            }
+            _ => Ok(Vec::new()),
+        }
     }
 }

@@ -4,7 +4,9 @@ use crate::{
     media::types::MediaType,
     metadata::{
         error::MetadataError,
-        models::{GeneralMetadata, MetadataProviderId, MetadataQuery, MetadataType},
+        models::{
+            GeneralMetadata, MediaSearchResult, MetadataProviderId, MetadataQuery, MetadataType,
+        },
     },
 };
 
@@ -26,4 +28,14 @@ pub trait GeneralInfoFetcher: MetadataFetcher {
         &self,
         query: &MetadataQuery<'_>,
     ) -> Result<Option<GeneralMetadata>, MetadataError>;
+}
+
+#[async_trait]
+pub trait MediaSearcher: Send + Sync {
+    fn supports_media_type(&self, media_type: MediaType) -> bool;
+    async fn search(
+        &self,
+        query: &str,
+        media_type: MediaType,
+    ) -> Result<Vec<MediaSearchResult>, MetadataError>;
 }

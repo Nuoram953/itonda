@@ -8,7 +8,7 @@ use crate::{
     metadata::error::MetadataError,
     sources::the_internet_game_database::models::{
         CachedToken, GetExternalGameResponse, GetGameResponse, GetInvolvedCompanyResponse,
-        GetSearchResponse, TwitchTokenResponse,
+        GetSearchResponse, IgdbSearchGameResponse, TwitchTokenResponse,
     },
     storefronts::models::StorefrontId,
 };
@@ -160,6 +160,26 @@ impl TheInternetGameDatabaseClient {
         let response = response.json::<Vec<GetSearchResponse>>().await?;
 
         Ok(response.into_iter().next().map(|item| item.id))
+    }
+
+    pub async fn search_games(
+        &self,
+        query: &str,
+        limit: u32,
+    ) -> Result<Vec<IgdbSearchGameResponse>, MetadataError> {
+        let sanitized_query = query.replace('"', "\\\"");
+        let response = self
+            .post_igdb(
+                "games",
+                format!(
+                    "fields id, name, first_release_date, summary, cover.url; search \"{}\"; limit {};",
+                    sanitized_query, limit
+                ),
+            )
+            .await?;
+
+        let response = response.json::<Vec<IgdbSearchGameResponse>>().await?;
+        Ok(response)
     }
 
     pub async fn find_game_id(

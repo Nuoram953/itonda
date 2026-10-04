@@ -8,6 +8,7 @@ use itonda_domain::{
         },
         types::{MediaSortField, MediaSource, MediaStatus, MediaType, SortOrder},
     },
+    metadata::models::MediaSearchResult,
     storefronts::models::StorefrontId,
 };
 use utoipa::OpenApi;
@@ -15,8 +16,9 @@ use utoipa::OpenApi;
 use crate::api::{
     agents::schemas::GetAgentsResponse,
     media::schemas::{
-        MediaImportItem, MediaImportPayload, MediaImportResponse, MediaLaunchPayload,
-        MediaQueryParams, MediaRefreshPayload, MediaResponse,
+        CreateMediaPayload, MediaImportItem, MediaImportPayload, MediaImportResponse,
+        MediaLaunchPayload, MediaQueryParams, MediaRefreshPayload, MediaResponse,
+        MediaSearchQueryParams,
     },
     response::{CommandResponse, CommandStatus, JobResponse, JobStatus},
 };
@@ -25,6 +27,8 @@ use crate::api::{
 #[openapi(
     paths(
         crate::api::media::handlers::get_media,
+        crate::api::media::handlers::create_media,
+        crate::api::media::handlers::search_media,
         crate::api::media::handlers::get_media_by_id,
         crate::api::media::handlers::import_media,
         crate::api::media::handlers::refresh,
@@ -55,6 +59,9 @@ use crate::api::{
             crate::api::auth::schemas::SteamCallbackPayload,
             MediaResponse,
             MediaQueryParams,
+            MediaSearchQueryParams,
+            CreateMediaPayload,
+            MediaSearchResult,
             MediaRefreshPayload,
             MediaLaunchPayload,
             MediaImportPayload,

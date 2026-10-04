@@ -5,8 +5,8 @@ use crate::{
     http::create_http_client,
     media::types::MediaType,
     sources::the_movie_database::models::{
-        TmdbImagesResponse, TmdbKeywordSearchResponse, TmdbMediaType, TmdbMovieSearchResponse,
-        TmdbMultiSearchResponse, TmdbTvSearchResponse,
+        TmdbImagesResponse, TmdbKeywordSearchResponse, TmdbMediaType, TmdbMovieResult,
+        TmdbMovieSearchResponse, TmdbMultiSearchResponse, TmdbTvResult, TmdbTvSearchResponse,
     },
 };
 
@@ -25,7 +25,7 @@ impl TheMovieDatabaseClient {
         }
     }
 
-    pub async fn search_movie(&self, title: &str) -> Result<Option<u64>, AssetError> {
+    pub async fn search_movie_results(&self, title: &str) -> Result<Vec<TmdbMovieResult>, AssetError> {
         let response = self
             .client
             .get(format!("{}search/movie", self.base_url))
@@ -34,14 +34,19 @@ impl TheMovieDatabaseClient {
             .await?;
 
         if response.status() == reqwest::StatusCode::NOT_FOUND {
-            return Ok(None);
+            return Ok(Vec::new());
         }
 
         let search = response.json::<TmdbMovieSearchResponse>().await?;
-        Ok(search.results.first().map(|m| m.id))
+        Ok(search.results)
     }
 
-    pub async fn search_tv(&self, title: &str) -> Result<Option<u64>, AssetError> {
+    pub async fn search_movie(&self, title: &str) -> Result<Option<u64>, AssetError> {
+        let results = self.search_movie_results(title).await?;
+        Ok(results.first().map(|m| m.id))
+    }
+
+    pub async fn search_tv_results(&self, title: &str) -> Result<Vec<TmdbTvResult>, AssetError> {
         let response = self
             .client
             .get(format!("{}search/tv", self.base_url))
@@ -50,11 +55,16 @@ impl TheMovieDatabaseClient {
             .await?;
 
         if response.status() == reqwest::StatusCode::NOT_FOUND {
-            return Ok(None);
+            return Ok(Vec::new());
         }
 
         let search = response.json::<TmdbTvSearchResponse>().await?;
-        Ok(search.results.first().map(|t| t.id))
+        Ok(search.results)
+    }
+
+    pub async fn search_tv(&self, title: &str) -> Result<Option<u64>, AssetError> {
+        let results = self.search_tv_results(title).await?;
+        Ok(results.first().map(|t| t.id))
     }
 
     pub async fn search_multi(

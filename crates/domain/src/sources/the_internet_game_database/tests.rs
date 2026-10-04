@@ -2,13 +2,13 @@ use crate::{
     media::types::MediaType,
     metadata::{
         models::{GeneralMetadata, MetadataProviderId},
-        traits::MetadataFetcher,
+        traits::{MediaSearcher, MetadataFetcher},
     },
     sources::the_internet_game_database::{
         TheInternetGameDatabase,
         models::{
             Company, GetExternalGameResponse, GetGameResponse, GetInvolvedCompanyResponse,
-            IgdbNamedItem, Screenshot, TwitchTokenResponse,
+            IgdbNamedItem, IgdbSearchGameResponse, Screenshot, TwitchTokenResponse,
         },
     },
 };
@@ -206,6 +206,48 @@ fn test_metadata_fetcher_trait() {
     assert!(igdb.supports_media_type(MediaType::Game));
     assert!(!igdb.supports_media_type(MediaType::Movie));
     assert!(!igdb.supports_media_type(MediaType::TvShow));
+}
+
+#[test]
+fn test_media_searcher_trait() {
+    let igdb = TheInternetGameDatabase::new("client_id".into(), "client_secret".into());
+    assert!(MediaSearcher::supports_media_type(&igdb, MediaType::Game));
+    assert!(!MediaSearcher::supports_media_type(&igdb, MediaType::Movie));
+    assert!(!MediaSearcher::supports_media_type(
+        &igdb,
+        MediaType::TvShow
+    ));
+}
+
+#[test]
+fn test_deserialize_search_game_response_and_into_search_result() {
+    let json = r#"[
+        {
+            "id": 1942,
+            "name": "The Witcher 3: Wild Hunt",
+            "summary": "An open world RPG.",
+            "first_release_date": 1431993600,
+            "cover": {
+                "url": "//images.igdb.com/igdb/image/upload/t_thumb/co123.jpg"
+            }
+        }
+    ]"#;
+
+    let res: Vec<IgdbSearchGameResponse> = serde_json::from_str(json).unwrap();
+    assert_eq!(res.len(), 1);
+    assert_eq!(res[0].id, 1942);
+    assert_eq!(res[0].name, "The Witcher 3: Wild Hunt");
+
+    let result = res.into_iter().next().unwrap().into_search_result();
+    assert_eq!(result.external_id, "1942");
+    assert_eq!(result.title, "The Witcher 3: Wild Hunt");
+    assert_eq!(result.media_type, MediaType::Game);
+    assert_eq!(result.year, Some(2015));
+    assert_eq!(result.summary.as_deref(), Some("An open world RPG."));
+    assert_eq!(
+        result.cover_url.as_deref(),
+        Some("https://images.igdb.com/igdb/image/upload/t_cover_big/co123.jpg")
+    );
 }
 
 #[tokio::test]

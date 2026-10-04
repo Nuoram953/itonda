@@ -222,10 +222,19 @@ async fn init_metadata(secrets: &SecretsManager) -> anyhow::Result<MetadataRegis
     if !secrets.metadata_store.igdb.client_id.is_empty()
         && !secrets.metadata_store.igdb.client_secret.is_empty()
     {
-        registry.register(Arc::new(TheInternetGameDatabase::new(
+        let igdb = Arc::new(TheInternetGameDatabase::new(
             secrets.metadata_store.igdb.client_id,
             secrets.metadata_store.igdb.client_secret,
-        )));
+        ));
+        registry.register(igdb.clone());
+        registry.register_searcher(igdb);
+    }
+
+    if !secrets.asset_store.tmdb.api_key.is_empty() {
+        let tmdb = Arc::new(TheMovieDatabase::new(
+            secrets.asset_store.tmdb.api_key.clone(),
+        ));
+        registry.register_searcher(tmdb);
     }
 
     Ok(registry)

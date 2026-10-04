@@ -59,3 +59,18 @@ pub struct MediaImportItem {
 pub struct MediaImportResponse {
     pub message: String,
 }
+
+#[derive(Debug, Deserialize, ToSchema, IntoParams)]
+#[into_params(parameter_in = Query)]
+pub struct MediaSearchQueryParams {
+    pub query: String,
+    #[serde(rename = "type")]
+    pub media_type: MediaType,
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct CreateMediaPayload {
+    pub title: String,
+    pub media_type: MediaType,
+    pub external_id: Option<String>,
+}

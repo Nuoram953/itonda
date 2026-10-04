@@ -8,7 +8,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Form } from "@/components/ui/form";
 import type { GameThought } from "../../types/reviews";
 
 type ThoughtDialogProps = {
@@ -76,46 +76,38 @@ function ThoughtForm({
   return (
     <>
       <div className="space-y-4 py-2">
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-            Topic / Title
-          </label>
-          <Input
+        <Form.Field>
+          <Form.Label>Topic / Title</Form.Label>
+          <Form.Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="e.g. Music during Act 2 combat, Boss fight phase 3..."
-            className="bg-surface/50 border-input text-sm"
             autoFocus
           />
-        </div>
+        </Form.Field>
 
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-            Playtime at Session (Hours)
-          </label>
-          <Input
+        <Form.Field>
+          <Form.Label>Playtime at Session (Hours)</Form.Label>
+          <Form.Input
             type="number"
             step="0.1"
             min="0"
             value={playtimeHours}
             onChange={(e) => setPlaytimeHours(e.target.value)}
             placeholder="e.g. 14.5"
-            className="bg-surface/50 border-input text-sm w-36"
+            className="w-36"
           />
-        </div>
+        </Form.Field>
 
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-            Thought / Notes
-          </label>
-          <textarea
+        <Form.Field>
+          <Form.Label>Thought / Notes</Form.Label>
+          <Form.Textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="What surprised, challenged, or delighted you in this session? (e.g. The music really surprised me with its dramatic choral swells during the bridge battle...)"
             rows={4}
-            className="w-full rounded-xl border border-input bg-surface/50 px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent-gold/50 transition-all resize-none"
           />
-        </div>
+        </Form.Field>
       </div>
 
       <DialogFooter className="gap-2">

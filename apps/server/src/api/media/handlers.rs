@@ -6,7 +6,12 @@ use axum::{
 };
 use itonda_domain::{
     launch::service::get_launch_media_details,
-    media::{models::Media, service as MediaService, types::MediaStatus},
+    media::{
+        models::{ExternalIdProvider, Media},
+        service as MediaService,
+        types::{MediaStatus, MediaType},
+    },
+    metadata::models::MediaSearchResult,
     protocol::ServerToAgentMessage,
 };
 use tracing::instrument;
@@ -17,7 +22,8 @@ use crate::{
         error::ApiError,
         extractor::AppJson,
         media::schemas::{
-            MediaImportPayload, MediaQueryParams, MediaRefreshPayload, MediaResponse,
+            CreateMediaPayload, MediaImportPayload, MediaQueryParams, MediaRefreshPayload,
+            MediaResponse, MediaSearchQueryParams,
         },
         response::{CommandResponse, CommandStatus, JobResponse, JobStatus},
     },
@@ -113,6 +119,7 @@ pub async fn refresh(
         .send(Job::Sync(SyncJob {
             id: job_id,
             storefront: request.storefront,
+            media_id: None,
             force: request.force,
         }))
         .await
@@ -233,4 +240,104 @@ pub async fn update_status(
     MediaService::update_status(&state.db, media_id, status_id).await?;
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+#[utoipa::path(
+    get,
+    path = "/media/search",
+    params(
+        MediaSearchQueryParams
+    ),
+    responses(
+        (
+            status = 200,
+            body = Vec<MediaSearchResult>
+        )
+    )
+)]
+#[instrument(skip(state))]
+pub async fn search_media(
+    State(state): State<AppState>,
+    Query(query): Query<MediaSearchQueryParams>,
+) -> Result<Json<Vec<MediaSearchResult>>, ApiError> {
+    if query.query.trim().len() < 2 {
+        return Ok(Json(Vec::new()));
+    }
+
+    let results = state
+        .metadata
+        .search(query.query.trim(), query.media_type)
+        .await
+        .map_err(|err| {
+            tracing::error!(?err, "Failed to search media catalog");
+            ApiError::InternalServer
+        })?;
+
+    Ok(Json(results))
+}
+
+#[utoipa::path(
+    post,
+    path = "/media",
+    request_body = CreateMediaPayload,
+    responses(
+        (
+            status = 201,
+            body = Media
+        )
+    )
+)]
+#[instrument(skip(state, request))]
+pub async fn create_media(
+    State(state): State<AppState>,
+    AppJson(request): AppJson<CreateMediaPayload>,
+) -> Result<impl IntoResponse, ApiError> {
+    if request.title.trim().is_empty() {
+        return Err(ApiError::Validation("title cannot be empty".to_string()));
+    }
+
+    let inserted = itonda_database::media::insert_media(
+        &state.db,
+        itonda_database::media::MediaInsert {
+            title: request.title.trim().to_string(),
+            media_type: request.media_type.as_str().to_string(),
+            status_id: MediaStatus::NotStarted.id(),
+            ..Default::default()
+        },
+    )
+    .await?;
+
+    if let Some(external_id) = request.external_id
+        && !external_id.trim().is_empty()
+    {
+        let provider = match request.media_type {
+            MediaType::Game => ExternalIdProvider::Igdb,
+            MediaType::Movie | MediaType::TvShow => ExternalIdProvider::Tmdb,
+        };
+
+        let _ = itonda_database::media::upsert_media_external_id(
+            &state.db,
+            itonda_database::media::MediaExternalIdUpsert {
+                media_id: inserted.id.clone(),
+                provider: provider.as_str().to_string(),
+                external_id: external_id.trim().to_string(),
+            },
+        )
+        .await;
+    }
+
+    let sync_job_id = Uuid::new_v4();
+    let _ = state
+        .jobs
+        .send(Job::Sync(SyncJob {
+            id: sync_job_id,
+            storefront: None,
+            media_id: Some(inserted.id.clone()),
+            force: false,
+        }))
+        .await;
+
+    let media = MediaService::get_media_by_id(&state.db, inserted.id).await?;
+
+    Ok((StatusCode::CREATED, Json(media)))
 }

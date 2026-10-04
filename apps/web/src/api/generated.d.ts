@@ -125,6 +125,22 @@ export interface paths {
         };
         get: operations["get_media"];
         put?: never;
+        post: operations["create_media"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/media/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["search_media"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -458,6 +474,23 @@ export interface components {
         };
         MediaImportResponse: {
             message: string;
+        };
+        CreateMediaPayload: {
+            external_id?: string | null;
+            media_type: components["schemas"]["MediaType"];
+            title: string;
+        };
+        MediaSearchQueryParams: {
+            query: string;
+            type: components["schemas"]["MediaType"];
+        };
+        MediaSearchResult: {
+            cover_url?: string | null;
+            external_id: string;
+            media_type: components["schemas"]["MediaType"];
+            summary?: string | null;
+            title: string;
+            year?: number | null;
         };
         MediaInstallation: {
             agent_id: string;
@@ -913,6 +946,51 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CombinedConfig"];
+                };
+            };
+        };
+    };
+    create_media: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMediaPayload"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Media"];
+                };
+            };
+        };
+    };
+    search_media: {
+        parameters: {
+            query: {
+                query: string;
+                type: components["schemas"]["MediaType"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaSearchResult"][];
                 };
             };
         };

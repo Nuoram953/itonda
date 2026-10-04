@@ -9,7 +9,11 @@ use super::handlers;
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/media", get(handlers::get_media))
+        .route(
+            "/media",
+            get(handlers::get_media).post(handlers::create_media),
+        )
+        .route("/media/search", get(handlers::search_media))
         .route("/media/{media_id}", get(handlers::get_media_by_id))
         .route(
             "/media/{media_id}/status/{status_id}",
