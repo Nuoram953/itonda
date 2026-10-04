@@ -8,6 +8,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Form } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
 import type { ReviewVerdict } from "../../types/reviews";
 import { VERDICT_OPTIONS } from "../../constants/reviews";
@@ -50,11 +51,9 @@ function VerdictForm({
   return (
     <>
       <div className="space-y-4 py-2">
-        <div className="space-y-2">
-          <label className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-            Select Verdict
-          </label>
-          <div className="flex gap-2.5">
+        <Form.Field>
+          <Form.Label>Select Verdict</Form.Label>
+          <Form.SelectionGroup className="flex gap-2.5">
             {VERDICT_OPTIONS.map((opt) => {
               const Icon = opt.icon;
               const isSelected = verdict === opt.id;
@@ -92,21 +91,18 @@ function VerdictForm({
                 </button>
               );
             })}
-          </div>
-        </div>
+          </Form.SelectionGroup>
+        </Form.Field>
 
-        <div className="space-y-2">
-          <label className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-            Review Summary (Optional)
-          </label>
-          <textarea
+        <Form.Field>
+          <Form.Label>Review Summary (Optional)</Form.Label>
+          <Form.Textarea
             value={summary}
             onChange={(e) => setSummary(e.target.value)}
             placeholder="What did you love or dislike about this game? Key highlights, story impressions, replayability..."
             rows={4}
-            className="w-full rounded-xl border border-input bg-surface/50 px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent-gold/50 transition-all resize-none"
           />
-        </div>
+        </Form.Field>
       </div>
 
       <DialogFooter className="gap-2">

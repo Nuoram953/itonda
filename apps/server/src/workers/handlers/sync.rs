@@ -55,7 +55,13 @@ impl SyncHandler {
             self.metadata.clone(),
         );
 
-        let _ = sync.sync_all(job.force).await;
+        if let Some(media_id) = job.media_id {
+            if let Err(err) = sync.sync_media(&media_id, job.force).await {
+                tracing::warn!("Failed to sync media {media_id}: {err}");
+            }
+        } else if let Err(err) = sync.sync_all(job.force).await {
+            tracing::warn!("Failed to sync library: {err}");
+        }
 
         self.events.publish_job(
             job.id,

@@ -1,8 +1,13 @@
 use crate::{
     assets::types::AssetType,
-    sources::the_movie_database::models::{
-        TmdbImageItem, TmdbImagesResponse, TmdbKeywordSearchResponse, TmdbMovieSearchResponse,
-        TmdbMultiSearchResponse, TmdbTvSearchResponse,
+    media::types::MediaType,
+    metadata::traits::MediaSearcher,
+    sources::the_movie_database::{
+        TheMovieDatabase,
+        models::{
+            TmdbImageItem, TmdbImagesResponse, TmdbKeywordSearchResponse, TmdbMovieResult,
+            TmdbMovieSearchResponse, TmdbMultiSearchResponse, TmdbTvResult, TmdbTvSearchResponse,
+        },
     },
 };
 
@@ -146,5 +151,67 @@ fn test_into_poster_assets() {
     assert_eq!(
         assets[0].url,
         "https://image.tmdb.org/t/p/original/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg"
+    );
+}
+
+#[test]
+fn test_tmdb_media_searcher_trait() {
+    let tmdb = TheMovieDatabase::new("api_key".into());
+    assert!(MediaSearcher::supports_media_type(&tmdb, MediaType::Movie));
+    assert!(MediaSearcher::supports_media_type(&tmdb, MediaType::TvShow));
+    assert!(!MediaSearcher::supports_media_type(&tmdb, MediaType::Game));
+}
+
+#[test]
+fn test_movie_into_search_result() {
+    let movie = TmdbMovieResult {
+        id: 550,
+        title: Some("Fight Club".into()),
+        original_title: None,
+        poster_path: Some("/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg".into()),
+        backdrop_path: None,
+        overview: Some("An insomniac office worker...".into()),
+        release_date: Some("1999-10-15".into()),
+    };
+
+    let result = movie.into_search_result();
+    assert_eq!(result.external_id, "550");
+    assert_eq!(result.title, "Fight Club");
+    assert_eq!(result.media_type, MediaType::Movie);
+    assert_eq!(result.year, Some(1999));
+    assert_eq!(
+        result.summary.as_deref(),
+        Some("An insomniac office worker...")
+    );
+    assert_eq!(
+        result.cover_url.as_deref(),
+        Some("https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg")
+    );
+}
+
+#[test]
+fn test_tv_into_search_result() {
+    let tv = TmdbTvResult {
+        id: 1396,
+        name: Some("Breaking Bad".into()),
+        original_name: None,
+        poster_path: Some("/ztEaY1wioNo1ZaDSuio9R8egi2b.jpg".into()),
+        backdrop_path: None,
+        overview: Some("A high school chemistry teacher...".into()),
+        first_air_date: Some("2008-01-20".into()),
+    };
+
+    let result = tv.into_search_result();
+    assert_eq!(result.external_id, "1396");
+    assert_eq!(result.title, "Breaking Bad");
+    assert_eq!(result.media_type, MediaType::TvShow);
+    assert_eq!(result.year, Some(2008));
+    assert_eq!(
+        result.summary.as_deref(),
+        Some("A high school chemistry teacher...")
+    );
+    assert_eq!(
+        result.cover_url.as_deref(),
+        Some("https://image.tmdb.org/t/p/w500/ztEaY1wioNo1ZaDSuio9R8egi2b.jpg")
     );
 }

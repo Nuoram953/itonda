@@ -7,8 +7,8 @@ use crate::{
     },
     metadata::{
         error::MetadataError,
-        models::{GeneralMetadata, MetadataProviderId, MetadataQuery},
-        traits::{GeneralInfoFetcher, MetadataFetcher},
+        models::{GeneralMetadata, MediaSearchResult, MetadataProviderId, MetadataQuery},
+        traits::{GeneralInfoFetcher, MediaSearcher, MetadataFetcher},
     },
     sources::the_internet_game_database::client::TheInternetGameDatabaseClient,
     storefronts::models::StorefrontId,
@@ -33,6 +33,10 @@ impl TheInternetGameDatabase {
 
     pub fn client(&self) -> &TheInternetGameDatabaseClient {
         &self.client
+    }
+
+    pub fn supports_media_type(&self, media_type: MediaType) -> bool {
+        matches!(media_type, MediaType::Game)
     }
 }
 
@@ -95,5 +99,25 @@ impl GeneralInfoFetcher for TheInternetGameDatabase {
         });
 
         Ok(Some(metadata))
+    }
+}
+
+#[async_trait]
+impl MediaSearcher for TheInternetGameDatabase {
+    fn supports_media_type(&self, media_type: MediaType) -> bool {
+        matches!(media_type, MediaType::Game)
+    }
+
+    async fn search(
+        &self,
+        query: &str,
+        media_type: MediaType,
+    ) -> Result<Vec<MediaSearchResult>, MetadataError> {
+        if !self.supports_media_type(media_type) {
+            return Ok(Vec::new());
+        }
+
+        let games = self.client.search_games(query, 10).await?;
+        Ok(games.into_iter().map(|g| g.into_search_result()).collect())
     }
 }

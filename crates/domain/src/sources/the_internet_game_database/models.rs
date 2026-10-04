@@ -1,8 +1,12 @@
 use std::time::Instant;
 
+use chrono::{DateTime, Datelike};
 use serde::Deserialize;
 
-use crate::metadata::models::{CommonMetadata, GameGeneralMetadata, GeneralMetadata};
+use crate::{
+    media::types::MediaType,
+    metadata::models::{CommonMetadata, GameGeneralMetadata, GeneralMetadata, MediaSearchResult},
+};
 
 #[derive(Debug, Deserialize)]
 pub struct TwitchTokenResponse {
@@ -54,8 +58,49 @@ pub struct Screenshot {
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct CoverItem {
+    pub url: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct GetSearchResponse {
     pub id: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct IgdbSearchGameResponse {
+    pub id: u64,
+    pub name: String,
+    pub first_release_date: Option<i64>,
+    pub summary: Option<String>,
+    pub cover: Option<CoverItem>,
+}
+
+impl IgdbSearchGameResponse {
+    pub fn into_search_result(self) -> MediaSearchResult {
+        let year = self
+            .first_release_date
+            .and_then(|ts| DateTime::from_timestamp(ts, 0))
+            .map(|dt| dt.year() as u32);
+
+        let cover_url = self.cover.and_then(|c| c.url).map(|url| {
+            let normalized = if url.starts_with("//") {
+                format!("https:{}", url)
+            } else {
+                url
+            };
+            normalized.replace("t_thumb", "t_cover_big")
+        });
+
+        MediaSearchResult {
+            external_id: self.id.to_string(),
+            title: self.name,
+            media_type: MediaType::Game,
+            year,
+            summary: self.summary,
+            cover_url,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]

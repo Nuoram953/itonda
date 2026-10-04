@@ -568,8 +568,6 @@ async fn test_metadata_step_skips_when_media_already_complete() {
 
     step.execute(&mut context).await.unwrap();
 
-    // Because the game's metadata is already complete according to policy,
-    // the external metadata API should NOT be called at all.
     assert_eq!(calls.load(Ordering::SeqCst), 0);
 }
 
@@ -588,7 +586,6 @@ async fn test_metadata_step_skips_already_searched_store_but_calls_new_store() {
     let events = EventBus::new();
     let assets = AssetRegistry::new();
 
-    // 1st sync: only Store A registered, finds nothing
     let mut metadata1 = MetadataRegistry::new();
     metadata1.register(Arc::new(CountingMetadataFetcher {
         provider_id: MetadataProviderId::TheInternetGameDatabase,
@@ -622,7 +619,6 @@ async fn test_metadata_step_skips_already_searched_store_but_calls_new_store() {
     assert_eq!(searches1[0].store_id, "igdb");
     assert_eq!(searches1[0].metadata_type, "general");
 
-    // 2nd sync: Store A and newly added Store B registered
     let mut metadata2 = MetadataRegistry::new();
     metadata2.register(Arc::new(CountingMetadataFetcher {
         provider_id: MetadataProviderId::TheInternetGameDatabase,
@@ -657,7 +653,6 @@ async fn test_metadata_step_skips_already_searched_store_but_calls_new_store() {
 
     service2.sync_all(false).await.unwrap();
 
-    // Store A was NOT called again (already tried), but Store B was called
     assert_eq!(calls_a.load(Ordering::SeqCst), 1);
     assert_eq!(calls_b.load(Ordering::SeqCst), 1);
 
@@ -686,7 +681,6 @@ async fn test_metadata_step_searches_different_metadata_type_independently() {
     .await
     .unwrap();
 
-    // Insert general search
     itonda_database::media::insert_media_metadata_search(
         &pool,
         itonda_database::media::MediaMetadataSearchInsert {
@@ -698,7 +692,6 @@ async fn test_metadata_step_searches_different_metadata_type_independently() {
     .await
     .unwrap();
 
-    // New metadata type (e.g. HowLongToBeat) can be searched and recorded independently
     itonda_database::media::insert_media_metadata_search(
         &pool,
         itonda_database::media::MediaMetadataSearchInsert {
@@ -734,4 +727,95 @@ async fn test_metadata_step_searches_different_metadata_type_independently() {
         hltb_search.idempotency_key.as_deref(),
         Some(format!("{}:howlongtobeat:how_long_to_beat", media.id).as_str())
     );
+}
+
+#[tokio::test]
+async fn test_sync_media_syncs_only_specified_item() {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    let pool = setup_db().await;
+    let calls = Arc::new(AtomicUsize::new(0));
+
+    let storefronts =
+        test_storefront_registry(Arc::new(FakeSteamStorefront::new(vec![discovered_game(
+            "Storefront Game",
+        )])));
+    let events = EventBus::new();
+    let assets = AssetRegistry::new();
+
+    let media1 = itonda_database::media::insert_media(
+        &pool,
+        itonda_database::media::MediaInsert {
+            title: "Hollow Knight".into(),
+            media_type: "game".into(),
+            status_id: 1,
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    let media2 = itonda_database::media::insert_media(
+        &pool,
+        itonda_database::media::MediaInsert {
+            title: "Other Game".into(),
+            media_type: "game".into(),
+            status_id: 1,
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    let mut metadata = MetadataRegistry::new();
+    metadata.register(Arc::new(CountingMetadataFetcher {
+        provider_id: MetadataProviderId::TheInternetGameDatabase,
+        name: "StoreA",
+        meta: Some(GeneralMetadata::Game(
+            crate::metadata::models::GameGeneralMetadata {
+                common: crate::metadata::models::CommonMetadata {
+                    description: Some("Epic storyline".into()),
+                    summary: Some("A bug adventure".into()),
+                    release_date: Some(1487894400),
+                    genres: vec!["Metroidvania".into()],
+                    tags: vec![],
+                    external_ids: vec![],
+                },
+                developers: vec![],
+                publishers: vec![],
+                platforms: vec![],
+                series: None,
+            },
+        )),
+        calls: calls.clone(),
+    }));
+
+    let service = LibrarySyncService::new(
+        uuid::Uuid::new_v4(),
+        pool.clone(),
+        events,
+        crate::agents::AgentManager::new(),
+        storefronts,
+        assets,
+        metadata,
+    );
+
+    service.sync_media(&media1.id, false).await.unwrap();
+
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+
+    let updated1 = itonda_database::media::find_media_by_id(&pool, media1.id)
+        .await
+        .unwrap();
+    assert_eq!(updated1.summary.as_deref(), Some("A bug adventure"));
+
+    let untouched2 = itonda_database::media::find_media_by_id(&pool, media2.id)
+        .await
+        .unwrap();
+    assert_eq!(untouched2.summary, None);
+
+    let storefront_game = find_media_by_title(&pool, "Storefront Game".into())
+        .await
+        .unwrap();
+    assert!(storefront_game.is_none());
 }

@@ -1,6 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{assets::types::AssetType, media::discovered::DiscoveredAsset};
+use crate::{
+    assets::types::AssetType,
+    media::{discovered::DiscoveredAsset, types::MediaType},
+    metadata::models::MediaSearchResult,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TmdbMediaType {
@@ -25,6 +29,30 @@ pub struct TmdbMovieResult {
     pub poster_path: Option<String>,
     pub backdrop_path: Option<String>,
     pub overview: Option<String>,
+    pub release_date: Option<String>,
+}
+
+impl TmdbMovieResult {
+    pub fn into_search_result(self) -> MediaSearchResult {
+        let year = self
+            .release_date
+            .as_deref()
+            .and_then(|d| d.get(..4))
+            .and_then(|y| y.parse::<u32>().ok());
+
+        let cover_url = self
+            .poster_path
+            .map(|p| format!("https://image.tmdb.org/t/p/w500{}", p));
+
+        MediaSearchResult {
+            external_id: self.id.to_string(),
+            title: self.title.or(self.original_title).unwrap_or_default(),
+            media_type: MediaType::Movie,
+            year,
+            summary: self.overview,
+            cover_url,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -44,6 +72,30 @@ pub struct TmdbTvResult {
     pub poster_path: Option<String>,
     pub backdrop_path: Option<String>,
     pub overview: Option<String>,
+    pub first_air_date: Option<String>,
+}
+
+impl TmdbTvResult {
+    pub fn into_search_result(self) -> MediaSearchResult {
+        let year = self
+            .first_air_date
+            .as_deref()
+            .and_then(|d| d.get(..4))
+            .and_then(|y| y.parse::<u32>().ok());
+
+        let cover_url = self
+            .poster_path
+            .map(|p| format!("https://image.tmdb.org/t/p/w500{}", p));
+
+        MediaSearchResult {
+            external_id: self.id.to_string(),
+            title: self.name.or(self.original_name).unwrap_or_default(),
+            media_type: MediaType::TvShow,
+            year,
+            summary: self.overview,
+            cover_url,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

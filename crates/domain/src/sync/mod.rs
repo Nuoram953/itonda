@@ -72,6 +72,31 @@ impl LibrarySyncService {
         Ok(())
     }
 
+    pub async fn sync_media(&self, media_id: &str, force: bool) -> Result<(), SyncError> {
+        info!("Starting sync process for media {}", media_id);
+
+        let media = crate::media::service::get_media_by_id(&self.db, media_id.to_string()).await?;
+        debug!("Syncing database media item {}", media.title);
+
+        let mut context = SyncContext::from_media(media.clone());
+        context.force = force;
+
+        if let Err(err) = self.pipeline.execute(&mut context).await {
+            tracing::warn!("Failed to sync database media '{}': {err}", media.title);
+            return Err(err);
+        }
+
+        self.events.publish_job(
+            self.job_id,
+            JobType::Sync,
+            JobEventType::Sync(SyncEvent::MediaSynced { media_id: media.id }),
+        );
+
+        info!("Sync completed for media {}", media_id);
+
+        Ok(())
+    }
+
     pub async fn sync_all(&self, force: bool) -> Result<(), SyncError> {
         info!("Starting sync process for all");
 

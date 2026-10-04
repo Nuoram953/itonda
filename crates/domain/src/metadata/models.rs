@@ -154,6 +154,16 @@ impl GeneralMetadata {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq)]
+pub struct MediaSearchResult {
+    pub external_id: String,
+    pub title: String,
+    pub media_type: MediaType,
+    pub year: Option<u32>,
+    pub summary: Option<String>,
+    pub cover_url: Option<String>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

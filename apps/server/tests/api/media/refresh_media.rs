@@ -29,5 +29,10 @@ async fn refresh_media_creates_job() {
 
     let job = app.jobs.recv().await.unwrap();
 
-    assert!(matches!(job, Job::Sync(_)));
+    match job {
+        Job::Sync(sync_job) => {
+            assert_eq!(sync_job.media_id, None);
+        }
+        _ => panic!("expected Job::Sync"),
+    }
 }
