@@ -8,6 +8,10 @@ use std::time::Instant;
 
 const MAX_ERROR_BODY_BYTES: usize = 64 * 1024;
 
+fn should_skip_success_logging(path: &str) -> bool {
+    path.starts_with("/assets/")
+}
+
 pub async fn api_logging_middleware(req: Request, next: Next) -> Response {
     let start = Instant::now();
     let method = req.method().clone();
@@ -52,12 +56,14 @@ pub async fn api_logging_middleware(req: Request, next: Next) -> Response {
 
         Response::from_parts(parts, Body::from(bytes))
     } else {
-        tracing::info!(
-            method = %method,
-            path = %path,
-            status = %status.as_u16(),
-            latency_ms = %latency_ms
-        );
+        if !should_skip_success_logging(uri.path()) {
+            tracing::info!(
+                method = %method,
+                path = %path,
+                status = %status.as_u16(),
+                latency_ms = %latency_ms
+            );
+        }
 
         response
     }
