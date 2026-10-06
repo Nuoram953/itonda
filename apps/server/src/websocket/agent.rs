@@ -119,7 +119,7 @@ async fn run_agent_loop(
     loop {
         tokio::select! {
             Some(command) = rx.recv() => {
-                debug!("Sending command: {:?}", command);
+                info!(?command, %agent_id, "Event published to agent");
 
                 let message = serde_json::to_string(&command).unwrap();
 
