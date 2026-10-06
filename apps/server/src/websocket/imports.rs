@@ -16,7 +16,7 @@ pub async fn websocket(ws: WebSocketUpgrade, State(state): State<AppState>) -> i
         let mut events = state.events.subscribe();
 
         while let Ok(event) = events.recv().await {
-            tracing::trace!(?event, "Sending websocket event");
+            tracing::info!(?event, "Event published to web");
 
             let json = match serde_json::to_string(&event) {
                 Ok(json) => json,
