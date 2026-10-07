@@ -132,22 +132,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/media/search": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["search_media"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/media/import": {
         parameters: {
             query?: never;
@@ -190,6 +174,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["refresh"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/media/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["search_media"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -324,6 +324,15 @@ export interface components {
         };
         /** @enum {string} */
         AssetType: "poster" | "backdrop" | "logo" | "banner" | "thumbnail" | "icon" | "trailer" | "screenshot";
+        AssetsSettings: {
+            /**
+             * @default {
+             *       "enabled": true
+             *     }
+             */
+            steam_grid_db: components["schemas"]["SteamGridDbAssetSettings"];
+            tmdb?: components["schemas"]["TheMovieDatabaseAssetSettings"];
+        };
         AuthActionResponse: {
             message: string;
             success: boolean;
@@ -370,6 +379,11 @@ export interface components {
             secrets: components["schemas"]["Secrets"];
             /**
              * @default {
+             *       "assets": {
+             *         "steam_grid_db": {
+             *           "enabled": true
+             *         }
+             *       },
              *       "metadata": {
              *         "steam": {
              *           "enabled": true,
@@ -388,6 +402,11 @@ export interface components {
         };
         /** @enum {string} */
         CommandStatus: "accepted" | "sent";
+        CreateMediaPayload: {
+            external_id?: string | null;
+            media_type: components["schemas"]["MediaType"];
+            title: string;
+        };
         CreateThoughtPayload: {
             category?: string | null;
             content: string;
@@ -475,23 +494,6 @@ export interface components {
         MediaImportResponse: {
             message: string;
         };
-        CreateMediaPayload: {
-            external_id?: string | null;
-            media_type: components["schemas"]["MediaType"];
-            title: string;
-        };
-        MediaSearchQueryParams: {
-            query: string;
-            type: components["schemas"]["MediaType"];
-        };
-        MediaSearchResult: {
-            cover_url?: string | null;
-            external_id: string;
-            media_type: components["schemas"]["MediaType"];
-            summary?: string | null;
-            title: string;
-            year?: number | null;
-        };
         MediaInstallation: {
             agent_id: string;
             external_id?: string | null;
@@ -530,6 +532,19 @@ export interface components {
             /** Format: int32 */
             total_pages: number;
         };
+        MediaSearchQueryParams: {
+            query: string;
+            type: components["schemas"]["MediaType"];
+        };
+        MediaSearchResult: {
+            cover_url?: string | null;
+            external_id: string;
+            media_type: components["schemas"]["MediaType"];
+            summary?: string | null;
+            title: string;
+            /** Format: int32 */
+            year?: number | null;
+        };
         /** @enum {string} */
         MediaSortField: "title" | "last_played_at";
         /** @enum {string} */
@@ -555,6 +570,7 @@ export interface components {
              *     }
              */
             steam: components["schemas"]["SteamSettings"];
+            igdb?: components["schemas"]["TheInternetGameDatabaseMetadataSettings"];
         };
         MetadataStoreSettings: {
             /**
@@ -584,6 +600,10 @@ export interface components {
             steam_grid_db?: null | components["schemas"]["PatchSteamGridDbSettings"];
             tmdb?: null | components["schemas"]["PatchTheMovieDatabaseSettings"];
         };
+        PatchAssetsSettings: {
+            steam_grid_db?: null | components["schemas"]["PatchSteamGridDbAssetSettings"];
+            tmdb?: null | components["schemas"]["PatchTheMovieDatabaseAssetSettings"];
+        };
         PatchConfigPayload: {
             /** @default null */
             app: null | components["schemas"]["PatchAppConfig"];
@@ -594,6 +614,7 @@ export interface components {
         };
         PatchMetadataSettings: {
             steam?: null | components["schemas"]["PatchSteamSettings"];
+            igdb?: null | components["schemas"]["PatchTheInternetGameDatabaseMetadataSettings"];
         };
         PatchMetadataStoreSettings: {
             igdb?: null | components["schemas"]["PatchTheInternetGameDatabaseSettings"];
@@ -608,7 +629,11 @@ export interface components {
             port?: number | null;
         };
         PatchSettings: {
+            assets?: null | components["schemas"]["PatchAssetsSettings"];
             metadata?: null | components["schemas"]["PatchMetadataSettings"];
+        };
+        PatchSteamGridDbAssetSettings: {
+            enabled?: boolean | null;
         };
         PatchSteamGridDbSettings: {
             api_key?: string | null;
@@ -678,6 +703,14 @@ export interface components {
         Settings: {
             /**
              * @default {
+             *       "steam_grid_db": {
+             *         "enabled": true
+             *       }
+             *     }
+             */
+            assets: components["schemas"]["AssetsSettings"];
+            /**
+             * @default {
              *       "steam": {
              *         "enabled": true,
              *         "fetch_achievements": true,
@@ -694,6 +727,10 @@ export interface components {
                 string,
                 string
             ][];
+        };
+        SteamGridDbAssetSettings: {
+            /** @default true */
+            enabled: boolean;
         };
         SteamGridDbSettings: {
             /** @default  */
@@ -743,9 +780,23 @@ export interface components {
             /** @default  */
             client_secret: string;
         };
+        TheInternetGameDatabaseMetadataSettings: {
+            /** @default true */
+            enabled: boolean;
+        };
+        PatchTheInternetGameDatabaseMetadataSettings: {
+            enabled?: boolean | null;
+        };
+        TheMovieDatabaseAssetSettings: {
+            /** @default true */
+            enabled: boolean;
+        };
         TheMovieDatabaseSettings: {
             /** @default  */
             api_key: string;
+        };
+        PatchTheMovieDatabaseAssetSettings: {
+            enabled?: boolean | null;
         };
         UpdateThoughtPayload: {
             category?: string | null;
@@ -950,51 +1001,6 @@ export interface operations {
             };
         };
     };
-    create_media: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateMediaPayload"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Media"];
-                };
-            };
-        };
-    };
-    search_media: {
-        parameters: {
-            query: {
-                query: string;
-                type: components["schemas"]["MediaType"];
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MediaSearchResult"][];
-                };
-            };
-        };
-    };
     get_media: {
         parameters: {
             query?: {
@@ -1019,6 +1025,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MediaResponse"];
+                };
+            };
+        };
+    };
+    create_media: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMediaPayload"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Media"];
                 };
             };
         };
@@ -1087,6 +1116,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobResponse"];
+                };
+            };
+        };
+    };
+    search_media: {
+        parameters: {
+            query: {
+                query: string;
+                type: components["schemas"]["MediaType"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaSearchResult"][];
                 };
             };
         };
