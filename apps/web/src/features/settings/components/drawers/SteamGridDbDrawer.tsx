@@ -1,0 +1,183 @@
+import { useEffect } from "react";
+import { Image } from "lucide-react";
+import { useForm } from "@tanstack/react-form";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { SettingRow } from "../cards/SettingRow";
+import { SecretInput } from "../forms/SecretInput";
+import { useConfig } from "../../api/get-config";
+import { usePatchConfig } from "../../api/patch-config";
+import { useAutoSave } from "../../hooks/use-auto-save";
+
+type SteamGridDbDrawerProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+};
+
+export function SteamGridDbDrawer({
+  open,
+  onOpenChange,
+}: SteamGridDbDrawerProps) {
+  const { data: config } = useConfig();
+  const patchMutation = usePatchConfig();
+
+  const sgdbSettings = config?.settings?.assets?.steam_grid_db;
+  const sgdbSecrets = config?.secrets?.asset_store?.steam_grid_db;
+
+  const form = useForm({
+    defaultValues: {
+      enabled: sgdbSettings?.enabled ?? true,
+      apiKey: sgdbSecrets?.api_key ?? "",
+    },
+    onSubmit: async ({ value }) => {
+      await patchMutation.mutateAsync({
+        settings: {
+          assets: {
+            steam_grid_db: {
+              enabled: value.enabled,
+            },
+          },
+        },
+        secrets: {
+          asset_store: {
+            steam_grid_db: {
+              api_key: value.apiKey.trim(),
+            },
+          },
+        },
+      });
+    },
+  });
+
+  const { triggerSave } = useAutoSave(() => {
+    form.handleSubmit();
+  });
+
+  useEffect(() => {
+    if (config && !form.state.isDirty) {
+      form.reset({
+        enabled: config.settings?.assets?.steam_grid_db?.enabled ?? true,
+        apiKey: config.secrets?.asset_store?.steam_grid_db?.api_key ?? "",
+      });
+    }
+  }, [config, form]);
+
+  return (
+    <Sheet
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          triggerSave(true);
+        }
+        onOpenChange(nextOpen);
+      }}
+    >
+      <SheetContent
+        side="right"
+        className="w-full data-[side=right]:sm:max-w-2xl data-[side=right]:lg:max-w-3xl bg-surface border-l border-white/10 p-0 flex flex-col justify-between overflow-hidden shadow-2xl"
+      >
+        <SheetHeader className="p-6 border-b border-white/10 bg-surface-raised/40">
+          <div className="flex items-center gap-3.5">
+            <div className="flex items-center justify-center size-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 shadow-inner">
+              <Image className="w-6 h-6" />
+            </div>
+            <div>
+              <SheetTitle className="text-lg font-bold text-foreground">
+                SteamGridDB Integration
+              </SheetTitle>
+              <SheetDescription className="text-xs text-text-muted mt-0.5">
+                Configure your SteamGridDB API key and asset downloading
+                preferences.
+              </SheetDescription>
+            </div>
+          </div>
+        </SheetHeader>
+
+        <form.Subscribe
+          selector={(state) => ({
+            enabled: state.values.enabled,
+          })}
+          children={({ enabled }) => (
+            <div className="flex-1 overflow-y-auto p-6 space-y-5">
+              <SettingRow
+                label="Enable SteamGridDB Integration"
+                description="Allow Itonda to retrieve posters, banners, and artwork from SteamGridDB."
+              >
+                <form.Field
+                  name="enabled"
+                  children={(field) => (
+                    <Switch
+                      checked={field.state.value}
+                      onCheckedChange={(checked) => {
+                        field.handleChange(checked);
+                        triggerSave(true);
+                      }}
+                      aria-label="Toggle SteamGridDB Enabled"
+                    />
+                  )}
+                />
+              </SettingRow>
+
+              <Separator className="bg-white/5" />
+
+              <div className="space-y-3 pt-2">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-text-muted/70">
+                  Authentication & Credentials
+                </h4>
+
+                <form.Field
+                  name="apiKey"
+                  children={(field) => (
+                    <SettingRow
+                      label="SteamGridDB API Key"
+                      description="Personal API key used to authenticate requests to SteamGridDB."
+                      layout="vertical"
+                      htmlFor="drawer-steamgriddb-api-key"
+                    >
+                      <SecretInput
+                        id="drawer-steamgriddb-api-key"
+                        value={field.state.value}
+                        onChange={(apiKey) => {
+                          field.handleChange(apiKey);
+                          triggerSave(false);
+                        }}
+                        placeholder="e.g. 1a2b3c4d5e..."
+                        portalUrl="https://www.steamgriddb.com/profile/preferences/api"
+                        portalLabel="Get SteamGridDB API key"
+                        disabled={!enabled}
+                      />
+                    </SettingRow>
+                  )}
+                />
+              </div>
+            </div>
+          )}
+        />
+
+        <SheetFooter className="p-4 border-t border-white/10 bg-surface-raised/40 flex items-center justify-end gap-3">
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            onClick={() => {
+              triggerSave(true);
+              onOpenChange(false);
+            }}
+            className="text-xs px-4 cursor-pointer"
+          >
+            Done
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
+}

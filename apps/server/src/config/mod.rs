@@ -10,8 +10,9 @@ pub use secrets::{
     TheMovieDatabaseSettings,
 };
 pub use settings::{
-    MetadataSettings, PatchMetadataSettings, PatchSettings, PatchSteamSettings, Settings,
-    SteamSettings,
+    AssetsSettings, MetadataSettings, PatchAssetsSettings, PatchMetadataSettings, PatchSettings,
+    PatchSteamGridDbSettings as PatchSteamGridDbAssetSettings, PatchSteamSettings, Settings,
+    SteamGridDbSettings as SteamGridDbAssetSettings, SteamSettings,
 };
 
 use serde::{Deserialize, Serialize};

@@ -4,39 +4,13 @@ import {
   screen,
   fireEvent,
   waitFor,
-  createCombinedConfig,
+  createSteamConfig,
 } from "@/test/test-utils";
 import { SteamDrawer } from "../SteamDrawer";
 
-const mockConfigData = createCombinedConfig({
-  secrets: {
-    storefronts: {
-      steam: {
-        api_key: "test-steam-api-key",
-        steam_id: "76561198000000000",
-        account_name: null,
-        avatar_url: null,
-      },
-    },
-    asset_store: {
-      steam_grid_db: {
-        api_key: "",
-      },
-      tmdb: {
-        api_key: "",
-      },
-    },
-    metadata_store: {
-      igdb: {
-        client_id: "",
-        client_secret: "",
-      },
-    },
-  },
-});
+const mockConfigData = createSteamConfig();
 
 const mockMutateAsync = vi.fn().mockResolvedValue(mockConfigData);
-
 
 vi.mock("../../../api/get-config", () => ({
   useConfig: () => ({

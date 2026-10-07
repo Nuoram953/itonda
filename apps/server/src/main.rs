@@ -48,9 +48,9 @@ async fn main() -> anyhow::Result<()> {
 
     let storefronts = init_storefronts(&secrets).await?;
 
-    let asset_store = init_asset_store(&secrets).await?;
+    let asset_store = init_asset_store(&settings, &secrets).await?;
 
-    let metadata = init_metadata(&secrets).await?;
+    let metadata = init_metadata(&settings, &secrets).await?;
 
     let agent_manager = AgentManager::new();
 
@@ -194,32 +194,47 @@ async fn init_storefronts(secrets: &SecretsManager) -> anyhow::Result<Storefront
     Ok(registry)
 }
 
-async fn init_asset_store(secrets: &SecretsManager) -> anyhow::Result<AssetRegistry> {
+async fn init_asset_store(
+    settings: &SettingsManager,
+    secrets: &SecretsManager,
+) -> anyhow::Result<AssetRegistry> {
+    let settings = settings.get().await;
     let secrets = secrets.get().await;
 
     let mut registry = AssetRegistry::new();
 
-    registry.register_poster(Arc::new(SteamGridDb::new(
-        secrets.asset_store.steam_grid_db.api_key.clone(),
-    )));
+    if settings.assets.steam_grid_db.enabled
+        && !secrets.asset_store.steam_grid_db.api_key.is_empty()
+    {
+        registry.register_poster(Arc::new(SteamGridDb::new(
+            secrets.asset_store.steam_grid_db.api_key.clone(),
+        )));
 
-    registry.register_banner(Arc::new(SteamGridDb::new(
-        secrets.asset_store.steam_grid_db.api_key.clone(),
-    )));
+        registry.register_banner(Arc::new(SteamGridDb::new(
+            secrets.asset_store.steam_grid_db.api_key.clone(),
+        )));
+    }
 
-    registry.register_poster(Arc::new(TheMovieDatabase::new(
-        secrets.asset_store.tmdb.api_key,
-    )));
+    if settings.assets.tmdb.enabled && !secrets.asset_store.tmdb.api_key.is_empty() {
+        registry.register_poster(Arc::new(TheMovieDatabase::new(
+            secrets.asset_store.tmdb.api_key,
+        )));
+    }
 
     Ok(registry)
 }
 
-async fn init_metadata(secrets: &SecretsManager) -> anyhow::Result<MetadataRegistry> {
+async fn init_metadata(
+    settings: &SettingsManager,
+    secrets: &SecretsManager,
+) -> anyhow::Result<MetadataRegistry> {
+    let settings = settings.get().await;
     let secrets = secrets.get().await;
 
     let mut registry = MetadataRegistry::new();
 
-    if !secrets.metadata_store.igdb.client_id.is_empty()
+    if settings.metadata.igdb.enabled
+        && !secrets.metadata_store.igdb.client_id.is_empty()
         && !secrets.metadata_store.igdb.client_secret.is_empty()
     {
         let igdb = Arc::new(TheInternetGameDatabase::new(
@@ -230,7 +245,7 @@ async fn init_metadata(secrets: &SecretsManager) -> anyhow::Result<MetadataRegis
         registry.register_searcher(igdb);
     }
 
-    if !secrets.asset_store.tmdb.api_key.is_empty() {
+    if settings.assets.tmdb.enabled && !secrets.asset_store.tmdb.api_key.is_empty() {
         let tmdb = Arc::new(TheMovieDatabase::new(
             secrets.asset_store.tmdb.api_key.clone(),
         ));

@@ -173,3 +173,88 @@ async fn patch_config_updates_multiple_sections_simultaneously() {
     assert_eq!(body.app.server.port, 9000);
     assert_eq!(body.secrets.storefronts.steam.steam_id, "42");
 }
+
+#[tokio::test]
+async fn patch_config_updates_assets_settings() {
+    let app = test_app().await;
+
+    let payload = serde_json::json!({
+        "settings": {
+            "assets": {
+                "steam_grid_db": {
+                    "enabled": false
+                }
+            }
+        }
+    });
+
+    let response = app
+        .router
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/config")
+                .method("PATCH")
+                .header("Content-Type", "application/json")
+                .body(Body::from(serde_json::to_vec(&payload).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body: CombinedConfig = json(response).await;
+    assert!(!body.settings.assets.steam_grid_db.enabled);
+    assert!(body.settings.metadata.steam.enabled);
+}
+
+#[tokio::test]
+async fn patch_config_updates_igdb_settings_and_secrets() {
+    let app = test_app().await;
+
+    let payload = serde_json::json!({
+        "settings": {
+            "metadata": {
+                "igdb": {
+                    "enabled": false
+                }
+            }
+        },
+        "secrets": {
+            "metadata_store": {
+                "igdb": {
+                    "client_id": "twitch-client-id",
+                    "client_secret": "twitch-client-secret"
+                }
+            }
+        }
+    });
+
+    let response = app
+        .router
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/config")
+                .method("PATCH")
+                .header("Content-Type", "application/json")
+                .body(Body::from(serde_json::to_vec(&payload).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body: CombinedConfig = json(response).await;
+    assert!(!body.settings.metadata.igdb.enabled);
+    assert_eq!(
+        body.secrets.metadata_store.igdb.client_id,
+        "twitch-client-id"
+    );
+    assert_eq!(
+        body.secrets.metadata_store.igdb.client_secret,
+        "twitch-client-secret"
+    );
+}

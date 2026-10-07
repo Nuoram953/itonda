@@ -1,124 +1,74 @@
-import { useEffect, useState } from "react";
-import { Gamepad2 } from "lucide-react";
+import { useState } from "react";
 import { Workspace } from "@/components/workspace/Workspace";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LoadingState } from "@/components/feedback/LoadingState";
-import { IntegrationCard } from "./components/cards/IntegrationCard";
-import { SteamDrawer } from "./components/drawers/SteamDrawer";
-import type { SettingsCategoryFilter } from "./types/settings";
+import { SettingsSection } from "./components/sections/SettingsSection";
+import { IntegrationRow } from "./components/rows/IntegrationRow";
 import { useConfig } from "./api/get-config";
 import { usePatchConfig } from "./api/patch-config";
-import { useNotification } from "@/hooks/use-notification";
-import { useQueryClient } from "@tanstack/react-query";
-
-const SETTINGS_CATEGORIES: Array<{
-  id: SettingsCategoryFilter;
-  label: string;
-}> = [
-  { id: "storefronts", label: "Storefronts" },
-  { id: "assets", label: "Assets" },
-  { id: "metadata", label: "Metadata" },
-  { id: "preferences", label: "Preferences" },
-];
+import { useSettingsUrlFeedback } from "./hooks/use-settings-url-feedback";
+import {
+  SETTINGS_SECTIONS,
+  getInitialDrawer,
+  type DrawerId,
+} from "./constants/integrations";
 
 export const Settings = () => {
-  const { notify } = useNotification();
-  const queryClient = useQueryClient();
-  const [filter, setFilter] = useState<SettingsCategoryFilter>("storefronts");
-  const [steamDrawerOpen, setSteamDrawerOpen] = useState(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    return searchParams.get("drawer") === "steam";
-  });
+  useSettingsUrlFeedback();
+  const [activeDrawer, setActiveDrawer] = useState<DrawerId | null>(getInitialDrawer);
 
   const { data: config, isPending } = useConfig();
   const patchMutation = usePatchConfig();
-
-  useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const authStatus = searchParams.get("auth");
-    const drawer = searchParams.get("drawer");
-    const errorMessage = searchParams.get("error");
-
-    if (authStatus === "success") {
-      notify.success({
-        title: "Steam Connected",
-        description: "Your Steam account was linked successfully.",
-      });
-      queryClient.invalidateQueries({ queryKey: ["config"] });
-      queryClient.invalidateQueries({ queryKey: ["auth", "steam", "status"] });
-    } else if (authStatus === "error") {
-      notify.error({
-        title: "Steam Authentication Failed",
-        description:
-          errorMessage || "Could not complete Steam login. Please try again.",
-      });
-    }
-
-    if (authStatus || drawer) {
-      const cleanUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, cleanUrl);
-    }
-  }, [notify, queryClient]);
 
   if (isPending || !config) {
     return <LoadingState message="Loading settings..." />;
   }
 
-  const showStorefronts = filter === "all" || filter === "storefronts";
-  const steamEnabled = config.settings?.metadata?.steam?.enabled ?? true;
-
   return (
     <Workspace>
-      <Workspace.Header title="Settings & Integrations" showBackBtn />
+      <Workspace.Header title="Settings" showBackBtn />
 
-      <Workspace.Content className="p-6 max-w-7xl mx-auto w-full space-y-6">
-        <Tabs
-          value={filter}
-          onValueChange={(val) => setFilter(val as SettingsCategoryFilter)}
-          className="w-full space-y-6"
-        >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
-            <TabsList className="bg-surface/60 border border-white/5 p-1 rounded-xl">
-              {SETTINGS_CATEGORIES.map((cat) => (
-                <TabsTrigger
-                  key={cat.id}
-                  value={cat.id}
-                  className="rounded-lg px-3 py-1.5 text-xs font-medium cursor-pointer"
-                >
-                  {cat.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </div>
+      <Workspace.Content className="p-6 max-w-5xl mx-auto w-full space-y-10 pb-16 animate-in fade-in duration-300">
+        {SETTINGS_SECTIONS.map((section) => (
+          <SettingsSection
+            key={section.id}
+            title={section.title}
+            description={section.description}
+          >
+            {section.integrations.map((integration) => {
+              const enabled = integration.isEnabled(config);
+              const issueText = enabled
+                ? integration.getIssue(config)
+                : undefined;
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {showStorefronts && (
-              <IntegrationCard
-                title="Steam"
-                category="Storefront"
-                description="Automatically import owned games, playtime, achievements, and assets from your Steam account."
-                icon={<Gamepad2 className="w-6 h-6" />}
-                iconBgClass="bg-primary/10 text-primary border-primary/20"
-                enabled={steamEnabled}
-                onToggleEnabled={(enabled) => {
-                  patchMutation.mutate({
-                    settings: {
-                      metadata: {
-                        steam: { enabled },
-                      },
-                    },
-                  });
-                }}
-                onManage={() => setSteamDrawerOpen(true)}
-              />
-            )}
-          </div>
+              return (
+                <IntegrationRow
+                  key={integration.id}
+                  title={integration.title}
+                  mediaTypes={integration.mediaTypes}
+                  description={integration.description}
+                  icon={integration.icon}
+                  iconBgClass={integration.iconBgClass}
+                  enabled={enabled}
+                  issueText={issueText}
+                  onToggleEnabled={(checked) => {
+                    patchMutation.mutate(integration.getTogglePayload(checked));
+                  }}
+                  onOpenSheet={() => setActiveDrawer(integration.id)}
+                />
+              );
+            })}
+          </SettingsSection>
+        ))}
 
-          <SteamDrawer
-            open={steamDrawerOpen}
-            onOpenChange={setSteamDrawerOpen}
-          />
-        </Tabs>
+        {SETTINGS_SECTIONS.flatMap((s) => s.integrations).map(
+          ({ id, drawer: Drawer }) => (
+            <Drawer
+              key={id}
+              open={activeDrawer === id}
+              onOpenChange={(open) => setActiveDrawer(open ? id : null)}
+            />
+          ),
+        )}
       </Workspace.Content>
     </Workspace>
   );

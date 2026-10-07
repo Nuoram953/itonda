@@ -28,6 +28,7 @@ async fn get_config_returns_combined_config() {
     assert!(body.settings.metadata.steam.enabled);
     assert!(body.settings.metadata.steam.fetch_achievements);
     assert!(body.settings.metadata.steam.fetch_playtime);
+    assert!(body.settings.assets.steam_grid_db.enabled);
 
     assert_eq!(body.app.server.host, "0.0.0.0");
     assert_eq!(body.app.server.port, 3005);

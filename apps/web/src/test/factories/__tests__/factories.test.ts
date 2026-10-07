@@ -10,6 +10,10 @@ import {
   createAgent,
   createActiveMediaSession,
   createCombinedConfig,
+  createSteamConfig,
+  createSteamGridDbConfig,
+  createTmdbConfig,
+  createIgdbConfig,
 } from "../index";
 
 describe("Test Factories", () => {
@@ -250,18 +254,59 @@ describe("Test Factories", () => {
       );
     });
 
-    it("allows overriding config properties", () => {
+    it("allows deeply overriding nested config properties without losing defaults", () => {
       const config = createCombinedConfig({
-        app: {
-          server: {
-            host: "127.0.0.1",
-            port: 8080,
+        secrets: {
+          storefronts: {
+            steam: {
+              api_key: "custom-steam-key",
+            },
           },
         },
       });
-      expect(config.app.server.host).toBe("127.0.0.1");
-      expect(config.app.server.port).toBe(8080);
+      expect(config.secrets.storefronts.steam.api_key).toBe("custom-steam-key");
+      expect(config.secrets.storefronts.steam.steam_id).toBe("76561198000000000");
+      expect(config.secrets.asset_store.steam_grid_db.api_key).toBe("sgdb-api-key-123");
       expect(config.settings.metadata.steam.enabled).toBe(true);
+      expect(config.app.server.host).toBe("0.0.0.0");
+    });
+  });
+
+  describe("drawer config preset factories", () => {
+    it("creates Steam config with test defaults and allows overrides", () => {
+      const config = createSteamConfig();
+      expect(config.secrets.storefronts.steam.api_key).toBe("test-steam-api-key");
+      expect(config.secrets.storefronts.steam.steam_id).toBe("76561198000000000");
+
+      const overridden = createSteamConfig({
+        secrets: {
+          storefronts: {
+            steam: {
+              api_key: "another-key",
+            },
+          },
+        },
+      });
+      expect(overridden.secrets.storefronts.steam.api_key).toBe("another-key");
+    });
+
+    it("creates SteamGridDB config with test defaults", () => {
+      const config = createSteamGridDbConfig();
+      expect(config.secrets.asset_store.steam_grid_db.api_key).toBe("test-sgdb-api-key");
+      expect(config.settings.assets.steam_grid_db.enabled).toBe(true);
+    });
+
+    it("creates TMDB config with test defaults", () => {
+      const config = createTmdbConfig();
+      expect(config.secrets.asset_store.tmdb.api_key).toBe("test-tmdb-api-key");
+      expect(config.settings.assets.tmdb?.enabled).toBe(true);
+    });
+
+    it("creates IGDB config with test defaults", () => {
+      const config = createIgdbConfig();
+      expect(config.secrets.metadata_store.igdb.client_id).toBe("test-twitch-client-id");
+      expect(config.secrets.metadata_store.igdb.client_secret).toBe("test-twitch-client-secret");
+      expect(config.settings.metadata.igdb?.enabled).toBe(true);
     });
   });
 });
