@@ -32,7 +32,12 @@ export function GameLengthSection({
 }: GameLengthSectionProps) {
   const hltb =
     customHltbData !== undefined
-      ? (customHltbData ? getMediaHltbData({ ...media, ...({ how_long_to_beat: customHltbData } as unknown as object) }) : null)
+      ? customHltbData
+        ? getMediaHltbData({
+            ...media,
+            ...({ how_long_to_beat: customHltbData } as unknown as object),
+          })
+        : null
       : getMediaHltbData(media);
 
   if (!hltb) return null;
@@ -97,36 +102,14 @@ export function GameLengthSection({
       : 0;
 
   return (
-    <section
-      data-testid="game-length-section"
-      className="rounded-2xl bg-surface/70 border border-white/10 p-6 sm:p-8 space-y-6"
-    >
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-4">
-        <div>
-          <h3 className="text-xl font-bold text-foreground tracking-tight flex items-center gap-2.5">
-            <span>Game Length</span>
-            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-surface-raised border border-white/10 text-text-muted">
-              HowLongToBeat
-            </span>
-          </h3>
-          <p className="text-xs sm:text-sm text-text-muted mt-1">
-            Average completion estimates from the community.
-          </p>
-        </div>
-
-        {playtimeMinutes > 0 && (
-          <div className="flex items-center gap-2 self-start sm:self-auto px-3 py-1.5 rounded-xl bg-surface-raised/80 border border-white/10 text-xs">
-            <span className="text-text-muted">Your playtime:</span>
-            <span className="font-bold text-foreground">
-              {formatPlaytime(playtimeMinutes, { mode: "compact" })}
-            </span>
-            {progressPercent > 0 && (
-              <span className="text-primary font-semibold">
-                ({progressPercent}% of story)
-              </span>
-            )}
-          </div>
-        )}
+    <section data-testid="game-length-section">
+      <div className="border-b border-white/10 pb-4">
+        <h2 className="text-2xl font-extrabold text-foreground tracking-tight">
+          Game Length
+        </h2>
+        <p className="text-sm text-text-muted mt-1">
+          Average completion estimates from the community.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -136,14 +119,11 @@ export function GameLengthSection({
             <div
               key={metric.id}
               className={cn(
-                "group relative rounded-xl bg-background/50 border border-white/5 p-4 sm:p-5 flex flex-col justify-between transition-all duration-200",
+                "group relative rounded-xl bg-background/50 p-4 sm:p-5 flex flex-col justify-between transition-all duration-200",
                 metric.accent.border,
               )}
             >
-              <div className="flex items-center justify-between gap-2 mb-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-text-muted">
-                  {metric.label}
-                </span>
+              <div className="flex items-center gap-2 mb-3">
                 <div
                   className={cn(
                     "p-1.5 rounded-lg border shrink-0",
@@ -152,6 +132,9 @@ export function GameLengthSection({
                 >
                   <Icon className="w-3.5 h-3.5" />
                 </div>
+                <span className="text-xs font-bold uppercase tracking-wider text-text-muted">
+                  {metric.label}
+                </span>
               </div>
 
               <div className="space-y-1">

@@ -20,9 +20,8 @@ export function OverviewTab({ media, onNavigateTab }: OverviewTabProps) {
         onViewGallery={() => onNavigateTab("gallery")}
       />
 
-      <GameLengthSection media={media} />
-
       <AboutSection media={media} />
+      <GameLengthSection media={media} />
     </div>
   );
 }
