@@ -331,7 +331,12 @@ export interface components {
              *     }
              */
             steam_grid_db: components["schemas"]["SteamGridDbAssetSettings"];
-            tmdb?: components["schemas"]["TheMovieDatabaseAssetSettings"];
+            /**
+             * @default {
+             *       "enabled": true
+             *     }
+             */
+            tmdb: components["schemas"]["TheMovieDatabaseAssetSettings"];
         };
         AuthActionResponse: {
             message: string;
@@ -382,9 +387,15 @@ export interface components {
              *       "assets": {
              *         "steam_grid_db": {
              *           "enabled": true
+             *         },
+             *         "tmdb": {
+             *           "enabled": true
              *         }
              *       },
              *       "metadata": {
+             *         "igdb": {
+             *           "enabled": true
+             *         },
              *         "steam": {
              *           "enabled": true,
              *           "fetch_achievements": true,
@@ -564,13 +575,18 @@ export interface components {
         MetadataSettings: {
             /**
              * @default {
+             *       "enabled": true
+             *     }
+             */
+            igdb: components["schemas"]["TheInternetGameDatabaseMetadataSettings"];
+            /**
+             * @default {
              *       "enabled": true,
              *       "fetch_achievements": true,
              *       "fetch_playtime": true
              *     }
              */
             steam: components["schemas"]["SteamSettings"];
-            igdb?: components["schemas"]["TheInternetGameDatabaseMetadataSettings"];
         };
         MetadataStoreSettings: {
             /**
@@ -613,8 +629,8 @@ export interface components {
             settings: null | components["schemas"]["PatchSettings"];
         };
         PatchMetadataSettings: {
-            steam?: null | components["schemas"]["PatchSteamSettings"];
             igdb?: null | components["schemas"]["PatchTheInternetGameDatabaseMetadataSettings"];
+            steam?: null | components["schemas"]["PatchSteamSettings"];
         };
         PatchMetadataStoreSettings: {
             igdb?: null | components["schemas"]["PatchTheInternetGameDatabaseSettings"];
@@ -652,9 +668,15 @@ export interface components {
         PatchStorefrontsSettings: {
             steam?: null | components["schemas"]["PatchSteamSecrets"];
         };
+        PatchTheInternetGameDatabaseMetadataSettings: {
+            enabled?: boolean | null;
+        };
         PatchTheInternetGameDatabaseSettings: {
             client_id?: string | null;
             client_secret?: string | null;
+        };
+        PatchTheMovieDatabaseAssetSettings: {
+            enabled?: boolean | null;
         };
         PatchTheMovieDatabaseSettings: {
             api_key?: string | null;
@@ -705,12 +727,18 @@ export interface components {
              * @default {
              *       "steam_grid_db": {
              *         "enabled": true
+             *       },
+             *       "tmdb": {
+             *         "enabled": true
              *       }
              *     }
              */
             assets: components["schemas"]["AssetsSettings"];
             /**
              * @default {
+             *       "igdb": {
+             *         "enabled": true
+             *       },
              *       "steam": {
              *         "enabled": true,
              *         "fetch_achievements": true,
@@ -774,18 +802,15 @@ export interface components {
              */
             steam: components["schemas"]["SteamSecrets"];
         };
+        TheInternetGameDatabaseMetadataSettings: {
+            /** @default true */
+            enabled: boolean;
+        };
         TheInternetGameDatabaseSettings: {
             /** @default  */
             client_id: string;
             /** @default  */
             client_secret: string;
-        };
-        TheInternetGameDatabaseMetadataSettings: {
-            /** @default true */
-            enabled: boolean;
-        };
-        PatchTheInternetGameDatabaseMetadataSettings: {
-            enabled?: boolean | null;
         };
         TheMovieDatabaseAssetSettings: {
             /** @default true */
@@ -794,9 +819,6 @@ export interface components {
         TheMovieDatabaseSettings: {
             /** @default  */
             api_key: string;
-        };
-        PatchTheMovieDatabaseAssetSettings: {
-            enabled?: boolean | null;
         };
         UpdateThoughtPayload: {
             category?: string | null;
