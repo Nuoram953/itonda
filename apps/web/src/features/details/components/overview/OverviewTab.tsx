@@ -1,8 +1,8 @@
 import type { components } from "@/api/generated.d";
 import type { TabId } from "../navigation/DetailsTabs";
-import { WhatIsThisGameSection } from "./WhatIsThisGameSection";
-import { HowDoesItPlaySection } from "./HowDoesItPlaySection";
-import { SeeItInActionSection } from "./SeeItInActionSection";
+import { FeaturedMedia } from "./FeaturedMedia";
+import { ScreenshotCarousel } from "./ScreenshotCarousel";
+import { AboutSection } from "./AboutSection";
 
 type OverviewTabProps = {
   media: components["schemas"]["Media"];
@@ -11,10 +11,15 @@ type OverviewTabProps = {
 
 export function OverviewTab({ media, onNavigateTab }: OverviewTabProps) {
   return (
-    <div className="space-y-6 sm:space-y-8 pb-16 animate-in fade-in duration-500">
-      <WhatIsThisGameSection media={media} />
-      <HowDoesItPlaySection media={media} />
-      <SeeItInActionSection media={media} onNavigateTab={onNavigateTab} />
+    <div className="space-y-8 animate-in fade-in duration-300 pb-16">
+      <FeaturedMedia media={media} />
+
+      <ScreenshotCarousel
+        media={media}
+        onViewGallery={() => onNavigateTab("gallery")}
+      />
+
+      <AboutSection media={media} />
     </div>
   );
 }
