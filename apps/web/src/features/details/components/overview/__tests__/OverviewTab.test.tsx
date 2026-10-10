@@ -13,6 +13,7 @@ describe("OverviewTab Component", () => {
   const mockMedia = createMedia({
     id: "media-1",
     title: "Kingdom Come: Deliverance",
+    media_type: "game",
     status: "in_progress",
     summary: "A story-driven open-world RPG set in medieval Bohemia.",
     description: "Detailed description of the game mechanics and world.",
@@ -32,7 +33,7 @@ describe("OverviewTab Component", () => {
     }),
   });
 
-  it("renders featured media, screenshot carousel, and about sections without top title", () => {
+  it("renders featured media, screenshot carousel, game length, and about sections without top title", () => {
     render(<OverviewTab media={mockMedia} onNavigateTab={vi.fn()} />);
 
     // Top title should be removed
@@ -52,6 +53,13 @@ describe("OverviewTab Component", () => {
     // Screenshot carousel
     expect(screen.getByText("Screenshots")).toBeDefined();
     expect(screen.getByTestId("screenshot-track")).toBeDefined();
+
+    // Game length (HowLongToBeat) section
+    expect(screen.getByText("Game Length")).toBeDefined();
+    expect(screen.getByText("HowLongToBeat")).toBeDefined();
+    expect(screen.getByText("Main Story")).toBeDefined();
+    expect(screen.getByText("Main + Extra")).toBeDefined();
+    expect(screen.getByText("Completionist")).toBeDefined();
 
     // About section & Genres & Tags
     expect(screen.getByText("About This Game")).toBeDefined();
@@ -92,7 +100,7 @@ describe("OverviewTab Component", () => {
   it("hides screenshots carousel and genres card when empty, and shows empty state for media", () => {
     render(
       <OverviewTab
-        media={createMedia({ title: "Empty Game" })}
+        media={createMedia({ title: "Empty Movie", media_type: "movie" })}
         onNavigateTab={vi.fn()}
       />,
     );
@@ -102,6 +110,7 @@ describe("OverviewTab Component", () => {
     ).toBeDefined();
     expect(screen.queryByText("Screenshots")).toBeNull();
     expect(screen.queryByText("Genres & Tags")).toBeNull();
+    expect(screen.queryByText("Game Length")).toBeNull();
     expect(
       screen.getByText("No description available for this game yet."),
     ).toBeDefined();

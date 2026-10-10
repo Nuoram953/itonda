@@ -2,6 +2,7 @@ import type { components } from "@/api/generated.d";
 import type { TabId } from "../navigation/DetailsTabs";
 import { FeaturedMedia } from "./FeaturedMedia";
 import { ScreenshotCarousel } from "./ScreenshotCarousel";
+import { GameLengthSection } from "./GameLengthSection";
 import { AboutSection } from "./AboutSection";
 
 type OverviewTabProps = {
@@ -18,6 +19,8 @@ export function OverviewTab({ media, onNavigateTab }: OverviewTabProps) {
         media={media}
         onViewGallery={() => onNavigateTab("gallery")}
       />
+
+      <GameLengthSection media={media} />
 
       <AboutSection media={media} />
     </div>
