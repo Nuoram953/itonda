@@ -129,13 +129,27 @@ describe("GlobalSearch Component", () => {
     });
   });
 
-  it("renders search input with placeholder and ⌘K shortcut badge", () => {
+  it("renders search trigger with placeholder text and ⌘K shortcut badge", () => {
     render(<GlobalSearch />);
+
+    expect(
+      screen.getByText("Search media, games, movies..."),
+    ).toBeDefined();
+    expect(screen.getByText("⌘K")).toBeDefined();
+  });
+
+  it("opens dialog when clicking the trigger button", () => {
+    render(<GlobalSearch />);
+
+    expect(
+      screen.queryByPlaceholderText("Search media, games, movies..."),
+    ).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /search media/i }));
 
     expect(
       screen.getByPlaceholderText("Search media, games, movies..."),
     ).toBeDefined();
-    expect(screen.getByText("⌘K")).toBeDefined();
   });
 
   it("searches and renders matching media results when typing letters", async () => {
@@ -143,7 +157,7 @@ describe("GlobalSearch Component", () => {
       createMediaResponse({ items: [singleProfileGame, movieMedia] }),
     );
 
-    render(<GlobalSearch />);
+    render(<GlobalSearch defaultOpen />);
 
     const input = screen.getByPlaceholderText("Search media, games, movies...");
     fireEvent.change(input, { target: { value: "el" } });
@@ -162,7 +176,7 @@ describe("GlobalSearch Component", () => {
       createMediaResponse({ items: [] }),
     );
 
-    render(<GlobalSearch />);
+    render(<GlobalSearch defaultOpen />);
 
     const input = screen.getByPlaceholderText("Search media, games, movies...");
     fireEvent.change(input, { target: { value: "nonexistent" } });
@@ -179,7 +193,7 @@ describe("GlobalSearch Component", () => {
       createMediaResponse({ items: [singleProfileGame, movieMedia] }),
     );
 
-    render(<GlobalSearch />);
+    render(<GlobalSearch defaultOpen />);
 
     const input = screen.getByPlaceholderText("Search media, games, movies...");
     fireEvent.change(input, { target: { value: "test" } });
@@ -208,7 +222,7 @@ describe("GlobalSearch Component", () => {
       createMediaResponse({ items: [singleProfileGame] }),
     );
 
-    render(<GlobalSearch />);
+    render(<GlobalSearch defaultOpen />);
 
     const input = screen.getByPlaceholderText("Search media, games, movies...");
     fireEvent.change(input, { target: { value: "elden" } });
@@ -240,7 +254,7 @@ describe("GlobalSearch Component", () => {
       createMediaResponse({ items: [movieMedia] }),
     );
 
-    render(<GlobalSearch />);
+    render(<GlobalSearch defaultOpen />);
 
     const input = screen.getByPlaceholderText("Search media, games, movies...");
     fireEvent.change(input, { target: { value: "inter" } });
@@ -262,7 +276,7 @@ describe("GlobalSearch Component", () => {
       createMediaResponse({ items: [singleProfileGame] }),
     );
 
-    render(<GlobalSearch />);
+    render(<GlobalSearch defaultOpen />);
 
     const input = screen.getByPlaceholderText("Search media, games, movies...");
     fireEvent.change(input, { target: { value: "elden" } });
@@ -282,7 +296,7 @@ describe("GlobalSearch Component", () => {
       createMediaResponse({ items: [singleProfileGame] }),
     );
 
-    render(<GlobalSearch />);
+    render(<GlobalSearch defaultOpen />);
 
     const input = screen.getByPlaceholderText("Search media, games, movies...");
     fireEvent.change(input, { target: { value: "elden" } });
@@ -308,7 +322,7 @@ describe("GlobalSearch Component", () => {
       createMediaResponse({ items: [multiProfileGame] }),
     );
 
-    render(<GlobalSearch />);
+    render(<GlobalSearch defaultOpen />);
 
     const input = screen.getByPlaceholderText("Search media, games, movies...");
     fireEvent.change(input, { target: { value: "cyber" } });
@@ -330,12 +344,12 @@ describe("GlobalSearch Component", () => {
     expect(mockLaunchMutate).toHaveBeenCalledWith("launch-vk", expect.any(Object));
   });
 
-  it("closes dropdown on Escape key", async () => {
+  it("closes dialog on Escape key", async () => {
     vi.mocked(getMediaModule.getMedia).mockResolvedValueOnce(
       createMediaResponse({ items: [singleProfileGame] }),
     );
 
-    render(<GlobalSearch />);
+    render(<GlobalSearch defaultOpen />);
 
     const input = screen.getByPlaceholderText("Search media, games, movies...");
     fireEvent.change(input, { target: { value: "elden" } });
@@ -351,32 +365,12 @@ describe("GlobalSearch Component", () => {
     });
   });
 
-  it("clears query and closes dropdown when clicking X button", async () => {
-    vi.mocked(getMediaModule.getMedia).mockResolvedValueOnce(
-      createMediaResponse({ items: [singleProfileGame] }),
-    );
-
+  it("opens dialog when pressing ⌘K or Ctrl+K shortcut", () => {
     render(<GlobalSearch />);
 
-    const input = screen.getByPlaceholderText("Search media, games, movies...");
-    fireEvent.change(input, { target: { value: "elden" } });
-
-    await waitFor(() => {
-      expect(screen.getByText("Elden Ring")).toBeDefined();
-    });
-
-    const clearButton = screen.getByLabelText("Clear search");
-    fireEvent.click(clearButton);
-
-    expect(screen.queryByText("Elden Ring")).toBeNull();
-    expect((input as HTMLInputElement).value).toBe("");
-  });
-
-  it("focuses input when pressing ⌘K or Ctrl+K shortcut", () => {
-    render(<GlobalSearch />);
-
-    const input = screen.getByPlaceholderText("Search media, games, movies...");
-    expect(document.activeElement).not.toBe(input);
+    expect(
+      screen.queryByPlaceholderText("Search media, games, movies..."),
+    ).toBeNull();
 
     act(() => {
       window.dispatchEvent(
@@ -384,7 +378,9 @@ describe("GlobalSearch Component", () => {
       );
     });
 
-    expect(document.activeElement).toBe(input);
+    expect(
+      screen.getByPlaceholderText("Search media, games, movies..."),
+    ).toBeDefined();
   });
 
   it("indicates 'Playing' when active media session matches", async () => {
@@ -404,7 +400,7 @@ describe("GlobalSearch Component", () => {
       createMediaResponse({ items: [singleProfileGame] }),
     );
 
-    render(<GlobalSearch />);
+    render(<GlobalSearch defaultOpen />);
 
     const input = screen.getByPlaceholderText("Search media, games, movies...");
     fireEvent.change(input, { target: { value: "elden" } });

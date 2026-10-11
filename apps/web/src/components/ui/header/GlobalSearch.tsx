@@ -1,21 +1,51 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Loader2, Search, X } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Command,
-  CommandList,
+  CommandDialog,
   CommandEmpty,
   CommandGroup,
+  CommandInput,
+  CommandList,
 } from "@/components/ui/command";
-import { Command as CommandPrimitive } from "cmdk";
 import { useMedia } from "@/api/get-media";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useMediaLauncher, type MediaItem } from "@/hooks/use-media-launcher";
 import { LaunchProfileDialog } from "@/features/details/components/action/LaunchProfileDialog";
 import { GlobalSearchResultRow } from "./GlobalSearchResultRow";
 
-export function GlobalSearch() {
-  const [isOpen, setIsOpen] = useState(false);
+export type GlobalSearchProps = {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  defaultOpen?: boolean;
+};
+
+export function GlobalSearch({
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+  defaultOpen = false,
+}: GlobalSearchProps = {}) {
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+
+  const setOpen = useCallback(
+    (nextOpen: boolean | ((prev: boolean) => boolean)) => {
+      setInternalOpen((currentInternal) => {
+        const currentEffective =
+          controlledOpen !== undefined ? controlledOpen : currentInternal;
+        const resolved =
+          typeof nextOpen === "function"
+            ? nextOpen(currentEffective)
+            : nextOpen;
+        controlledOnOpenChange?.(resolved);
+        return resolved;
+      });
+    },
+    [controlledOpen, controlledOnOpenChange],
+  );
+
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState("");
   const [actionOverride, setActionOverride] = useState<
@@ -24,8 +54,6 @@ export function GlobalSearch() {
 
   const navigate = useNavigate();
   const launcher = useMediaLauncher();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const debouncedQuery = useDebounce(query, 250);
   const isQueryActive = debouncedQuery.trim().length > 0;
@@ -40,7 +68,7 @@ export function GlobalSearch() {
       sort_order: "desc",
     },
     queryConfig: {
-      enabled: isQueryActive,
+      enabled: isQueryActive && open,
     },
   });
 
@@ -72,49 +100,29 @@ export function GlobalSearch() {
       ? actionOverride
       : defaultActionForActiveItem;
 
-  // Click outside listener
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  // Global shortcut: ⌘K or Ctrl+K to focus input
+  // Global shortcut: ⌘K or Ctrl+K to toggle dialog
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K")) {
         e.preventDefault();
-        inputRef.current?.focus();
-        if (query.trim().length > 0) {
-          setIsOpen(true);
-        }
+        setOpen((prev) => !prev);
       }
     };
 
     window.addEventListener("keydown", handleGlobalKeyDown);
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [query]);
+  }, [setOpen]);
 
   const handleExecuteAction = (item: MediaItem, action: "start" | "detail") => {
     if (action === "start") {
       launcher.handleLaunchMedia(item, {
-        onSuccess: () => setIsOpen(false),
+        onSuccess: () => setOpen(false),
       });
       if ((item.launches?.length ?? 0) > 1) {
-        setIsOpen(false);
+        setOpen(false);
       }
     } else {
-      setIsOpen(false);
+      setOpen(false);
       navigate({
         to: "/media/$mediaId",
         params: { mediaId: item.id },
@@ -132,22 +140,45 @@ export function GlobalSearch() {
           return current === "start" ? "detail" : "start";
         });
       }
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      setIsOpen(false);
     }
   };
 
-  const clearQuery = () => {
-    setQuery("");
-    setSelectedId("");
-    setActionOverride(null);
-    setIsOpen(false);
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen) {
+      setQuery("");
+      setSelectedId("");
+      setActionOverride(null);
+    }
   };
 
   return (
     <>
-      <div ref={containerRef} className="relative w-72 lg:w-96">
+      {/* Header Search Trigger Button */}
+      <Button
+        variant="outline"
+        onClick={() => setOpen(true)}
+        className="hidden md:flex items-center justify-between gap-2.5 bg-surface-raised/50 border border-white/10 hover:border-primary/50 text-xs text-text-muted hover:text-foreground rounded-xl px-3.5 py-1.5 w-72 lg:w-96 cursor-pointer font-normal h-9 shadow-none"
+      >
+        <div className="flex items-center gap-2">
+          <Search className="w-4 h-4 text-text-muted shrink-0" />
+          <span className="text-text-muted/70">
+            Search media, games, movies...
+          </span>
+        </div>
+        <kbd className="hidden lg:inline-flex items-center gap-0.5 rounded bg-surface border border-white/10 px-1.5 text-xs text-text-muted font-mono">
+          ⌘K
+        </kbd>
+      </Button>
+
+      {/* shadcn CommandDialog */}
+      <CommandDialog
+        open={open}
+        onOpenChange={handleOpenChange}
+        title="Search Media"
+        description="Search games, movies, and TV series in your library"
+        className="sm:max-w-2xl bg-surface/95 border border-white/10 shadow-2xl backdrop-blur-xl text-foreground"
+      >
         <Command
           shouldFilter={false}
           value={effectiveSelectedId}
@@ -156,124 +187,82 @@ export function GlobalSearch() {
             setActionOverride(null);
           }}
           onKeyDown={handleKeyDown}
-          className="overflow-visible bg-transparent text-foreground"
+          className="bg-transparent text-foreground"
         >
-          {/* Search input container */}
-          <div className="flex items-center gap-2.5 bg-surface-raised/50 border border-white/10 focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/40 rounded-xl px-3.5 py-1.5 w-full text-sm text-text-muted transition-all duration-200">
-            {isLoading ? (
-              <Loader2 className="w-4 h-4 text-primary shrink-0 animate-spin" />
-            ) : (
-              <Search className="w-4 h-4 text-text-muted shrink-0" />
-            )}
+          <CommandInput
+            placeholder="Search media, games, movies..."
+            value={query}
+            onValueChange={setQuery}
+          />
 
-            <CommandPrimitive.Input
-              ref={inputRef}
-              placeholder="Search media, games, movies..."
-              value={query}
-              onValueChange={(val) => {
-                setQuery(val);
-                if (!isOpen) setIsOpen(true);
-              }}
-              onFocus={() => {
-                if (query.trim().length > 0) setIsOpen(true);
-              }}
-              className="w-full bg-transparent border-none outline-none text-foreground placeholder:text-text-muted/60 text-xs"
-            />
+          <CommandList className="max-h-[60vh] p-2">
+            {isLoading && results.length === 0 ? (
+              <div className="flex items-center justify-center gap-2 p-8 text-xs text-text-muted">
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                <span>Searching media...</span>
+              </div>
+            ) : results.length === 0 && query.trim() ? (
+              <CommandEmpty className="p-8 text-center text-xs text-text-muted">
+                No media found matching &ldquo;{debouncedQuery || query}&rdquo;
+              </CommandEmpty>
+            ) : results.length > 0 ? (
+              <CommandGroup heading="Media">
+                {results.map((item) => {
+                  const isSelected = item.id === activeItem?.id;
+                  return (
+                    <GlobalSearchResultRow
+                      key={item.id}
+                      item={item}
+                      isSelected={isSelected}
+                      activeAction={isSelected ? activeAction : "detail"}
+                      onSelect={(action) => handleExecuteAction(item, action)}
+                      onHover={() => setSelectedId(item.id)}
+                      onHoverAction={(action) => {
+                        setSelectedId(item.id);
+                        setActionOverride(action);
+                      }}
+                      canLaunch={launcher.canLaunchMedia(item)}
+                      disabledReason={launcher.getDisabledReason(item)}
+                      isCurrentMediaPlaying={launcher.isMediaPlaying(item.id)}
+                    />
+                  );
+                })}
+              </CommandGroup>
+            ) : null}
 
-            {query ? (
-              <button
-                type="button"
-                onClick={clearQuery}
-                className="text-text-muted hover:text-foreground cursor-pointer"
-                aria-label="Clear search"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            ) : (
-              <kbd className="hidden lg:inline-flex items-center gap-0.5 rounded bg-surface border border-white/10 px-1.5 text-xs text-text-muted font-mono">
-                ⌘K
-              </kbd>
-            )}
-          </div>
+            {/* Footer keyboard hints */}
+            <div className="flex items-center justify-between border-t border-white/10 px-3 py-2 text-[11px] text-text-muted bg-surface/50 -mx-2 -mb-2 mt-2">
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1">
+                  <kbd className="rounded bg-surface border border-white/10 px-1 py-0.5 font-mono text-[10px]">
+                    ↑↓
+                  </kbd>
+                  <span>Navigate</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <kbd className="rounded bg-surface border border-white/10 px-1 py-0.5 font-mono text-[10px]">
+                    Tab
+                  </kbd>
+                  <span>Switch action</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <kbd className="rounded bg-surface border border-white/10 px-1 py-0.5 font-mono text-[10px]">
+                    ↵
+                  </kbd>
+                  <span>Select</span>
+                </span>
+              </div>
 
-          {/* Results Popover using CommandList */}
-          {isOpen && query.trim().length > 0 && (
-            <div className="absolute top-full mt-2 left-0 w-full sm:w-[480px] lg:w-[540px] z-50 rounded-2xl bg-surface/95 border border-white/10 shadow-2xl backdrop-blur-xl overflow-hidden animate-in fade-in-0 zoom-in-95">
-              <CommandList className="max-h-[60vh] p-2 overflow-y-auto">
-                {isLoading && results.length === 0 ? (
-                  <div className="flex items-center justify-center gap-2 p-8 text-xs text-text-muted">
-                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                    <span>Searching media...</span>
-                  </div>
-                ) : results.length === 0 ? (
-                  <CommandEmpty className="p-8 text-center text-xs text-text-muted">
-                    No media found matching &ldquo;{debouncedQuery || query}
-                    &rdquo;
-                  </CommandEmpty>
-                ) : (
-                  <CommandGroup>
-                    {results.map((item) => {
-                      const isSelected = item.id === activeItem?.id;
-                      return (
-                        <GlobalSearchResultRow
-                          key={item.id}
-                          item={item}
-                          isSelected={isSelected}
-                          activeAction={isSelected ? activeAction : "detail"}
-                          onSelect={(action) =>
-                            handleExecuteAction(item, action)
-                          }
-                          onHover={() => setSelectedId(item.id)}
-                          onHoverAction={(action) => {
-                            setSelectedId(item.id);
-                            setActionOverride(action);
-                          }}
-                          canLaunch={launcher.canLaunchMedia(item)}
-                          disabledReason={launcher.getDisabledReason(item)}
-                          isCurrentMediaPlaying={launcher.isMediaPlaying(
-                            item.id,
-                          )}
-                        />
-                      );
-                    })}
-                  </CommandGroup>
-                )}
-
-                {/* Footer keyboard hints */}
-                <div className="flex items-center justify-between border-t border-white/10 px-3 py-2 text-[11px] text-text-muted bg-surface/50 -mx-2 -mb-2 mt-2">
-                  <div className="flex items-center gap-3">
-                    <span className="flex items-center gap-1">
-                      <kbd className="rounded bg-surface border border-white/10 px-1 py-0.5 font-mono text-[10px]">
-                        ↑↓
-                      </kbd>
-                      <span>Navigate</span>
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <kbd className="rounded bg-surface border border-white/10 px-1 py-0.5 font-mono text-[10px]">
-                        Tab
-                      </kbd>
-                      <span>Switch action</span>
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <kbd className="rounded bg-surface border border-white/10 px-1 py-0.5 font-mono text-[10px]">
-                        ↵
-                      </kbd>
-                      <span>Select</span>
-                    </span>
-                  </div>
-
-                  <span className="flex items-center gap-1">
-                    <kbd className="rounded bg-surface border border-white/10 px-1 py-0.5 font-mono text-[10px]">
-                      Esc
-                    </kbd>
-                    <span>Close</span>
-                  </span>
-                </div>
-              </CommandList>
+              <span className="flex items-center gap-1">
+                <kbd className="rounded bg-surface border border-white/10 px-1 py-0.5 font-mono text-[10px]">
+                  Esc
+                </kbd>
+                <span>Close</span>
+              </span>
             </div>
-          )}
+          </CommandList>
         </Command>
-      </div>
+      </CommandDialog>
 
       {/* Shared multi-profile selection modal */}
       {launcher.activeDialogMedia && (

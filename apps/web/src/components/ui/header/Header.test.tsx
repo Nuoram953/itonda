@@ -7,7 +7,7 @@ describe("Header", () => {
     renderWithRouter(<Header />);
 
     expect(
-      await screen.findByPlaceholderText("Search media, games, movies..."),
+      await screen.findByText("Search media, games, movies..."),
     ).toBeDefined();
     expect(screen.queryByText("Add Media")).toBeNull();
     expect(screen.getByLabelText("Notifications")).toBeDefined();
