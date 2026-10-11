@@ -9,11 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { LoaderCircle, Play } from "lucide-react";
-import { useState } from "react";
-import { useLaunchMedia } from "../../api/post-media-launch";
-import { useActiveMedia } from "@/hooks/use-active-media";
-import { useAgents } from "@/api/get-agents";
-import { useWebSocketStatus } from "@/hooks/use-websocket-status";
+import { useMediaLauncher } from "@/hooks/use-media-launcher";
 import { cn } from "@/lib/utils";
 
 type LaunchProps = {
@@ -22,82 +18,25 @@ type LaunchProps = {
 };
 
 export const Launch = ({ profiles = [], mediaId }: LaunchProps) => {
-  const [open, setOpen] = useState(false);
-  const [isLaunching, setIsLaunching] = useState(false);
-  const launchMediaMutation = useLaunchMedia({});
-  const { session, isPlaying, formattedElapsed } = useActiveMedia();
-  const wsStatus = useWebSocketStatus();
-  const { data: agentsData } = useAgents({});
-
-  const agents = agentsData?.agents ?? [];
-  const connectedAgents = agents.filter((agent) => agent.is_connected);
-  const isServerConnected = wsStatus === "connected";
-  const hasConnectedAgent = isServerConnected && connectedAgents.length > 0;
-
-  const isProfileAvailable = (profile: components["schemas"]["Launch"]) => {
-    if (!isServerConnected) {
-      return false;
-    }
-    if (profile.agent_id) {
-      return connectedAgents.some((agent) => agent.id === profile.agent_id);
-    }
-    return hasConnectedAgent;
-  };
-
-  const canLaunch = profiles.length > 0 && profiles.some(isProfileAvailable);
-
-  const isCurrentMediaPlaying = Boolean(
-    isPlaying && mediaId && session?.mediaId === mediaId,
-  );
-
-  if (isLaunching && isCurrentMediaPlaying) {
-    setIsLaunching(false);
-  }
-
-  const isLoading = isLaunching || launchMediaMutation.isPending;
-
-  function launch(id: string) {
-    const profile = profiles.find((p) => p.id === id);
-    if (profile && !isProfileAvailable(profile)) {
-      return;
-    }
-
-    setIsLaunching(true);
-    launchMediaMutation.mutate(id, {
-      onSuccess: () => setOpen(false),
-      onError: () => setIsLaunching(false),
-    });
-  }
-
-  function handleClick() {
-    if (!canLaunch || profiles.length === 0) {
-      return;
-    }
-
-    if (profiles.length === 1) {
-      launch(profiles[0].id);
-      return;
-    }
-
-    setOpen(true);
-  }
-
-  const disabledReason = !profiles.length
-    ? "No launch profiles available"
-    : !isServerConnected
-      ? "Server disconnected"
-      : !hasConnectedAgent
-        ? "No agent connected"
-        : !canLaunch
-          ? "Required agent not connected"
-          : undefined;
+  const {
+    open,
+    setOpen,
+    isLoading,
+    isPlaying: isCurrentMediaPlaying,
+    formattedElapsed,
+    canLaunch,
+    disabledReason,
+    isProfileAvailable,
+    launch,
+    handleLaunchClick,
+  } = useMediaLauncher({ profiles, mediaId });
 
   return (
     <>
       <button
         type="button"
         disabled={!canLaunch || isLoading}
-        onClick={handleClick}
+        onClick={handleLaunchClick}
         title={disabledReason}
         aria-label={isCurrentMediaPlaying ? "Now Playing" : "Play"}
         className={cn(
