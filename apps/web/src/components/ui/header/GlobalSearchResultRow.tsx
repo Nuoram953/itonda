@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Film, Gamepad2, Play, Tv, Sparkles, Eye } from "lucide-react";
 import type { components } from "@/api/generated.d";
+import { CommandItem } from "@/components/ui/command";
 import { getHeroPosterAsset } from "@/features/details/utils/media-assets";
 import { getAssetUrl } from "@/features/details/utils/asset-url";
 import { cn } from "@/lib/utils";
@@ -67,11 +68,10 @@ export function GlobalSearchResultRow({
   }
 
   return (
-    <div
-      role="option"
-      aria-selected={isSelected}
+    <CommandItem
+      value={item.id}
+      onSelect={() => onSelect(activeAction)}
       onMouseEnter={onHover}
-      onClick={() => onSelect(activeAction)}
       className={cn(
         "flex items-center justify-between gap-3 p-2 rounded-xl border transition-all duration-150 cursor-pointer select-none",
         isSelected
@@ -179,6 +179,6 @@ export function GlobalSearchResultRow({
           <span>Details</span>
         </button>
       </div>
-    </div>
+    </CommandItem>
   );
 }

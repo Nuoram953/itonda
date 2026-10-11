@@ -19,3 +19,14 @@ afterEach(() => {
   cleanup();
 });
 
+class MockResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+globalThis.ResizeObserver = MockResizeObserver;
+window.ResizeObserver = MockResizeObserver;
+
+window.HTMLElement.prototype.scrollIntoView = () => {};
+
