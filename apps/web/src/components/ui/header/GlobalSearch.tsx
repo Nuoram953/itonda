@@ -8,8 +8,7 @@ import {
   CommandGroup,
 } from "@/components/ui/command";
 import { Command as CommandPrimitive } from "cmdk";
-import { useQuery } from "@tanstack/react-query";
-import { getMediaQueryOptions } from "@/features/library/api/get-media";
+import { useMedia } from "@/api/get-media";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useMediaLauncher, type MediaItem } from "@/hooks/use-media-launcher";
 import { LaunchProfileDialog } from "@/features/details/components/action/LaunchProfileDialog";
@@ -33,14 +32,16 @@ export function GlobalSearch() {
   const isDebouncing =
     query.trim().length > 0 && query.trim() !== debouncedQuery.trim();
 
-  const { data, isFetching } = useQuery({
-    ...getMediaQueryOptions({
+  const { data, isFetching } = useMedia({
+    params: {
       search: debouncedQuery.trim(),
       limit: 8,
       sort_by: "last_played_at",
       sort_order: "desc",
-    }),
-    enabled: isQueryActive,
+    },
+    queryConfig: {
+      enabled: isQueryActive,
+    },
   });
 
   const results: MediaItem[] = useMemo(

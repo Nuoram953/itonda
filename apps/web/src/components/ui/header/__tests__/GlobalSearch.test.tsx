@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { useQuery } from "@tanstack/react-query";
 import {
   render,
   screen,
@@ -12,7 +13,7 @@ import {
   createActiveMediaSession,
 } from "@/test/test-utils";
 import { GlobalSearch } from "../GlobalSearch";
-import * as getMediaModule from "@/features/library/api/get-media";
+import * as getMediaModule from "@/api/get-media";
 import { useActiveMedia } from "@/hooks/use-active-media";
 
 const mockNavigate = vi.fn();
@@ -68,12 +69,23 @@ vi.mock("@/hooks/use-active-media", () => ({
   })),
 }));
 
-vi.mock("@/features/library/api/get-media", () => ({
+vi.mock("@/api/get-media", () => ({
   getMedia: vi.fn(),
   getMediaQueryOptions: (params: getMediaModule.GetMediaParams) => ({
     queryKey: ["media", params],
     queryFn: () => vi.mocked(getMediaModule.getMedia)(params),
   }),
+  useMedia: (options: getMediaModule.UseMediaOptions = {}) => {
+    const { queryConfig, params, ...directParams } = options;
+    const hasDirectParams = Object.keys(directParams).length > 0;
+    const resolvedParams =
+      params ?? (hasDirectParams ? directParams : undefined);
+    return useQuery({
+      queryKey: ["media", resolvedParams],
+      queryFn: () => vi.mocked(getMediaModule.getMedia)(resolvedParams),
+      ...queryConfig,
+    });
+  },
 }));
 
 describe("GlobalSearch Component", () => {
