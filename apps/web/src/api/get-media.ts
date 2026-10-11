@@ -9,16 +9,7 @@ import type { components } from "@/api/generated.d";
 import { api } from "@/lib/api-client";
 import { type QueryConfig } from "@/lib/react-query";
 
-export type GetMediaParams = {
-  type?: components["schemas"]["MediaType"] | string;
-  search?: string;
-  status?: components["schemas"]["MediaStatus"] | string;
-  storefront?: string;
-  sort_by?: components["schemas"]["MediaSortField"];
-  sort_order?: components["schemas"]["SortOrder"];
-  page?: number;
-  limit?: number;
-};
+export type GetMediaParams = components["schemas"]["MediaQueryParams"];
 
 export const getMedia = (
   params?: GetMediaParams,
@@ -48,33 +39,19 @@ export const getInfiniteMediaQueryOptions = (
   });
 };
 
-export type UseMediaOptions = {
-  params?: GetMediaParams;
-  type?: components["schemas"]["MediaType"] | string;
-  search?: string;
-  status?: components["schemas"]["MediaStatus"] | string;
-  storefront?: string;
-  sort_by?: components["schemas"]["MediaSortField"];
-  sort_order?: components["schemas"]["SortOrder"];
-  page?: number;
-  limit?: number;
-  queryConfig?: QueryConfig<typeof getMediaQueryOptions>;
+type UseMediaOptions = {
+  queryConfig?: QueryConfig<typeof getMedia>;
 };
 
 export const useMedia = (options: UseMediaOptions = {}) => {
-  const { queryConfig, params, ...directParams } = options;
-  const hasDirectParams = Object.keys(directParams).length > 0;
-  const resolvedParams: GetMediaParams | undefined =
-    params ?? (hasDirectParams ? (directParams as GetMediaParams) : undefined);
+  const { queryConfig, ...params } = options;
 
   return useQuery({
-    ...getMediaQueryOptions(resolvedParams),
+    ...getMediaQueryOptions(params),
     ...queryConfig,
   });
 };
 
-export const useInfiniteMedia = (
-  params: Omit<GetMediaParams, "page"> = {},
-) => {
+export const useInfiniteMedia = (params: Omit<GetMediaParams, "page"> = {}) => {
   return useInfiniteQuery(getInfiniteMediaQueryOptions(params));
 };
