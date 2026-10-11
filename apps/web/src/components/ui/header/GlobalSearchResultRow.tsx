@@ -15,10 +15,9 @@ type GlobalSearchResultRowProps = {
   onSelect: (action: SearchAction) => void;
   onHover: () => void;
   onHoverAction: (action: SearchAction) => void;
-  isProfileAvailable: (profile: components["schemas"]["Launch"]) => boolean;
+  canLaunch: boolean;
+  disabledReason?: string;
   isCurrentMediaPlaying: boolean;
-  isServerConnected: boolean;
-  hasConnectedAgent: boolean;
 };
 
 export function GlobalSearchResultRow({
@@ -28,32 +27,14 @@ export function GlobalSearchResultRow({
   onSelect,
   onHover,
   onHoverAction,
-  isProfileAvailable,
+  canLaunch,
+  disabledReason,
   isCurrentMediaPlaying,
-  isServerConnected,
-  hasConnectedAgent,
 }: GlobalSearchResultRowProps) {
   const [imageError, setImageError] = useState(false);
   const posterAsset = getHeroPosterAsset(item.assets);
   const posterUrl = posterAsset ? getAssetUrl(posterAsset.id) : "";
-
   const isGame = item.media_type === "game";
-  const profiles = item.launches ?? [];
-  const hasProfiles = profiles.length > 0;
-  const hasAvailableProfile = profiles.some(isProfileAvailable);
-  const canLaunch = isGame && hasProfiles && hasAvailableProfile;
-
-  const disabledReason = !isGame
-    ? undefined
-    : !hasProfiles
-      ? "No launch profiles available"
-      : !isServerConnected
-        ? "Server disconnected"
-        : !hasConnectedAgent
-          ? "No agent connected"
-          : !hasAvailableProfile
-            ? "Required agent not connected"
-            : undefined;
 
   function renderMediaTypeIcon() {
     switch (item.media_type) {
@@ -124,7 +105,9 @@ export function GlobalSearchResultRow({
           <div className="flex items-center gap-2 mt-1">
             <span className="inline-flex items-center gap-1 text-[10px] text-text-muted font-medium capitalize">
               {renderMediaTypeIcon()}
-              <span>{item.media_type === "tv_show" ? "TV Series" : item.media_type}</span>
+              <span>
+                {item.media_type === "tv_show" ? "TV Series" : item.media_type}
+              </span>
             </span>
 
             <span className="text-white/20 text-[10px]">•</span>

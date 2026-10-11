@@ -1,21 +1,7 @@
-import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Loader2, Search, X } from "lucide-react";
-import type { components } from "@/api/generated.d";
-import { useLaunchMedia } from "@/features/details/api/post-media-launch";
-import { useActiveMedia } from "@/hooks/use-active-media";
-import { useAgents } from "@/api/get-agents";
-import { useWebSocketStatus } from "@/hooks/use-websocket-status";
-import { useNotification } from "@/hooks/use-notification";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { useMediaLauncher } from "@/hooks/use-media-launcher";
+import { LaunchProfileDialog } from "@/features/details/components/action/LaunchProfileDialog";
 import {
   useGlobalSearch,
   type MediaItem,
@@ -25,69 +11,16 @@ import { GlobalSearchResultRow } from "./GlobalSearchResultRow";
 
 export function GlobalSearch() {
   const navigate = useNavigate();
-  const { notify } = useNotification();
-  const { session, isPlaying } = useActiveMedia();
-  const wsStatus = useWebSocketStatus();
-  const { data: agentsData } = useAgents({});
-  const launchMediaMutation = useLaunchMedia({});
-
-  const [multiLaunchMedia, setMultiLaunchMedia] = useState<MediaItem | null>(
-    null,
-  );
-
-  const agents = agentsData?.agents ?? [];
-  const connectedAgents = agents.filter((agent) => agent.is_connected);
-  const isServerConnected = wsStatus === "connected";
-  const hasConnectedAgent = isServerConnected && connectedAgents.length > 0;
-
-  const isProfileAvailable = (profile: components["schemas"]["Launch"]) => {
-    if (!isServerConnected) return false;
-    if (profile.agent_id) {
-      return connectedAgents.some((agent) => agent.id === profile.agent_id);
-    }
-    return hasConnectedAgent;
-  };
-
-  const executeLaunch = (profileId: string, mediaTitle: string) => {
-    launchMediaMutation.mutate(profileId, {
-      onSuccess: () => {
-        setMultiLaunchMedia(null);
-        notify.success({
-          title: "Launching game",
-          description: `Starting ${mediaTitle}...`,
-        });
-      },
-      onError: (err) => {
-        notify.error({
-          title: "Launch failed",
-          description:
-            err instanceof Error ? err.message : "Failed to launch game.",
-        });
-      },
-    });
-  };
+  const launcher = useMediaLauncher();
 
   const handleStartGame = (item: MediaItem) => {
-    const profiles = item.launches ?? [];
-    const availableProfiles = profiles.filter(isProfileAvailable);
+    launcher.handleLaunchMedia(item, {
+      onSuccess: () => setIsOpen(false),
+    });
 
-    if (availableProfiles.length === 0) {
-      notify.error({
-        title: "Cannot launch game",
-        description: "No connected agent available for this game.",
-      });
-      return;
-    }
-
-    if (profiles.length === 1) {
-      executeLaunch(profiles[0].id, item.title);
+    if ((item.launches?.length ?? 0) > 1) {
       setIsOpen(false);
-      return;
     }
-
-    // Multiple profiles: open selection dialog
-    setMultiLaunchMedia(item);
-    setIsOpen(false);
   };
 
   const handleGoToDetails = (item: MediaItem) => {
@@ -194,9 +127,6 @@ export function GlobalSearch() {
                 <div className="p-2 space-y-1.5 max-h-[60vh] overflow-y-auto">
                   {results.map((item, idx) => {
                     const isSelected = activeIndex === idx;
-                    const isCurrentPlaying = Boolean(
-                      isPlaying && session?.mediaId === item.id,
-                    );
 
                     return (
                       <GlobalSearchResultRow
@@ -210,10 +140,9 @@ export function GlobalSearch() {
                           setActiveIndex(idx);
                           setActiveAction(action);
                         }}
-                        isProfileAvailable={isProfileAvailable}
-                        isCurrentMediaPlaying={isCurrentPlaying}
-                        isServerConnected={isServerConnected}
-                        hasConnectedAgent={hasConnectedAgent}
+                        canLaunch={launcher.canLaunchMedia(item)}
+                        disabledReason={launcher.getDisabledReason(item)}
+                        isCurrentMediaPlaying={launcher.isMediaPlaying(item.id)}
                       />
                     );
                   })}
@@ -255,49 +184,23 @@ export function GlobalSearch() {
         )}
       </div>
 
-      {/* Multi-profile selection modal */}
-      {multiLaunchMedia && (
-        <Dialog
-          open={Boolean(multiLaunchMedia)}
-          onOpenChange={(open) => !open && setMultiLaunchMedia(null)}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Select launch profile</DialogTitle>
-              <DialogDescription>
-                Choose how you want to launch {multiLaunchMedia.title}.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="flex flex-col gap-2">
-              {multiLaunchMedia.launches.map((profile) => {
-                const available = isProfileAvailable(profile);
-                return (
-                  <Button
-                    key={profile.id}
-                    variant="outline"
-                    disabled={!available}
-                    onClick={() =>
-                      executeLaunch(profile.id, multiLaunchMedia.title)
-                    }
-                    title={!available ? "Agent not connected" : undefined}
-                  >
-                    {profile.name}
-                  </Button>
-                );
-              })}
-            </div>
-
-            <DialogFooter>
-              <Button
-                variant="ghost"
-                onClick={() => setMultiLaunchMedia(null)}
-              >
-                Cancel
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+      {/* Shared multi-profile selection modal */}
+      {launcher.activeDialogMedia && (
+        <LaunchProfileDialog
+          open={Boolean(launcher.activeDialogMedia)}
+          onOpenChange={(open) =>
+            !open && launcher.setActiveDialogMedia(null)
+          }
+          title={launcher.activeDialogMedia.title}
+          profiles={launcher.activeDialogMedia.launches}
+          isProfileAvailable={launcher.isProfileAvailable}
+          onSelectProfile={(profileId) =>
+            launcher.launch(profileId, {
+              mediaTitle: launcher.activeDialogMedia?.title,
+            })
+          }
+          isLoading={launcher.isLoading}
+        />
       )}
     </>
   );
