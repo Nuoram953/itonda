@@ -9,7 +9,10 @@ import type { components } from "@/api/generated.d";
 import { api } from "@/lib/api-client";
 import { type QueryConfig } from "@/lib/react-query";
 
-export type GetMediaParams = components["schemas"]["MediaQueryParams"];
+export type GetMediaParams = components["schemas"]["MediaQueryParams"] & {
+  type?: components["schemas"]["MediaType"] | string | null;
+  status?: components["schemas"]["MediaStatus"] | string | null;
+};
 
 export const getMedia = (
   params?: GetMediaParams,
@@ -39,15 +42,19 @@ export const getInfiniteMediaQueryOptions = (
   });
 };
 
-type UseMediaOptions = {
-  queryConfig?: QueryConfig<typeof getMedia>;
-};
+export type UseMediaOptions = {
+  params?: GetMediaParams;
+  queryConfig?: QueryConfig<typeof getMediaQueryOptions>;
+} & GetMediaParams;
 
 export const useMedia = (options: UseMediaOptions = {}) => {
-  const { queryConfig, ...params } = options;
+  const { queryConfig, params, ...directParams } = options;
+  const hasDirectParams = Object.keys(directParams).length > 0;
+  const resolvedParams: GetMediaParams | undefined =
+    params ?? (hasDirectParams ? (directParams as GetMediaParams) : undefined);
 
   return useQuery({
-    ...getMediaQueryOptions(params),
+    ...getMediaQueryOptions(resolvedParams),
     ...queryConfig,
   });
 };
