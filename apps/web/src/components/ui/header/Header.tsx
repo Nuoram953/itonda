@@ -1,18 +1,11 @@
-import { Bell, Search } from "lucide-react";
+import { Bell } from "lucide-react";
+import { GlobalSearch } from "./GlobalSearch";
 
 export const Header = () => {
   return (
     <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between border-b border-white/10 bg-surface/80 px-6 backdrop-blur-xl shadow-sm text-foreground">
-      <div className="hidden md:flex items-center gap-2.5 bg-surface-raised/50 border border-white/10 focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/40 rounded-xl px-3.5 py-1.5 w-72 lg:w-96 text-sm text-text-muted transition-all duration-200">
-        <Search className="w-4 h-4 text-text-muted shrink-0" />
-        <input
-          type="text"
-          placeholder="Search media, games, movies..."
-          className="w-full bg-transparent border-none outline-none text-foreground placeholder:text-text-muted/60 text-xs"
-        />
-        <kbd className="hidden lg:inline-flex items-center gap-0.5 rounded bg-surface border border-white/10 px-1.5 text-xs text-text-muted font-mono">
-          ⌘K
-        </kbd>
+      <div className="hidden md:flex items-center">
+        <GlobalSearch />
       </div>
 
       <div className="flex items-center gap-3">
