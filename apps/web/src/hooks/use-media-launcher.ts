@@ -22,179 +22,110 @@ export function useMediaLauncher({
 }: UseMediaLauncherOptions = {}) {
   const [open, setOpen] = useState(false);
   const [isLaunching, setIsLaunching] = useState(false);
-  const [activeDialogMedia, setActiveDialogMedia] = useState<MediaItem | null>(
-    null,
-  );
+  const [activeDialogMedia, setActiveDialogMedia] = useState<MediaItem | null>(null);
 
   const { notify } = useNotification();
-  const launchMediaMutation = useLaunchMedia({});
+  const launchMutation = useLaunchMedia({});
   const { session, isPlaying, formattedElapsed } = useActiveMedia();
   const wsStatus = useWebSocketStatus();
   const { data: agentsData } = useAgents({});
 
-  const agents = agentsData?.agents ?? [];
-  const connectedAgents = agents.filter((agent) => agent.is_connected);
   const isServerConnected = wsStatus === "connected";
+  const connectedAgents = agentsData?.agents?.filter((a) => a.is_connected) ?? [];
   const hasConnectedAgent = isServerConnected && connectedAgents.length > 0;
 
   const isProfileAvailable = (profile: LaunchProfile) => {
-    if (!isServerConnected) {
-      return false;
+    if (!isServerConnected) return false;
+    return profile.agent_id
+      ? connectedAgents.some((a) => a.id === profile.agent_id)
+      : hasConnectedAgent;
+  };
+
+  const canLaunch = (target?: MediaItem | LaunchProfile[] | null) => {
+    if (!target) return false;
+    if ("media_type" in target) {
+      return target.media_type === "game" && Boolean(target.launches?.some(isProfileAvailable));
     }
-    if (profile.agent_id) {
-      return connectedAgents.some((agent) => agent.id === profile.agent_id);
-    }
-    return hasConnectedAgent;
+    return target.length > 0 && target.some(isProfileAvailable);
   };
 
-  const canLaunchProfiles = (profilesList: LaunchProfile[] = []) => {
-    return profilesList.length > 0 && profilesList.some(isProfileAvailable);
-  };
-
-  const canLaunchMedia = (media?: MediaItem | null) => {
-    if (!media || media.media_type !== "game") return false;
-    return canLaunchProfiles(media.launches);
-  };
-
-  const getDisabledReason = (
-    target?: LaunchProfile[] | MediaItem | null,
-  ): string | undefined => {
+  const getDisabledReason = (target?: MediaItem | LaunchProfile[] | null) => {
     if (!target) return undefined;
-    const profilesList = Array.isArray(target)
-      ? target
-      : (target.launches ?? []);
-
-    if (!profilesList.length) return "No launch profiles available";
+    const list = "media_type" in target ? (target.launches ?? []) : target;
+    if (!list.length) return "No launch profiles available";
     if (!isServerConnected) return "Server disconnected";
     if (!hasConnectedAgent) return "No agent connected";
-    if (!profilesList.some(isProfileAvailable)) {
-      return "Required agent not connected";
-    }
+    if (!list.some(isProfileAvailable)) return "Required agent not connected";
     return undefined;
   };
 
-  const isMediaPlaying = (targetMediaId?: string) => {
-    return Boolean(
-      isPlaying && targetMediaId && session?.mediaId === targetMediaId,
-    );
-  };
+  const isMediaPlaying = (id?: string) => Boolean(isPlaying && id && session?.mediaId === id);
+  const isCurrentPlaying = Boolean(mediaId && isMediaPlaying(mediaId));
+  if (isLaunching && isCurrentPlaying) setIsLaunching(false);
 
-  const isCurrentMediaPlaying = Boolean(
-    isPlaying && mediaId && session?.mediaId === mediaId,
-  );
-
-  if (isLaunching && isCurrentMediaPlaying) {
-    setIsLaunching(false);
-  }
-
-  const isLoading = isLaunching || Boolean(launchMediaMutation.isPending);
-
-  function launch(
-    id: string,
-    options?: {
-      mediaTitle?: string;
-      onSuccess?: () => void;
-      onError?: (err: unknown) => void;
-    },
-  ) {
-    const allProfiles = activeDialogMedia
-      ? activeDialogMedia.launches
-      : initialProfiles;
-    const profile = allProfiles.find((p) => p.id === id);
-    if (profile && !isProfileAvailable(profile)) {
-      return;
-    }
-
+  const launch = (profileId: string, options?: { mediaTitle?: string; onSuccess?: () => void }) => {
     setIsLaunching(true);
-    launchMediaMutation.mutate(id, {
+    launchMutation.mutate(profileId, {
       onSuccess: () => {
         setOpen(false);
         setActiveDialogMedia(null);
         if (options?.mediaTitle) {
-          notify.success({
-            title: "Launching game",
-            description: `Starting ${options.mediaTitle}...`,
-          });
+          notify.success({ title: "Launching game", description: `Starting ${options.mediaTitle}...` });
         }
         options?.onSuccess?.();
-        onLaunchSuccess?.(id);
+        onLaunchSuccess?.(profileId);
       },
       onError: (err) => {
         setIsLaunching(false);
         if (options?.mediaTitle) {
           notify.error({
             title: "Launch failed",
-            description:
-              err instanceof Error ? err.message : "Failed to launch game.",
+            description: err instanceof Error ? err.message : "Failed to launch game.",
           });
         }
-        options?.onError?.(err);
       },
     });
-  }
+  };
 
-  function handleLaunchClick() {
-    if (!canLaunchProfiles(initialProfiles)) {
-      return;
-    }
-
-    if (initialProfiles.length === 1) {
-      launch(initialProfiles[0].id);
-      return;
-    }
-
+  const handleLaunchClick = () => {
+    if (!canLaunch(initialProfiles)) return;
+    if (initialProfiles.length === 1) return launch(initialProfiles[0].id);
     setOpen(true);
-  }
+  };
 
-  function handleLaunchMedia(
-    media: MediaItem,
-    callbacks?: { onSuccess?: () => void },
-  ) {
-    const profilesList = media.launches ?? [];
-    if (!canLaunchMedia(media)) {
+  const handleLaunchMedia = (media: MediaItem, callbacks?: { onSuccess?: () => void }) => {
+    if (!canLaunch(media)) {
       notify.error({
         title: "Cannot launch game",
-        description:
-          getDisabledReason(media) ?? "No available agent profile found.",
+        description: getDisabledReason(media) ?? "No available agent profile found.",
       });
       return;
     }
-
-    if (profilesList.length === 1) {
-      launch(profilesList[0].id, {
-        mediaTitle: media.title,
-        onSuccess: callbacks?.onSuccess,
-      });
-      return;
+    if ((media.launches?.length ?? 0) === 1) {
+      return launch(media.launches![0].id, { mediaTitle: media.title, onSuccess: callbacks?.onSuccess });
     }
-
     setActiveDialogMedia(media);
-  }
+  };
 
   return {
-    // General availability & helpers
     isServerConnected,
     hasConnectedAgent,
     isProfileAvailable,
-    canLaunchProfiles,
-    canLaunchMedia,
+    canLaunchProfiles: (p?: LaunchProfile[]) => canLaunch(p),
+    canLaunchMedia: (m?: MediaItem | null) => canLaunch(m),
     getDisabledReason,
     isMediaPlaying,
-
-    // Launch actions
     launch,
     handleLaunchMedia,
     activeDialogMedia,
     setActiveDialogMedia,
-
-    // Backwards-compatible properties for single-target Launch.tsx
     open,
     setOpen,
     isLaunching,
-    isLoading,
-    isPlaying: isCurrentMediaPlaying,
+    isLoading: isLaunching || Boolean(launchMutation.isPending),
+    isPlaying: isCurrentPlaying,
     formattedElapsed,
-    canLaunch: canLaunchProfiles(initialProfiles),
+    canLaunch: canLaunch(initialProfiles),
     disabledReason: getDisabledReason(initialProfiles),
     profiles: initialProfiles,
     handleLaunchClick,

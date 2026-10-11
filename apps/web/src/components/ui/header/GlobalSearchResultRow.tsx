@@ -9,6 +9,20 @@ import { cn } from "@/lib/utils";
 export type MediaItem = components["schemas"]["Media"];
 export type SearchAction = "start" | "detail";
 
+const MEDIA_ICONS: Record<string, typeof Gamepad2> = {
+  game: Gamepad2,
+  movie: Film,
+  tv_show: Tv,
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  not_started: "Unplayed",
+  in_progress: "In Progress",
+  completed: "Completed",
+  paused: "Paused",
+  abandoned: "Dropped",
+};
+
 type GlobalSearchResultRowProps = {
   item: MediaItem;
   isSelected: boolean;
@@ -35,37 +49,18 @@ export function GlobalSearchResultRow({
   const [imageError, setImageError] = useState(false);
   const posterAsset = getHeroPosterAsset(item.assets);
   const posterUrl = posterAsset ? getAssetUrl(posterAsset.id) : "";
+  const Icon = MEDIA_ICONS[item.media_type] ?? Sparkles;
   const isGame = item.media_type === "game";
 
-  function renderMediaTypeIcon() {
-    switch (item.media_type) {
-      case "game":
-        return <Gamepad2 className="w-3 h-3 text-primary" />;
-      case "movie":
-        return <Film className="w-3 h-3 text-primary" />;
-      case "tv_show":
-        return <Tv className="w-3 h-3 text-primary" />;
-      default:
-        return <Sparkles className="w-3 h-3 text-primary" />;
-    }
-  }
-
-  function getStatusLabel(status: components["schemas"]["Media"]["status"]) {
-    switch (status) {
-      case "not_started":
-        return "Unplayed";
-      case "in_progress":
-        return "In Progress";
-      case "completed":
-        return "Completed";
-      case "paused":
-        return "Paused";
-      case "abandoned":
-        return "Dropped";
-      default:
-        return status;
-    }
-  }
+  const btnClass = (isActive: boolean) =>
+    cn(
+      "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer",
+      isActive
+        ? isCurrentMediaPlaying && activeAction === "start"
+          ? "bg-emerald-500 text-black shadow-md ring-2 ring-emerald-400/50"
+          : "bg-primary text-primary-foreground shadow-md ring-2 ring-primary/40"
+        : "bg-white/5 hover:bg-white/10 text-text-muted hover:text-foreground border border-white/10",
+    );
 
   return (
     <CommandItem
@@ -79,7 +74,6 @@ export function GlobalSearchResultRow({
           : "border-white/5 bg-surface/30 hover:bg-surface-hover/50 hover:border-white/10",
       )}
     >
-      {/* Media Poster & Info */}
       <div className="flex items-center gap-3 min-w-0 flex-1">
         <div className="relative w-9 h-12 rounded-lg overflow-hidden bg-surface-raised shrink-0 border border-white/10 flex items-center justify-center">
           {posterUrl && !imageError ? (
@@ -91,35 +85,27 @@ export function GlobalSearchResultRow({
               loading="lazy"
             />
           ) : (
-            <div className="text-text-muted">{renderMediaTypeIcon()}</div>
+            <Icon className="w-3 h-3 text-primary" />
           )}
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-foreground truncate">
-              {item.title}
-            </span>
-          </div>
-
+          <span className="text-xs font-semibold text-foreground truncate block">
+            {item.title}
+          </span>
           <div className="flex items-center gap-2 mt-1">
             <span className="inline-flex items-center gap-1 text-[10px] text-text-muted font-medium capitalize">
-              {renderMediaTypeIcon()}
-              <span>
-                {item.media_type === "tv_show" ? "TV Series" : item.media_type}
-              </span>
+              <Icon className="w-3 h-3 text-primary" />
+              <span>{item.media_type === "tv_show" ? "TV Series" : item.media_type}</span>
             </span>
-
             <span className="text-white/20 text-[10px]">•</span>
-
             <span className="text-[10px] text-text-muted font-medium">
-              {getStatusLabel(item.status)}
+              {STATUS_LABELS[item.status] ?? item.status}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Action buttons */}
       <div className="flex items-center gap-1.5 shrink-0">
         {isGame && (
           <button
@@ -135,12 +121,7 @@ export function GlobalSearchResultRow({
               if (canLaunch) onSelect("start");
             }}
             className={cn(
-              "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer",
-              isSelected && activeAction === "start"
-                ? isCurrentMediaPlaying
-                  ? "bg-emerald-500 text-black shadow-md ring-2 ring-emerald-400/50"
-                  : "bg-primary text-primary-foreground shadow-md ring-2 ring-primary/40"
-                : "bg-white/5 hover:bg-white/10 text-text-muted hover:text-foreground border border-white/10",
+              btnClass(isSelected && activeAction === "start"),
               !canLaunch && "opacity-40 cursor-not-allowed",
             )}
           >
@@ -168,12 +149,7 @@ export function GlobalSearchResultRow({
             e.stopPropagation();
             onSelect("detail");
           }}
-          className={cn(
-            "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer",
-            isSelected && activeAction === "detail"
-              ? "bg-primary text-primary-foreground shadow-md ring-2 ring-primary/40"
-              : "bg-white/5 hover:bg-white/10 text-text-muted hover:text-foreground border border-white/10",
-          )}
+          className={btnClass(isSelected && activeAction === "detail")}
         >
           <Eye className="w-3 h-3 shrink-0" />
           <span>Details</span>
