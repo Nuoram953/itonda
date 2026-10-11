@@ -14,6 +14,7 @@ import { router } from "./app/router";
 import { WebSocketProvider } from "./app/websocketProvider";
 import { ThemeProvider } from "./components/theme-provider";
 import { queryConfig } from "./lib/react-query";
+import { ShortcutsProvider } from "./features/shortcuts";
 
 const queryClient = new QueryClient({ defaultOptions: queryConfig });
 
@@ -25,16 +26,18 @@ createRoot(document.getElementById("root")!).render(
         onReset={() => window.location.reload()}
       >
         <QueryClientProvider client={queryClient}>
-          <NotificationProvider>
-            <ActiveMediaProvider>
-              <WebSocketProvider>
-                <AxiosInterceptor>
-                  <RouterProvider router={router} />
-                </AxiosInterceptor>
-                <NotificationViewport />
-              </WebSocketProvider>
-            </ActiveMediaProvider>
-          </NotificationProvider>
+          <ShortcutsProvider>
+            <NotificationProvider>
+              <ActiveMediaProvider>
+                <WebSocketProvider>
+                  <AxiosInterceptor>
+                    <RouterProvider router={router} />
+                  </AxiosInterceptor>
+                  <NotificationViewport />
+                </WebSocketProvider>
+              </ActiveMediaProvider>
+            </NotificationProvider>
+          </ShortcutsProvider>
         </QueryClientProvider>
       </ErrorBoundary>
     </ThemeProvider>

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import type { components } from "@/api/generated.d";
 import { Gamepad2, Film, Tv } from "lucide-react";
 import { cn } from "@/lib/utils";
