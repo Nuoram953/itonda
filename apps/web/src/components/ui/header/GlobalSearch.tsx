@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Loader2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { useMedia } from "@/api/get-media";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useMediaLauncher, type MediaItem } from "@/hooks/use-media-launcher";
 import { LaunchProfileDialog } from "@/features/details/components/action/LaunchProfileDialog";
-import { GlobalSearchResultRow } from "./GlobalSearchResultRow";
+import { GlobalSearchResultRow, type SearchAction } from "./GlobalSearchResultRow";
 
 const KEY_HINTS = [
   { key: "↑↓", label: "Navigate" },
@@ -35,21 +35,17 @@ export function GlobalSearch({
 }: GlobalSearchProps = {}) {
   const [internalOpen, setInternalOpen] = useState(defaultOpen);
   const open = controlledOpen ?? internalOpen;
-
   const setOpen = useCallback(
-    (next: boolean | ((prev: boolean) => boolean)) => {
-      setInternalOpen((curr) => {
-        const val = typeof next === "function" ? next(controlledOpen ?? curr) : next;
-        controlledOnOpenChange?.(val);
-        return val;
-      });
+    (val: boolean) => {
+      setInternalOpen(val);
+      controlledOnOpenChange?.(val);
     },
-    [controlledOpen, controlledOnOpenChange],
+    [controlledOnOpenChange],
   );
 
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState("");
-  const [actionOverride, setActionOverride] = useState<"start" | "detail" | null>(null);
+  const [actionOverride, setActionOverride] = useState<SearchAction | null>(null);
 
   const navigate = useNavigate();
   const launcher = useMediaLauncher();
@@ -66,30 +62,25 @@ export function GlobalSearch({
     queryConfig: { enabled: isQueryActive && open },
   });
 
-  const results: MediaItem[] = useMemo(
-    () => (isQueryActive ? (data?.items ?? []) : []),
-    [isQueryActive, data?.items],
-  );
+  const results = isQueryActive ? (data?.items ?? []) : [];
   const isLoading = (isFetching || query.trim() !== debouncedQuery.trim()) && query.trim().length > 0;
 
-  const effectiveSelectedId = results.some((i) => i.id === selectedId) ? selectedId : (results[0]?.id ?? "");
-  const activeItem = results.find((i) => i.id === effectiveSelectedId) ?? results[0];
-  const canLaunchActiveItem = Boolean(activeItem && launcher.canLaunchMedia(activeItem));
-  const activeAction: "start" | "detail" =
-    canLaunchActiveItem && (actionOverride ?? "start") === "start" ? "start" : "detail";
+  const activeItem = results.find((i) => i.id === selectedId) ?? results[0];
+  const canLaunch = Boolean(activeItem && launcher.canLaunchMedia(activeItem));
+  const activeAction: SearchAction = canLaunch && actionOverride !== "detail" ? "start" : "detail";
 
   useEffect(() => {
-    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+    const onGlobalKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K")) {
         e.preventDefault();
-        setOpen((prev) => !prev);
+        setOpen(!open);
       }
     };
-    window.addEventListener("keydown", handleGlobalKeyDown);
-    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [setOpen]);
+    window.addEventListener("keydown", onGlobalKey);
+    return () => window.removeEventListener("keydown", onGlobalKey);
+  }, [open, setOpen]);
 
-  const handleExecuteAction = (item: MediaItem, action: "start" | "detail") => {
+  const onExecuteAction = (item: MediaItem, action: SearchAction) => {
     setOpen(false);
     if (action === "start") {
       launcher.handleLaunchMedia(item);
@@ -98,14 +89,14 @@ export function GlobalSearch({
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Tab" && canLaunchActiveItem) {
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Tab" && canLaunch) {
       e.preventDefault();
-      setActionOverride((prev) => ((prev ?? "start") === "start" ? "detail" : "start"));
+      setActionOverride((prev) => (prev === "detail" ? "start" : "detail"));
     }
   };
 
-  const handleOpenChange = (nextOpen: boolean) => {
+  const onDialogOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
     if (!nextOpen) {
       setQuery("");
@@ -119,33 +110,32 @@ export function GlobalSearch({
       <Button
         variant="outline"
         onClick={() => setOpen(true)}
-        className="hidden md:flex items-center justify-between gap-2.5 bg-surface-raised/50 border border-white/10 hover:border-primary/50 text-xs text-text-muted hover:text-foreground rounded-xl px-3.5 py-1.5 w-72 lg:w-96 cursor-pointer font-normal h-9 shadow-none"
+        className="hidden md:flex items-center justify-between gap-2 w-72 lg:w-80 h-9 px-3 rounded-xl border-white/10 bg-surface-raised/50 text-xs text-text-muted hover:text-foreground hover:border-primary/50"
       >
-        <div className="flex items-center gap-2">
-          <Search className="w-4 h-4 text-text-muted shrink-0" />
-          <span className="text-text-muted/70">Search media, games, movies...</span>
-        </div>
-        <kbd className="hidden lg:inline-flex items-center gap-0.5 rounded bg-surface border border-white/10 px-1.5 text-xs text-text-muted font-mono">
+        <span className="flex items-center gap-2">
+          <Search className="w-4 h-4 shrink-0" />
+          <span>Search media, games, movies...</span>
+        </span>
+        <kbd className="hidden lg:inline-flex px-1.5 py-0.5 rounded border border-white/10 bg-surface font-mono text-[10px]">
           ⌘K
         </kbd>
       </Button>
 
       <CommandDialog
         open={open}
-        onOpenChange={handleOpenChange}
+        onOpenChange={onDialogOpenChange}
         title="Search Media"
         description="Search games, movies, and TV series in your library"
-        className="sm:max-w-2xl bg-surface/95 border border-white/10 shadow-2xl backdrop-blur-xl text-foreground"
+        className="sm:max-w-2xl bg-surface/95 backdrop-blur-xl"
       >
         <Command
           shouldFilter={false}
-          value={effectiveSelectedId}
+          value={activeItem?.id ?? ""}
           onValueChange={(val) => {
             setSelectedId(val);
             setActionOverride(null);
           }}
-          onKeyDown={handleKeyDown}
-          className="bg-transparent text-foreground"
+          onKeyDown={onKeyDown}
         >
           <CommandInput
             placeholder="Search media, games, movies..."
@@ -154,51 +144,49 @@ export function GlobalSearch({
           />
 
           <CommandList className="max-h-[60vh] p-2">
-            {isLoading && results.length === 0 ? (
+            {isLoading && (
               <div className="flex items-center justify-center gap-2 p-8 text-xs text-text-muted">
                 <Loader2 className="w-4 h-4 animate-spin text-primary" />
                 <span>Searching media...</span>
               </div>
-            ) : results.length === 0 && query.trim() ? (
+            )}
+
+            {!isLoading && query.trim() && results.length === 0 && (
               <CommandEmpty className="p-8 text-center text-xs text-text-muted">
                 No media found matching &ldquo;{debouncedQuery || query}&rdquo;
               </CommandEmpty>
-            ) : results.length > 0 ? (
-              <CommandGroup heading="Media">
-                {results.map((item) => {
-                  const isSelected = item.id === activeItem?.id;
-                  return (
-                    <GlobalSearchResultRow
-                      key={item.id}
-                      item={item}
-                      isSelected={isSelected}
-                      activeAction={isSelected ? activeAction : "detail"}
-                      onSelect={(action) => handleExecuteAction(item, action)}
-                      onHover={() => setSelectedId(item.id)}
-                      onHoverAction={(action) => {
-                        setSelectedId(item.id);
-                        setActionOverride(action);
-                      }}
-                      canLaunch={launcher.canLaunchMedia(item)}
-                      disabledReason={launcher.getDisabledReason(item)}
-                      isCurrentMediaPlaying={launcher.isMediaPlaying(item.id)}
-                    />
-                  );
-                })}
-              </CommandGroup>
-            ) : null}
+            )}
 
-            <div className="flex items-center justify-between border-t border-white/10 px-3 py-2 text-[11px] text-text-muted bg-surface/50 -mx-2 -mb-2 mt-2">
+            {results.length > 0 && (
+              <CommandGroup heading="Media">
+                {results.map((item) => (
+                  <GlobalSearchResultRow
+                    key={item.id}
+                    item={item}
+                    isSelected={item.id === activeItem?.id}
+                    activeAction={item.id === activeItem?.id ? activeAction : "detail"}
+                    launcher={launcher}
+                    onSelect={(action) => onExecuteAction(item, action)}
+                    onHover={(action) => {
+                      setSelectedId(item.id);
+                      if (action) setActionOverride(action);
+                    }}
+                  />
+                ))}
+              </CommandGroup>
+            )}
+
+            <div className="flex items-center justify-between border-t border-white/10 px-3 py-2 text-[11px] text-text-muted">
               <div className="flex items-center gap-3">
                 {KEY_HINTS.map(({ key, label }) => (
                   <span key={key} className="flex items-center gap-1">
-                    <kbd className="rounded bg-surface border border-white/10 px-1 py-0.5 font-mono text-[10px]">{key}</kbd>
+                    <kbd className="rounded border border-white/10 bg-surface px-1 py-0.5 font-mono text-[10px]">{key}</kbd>
                     <span>{label}</span>
                   </span>
                 ))}
               </div>
               <span className="flex items-center gap-1">
-                <kbd className="rounded bg-surface border border-white/10 px-1 py-0.5 font-mono text-[10px]">Esc</kbd>
+                <kbd className="rounded border border-white/10 bg-surface px-1 py-0.5 font-mono text-[10px]">Esc</kbd>
                 <span>Close</span>
               </span>
             </div>
@@ -206,21 +194,7 @@ export function GlobalSearch({
         </Command>
       </CommandDialog>
 
-      {launcher.activeDialogMedia && (
-        <LaunchProfileDialog
-          open={Boolean(launcher.activeDialogMedia)}
-          onOpenChange={(nextOpen) => !nextOpen && launcher.setActiveDialogMedia(null)}
-          title={launcher.activeDialogMedia.title}
-          profiles={launcher.activeDialogMedia.launches}
-          isProfileAvailable={launcher.isProfileAvailable}
-          onSelectProfile={(profileId) =>
-            launcher.launch(profileId, {
-              mediaTitle: launcher.activeDialogMedia?.title,
-            })
-          }
-          isLoading={launcher.isLoading}
-        />
-      )}
+      {launcher.dialogProps && <LaunchProfileDialog {...launcher.dialogProps} />}
     </>
   );
 }

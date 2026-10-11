@@ -23,34 +23,34 @@ const STATUS_LABELS: Record<string, string> = {
   abandoned: "Dropped",
 };
 
+import type { useMediaLauncher } from "@/hooks/use-media-launcher";
+
 type GlobalSearchResultRowProps = {
   item: MediaItem;
   isSelected: boolean;
   activeAction: SearchAction;
+  launcher: ReturnType<typeof useMediaLauncher>;
   onSelect: (action: SearchAction) => void;
-  onHover: () => void;
-  onHoverAction: (action: SearchAction) => void;
-  canLaunch: boolean;
-  disabledReason?: string;
-  isCurrentMediaPlaying: boolean;
+  onHover: (action?: SearchAction) => void;
 };
 
 export function GlobalSearchResultRow({
   item,
   isSelected,
   activeAction,
+  launcher,
   onSelect,
   onHover,
-  onHoverAction,
-  canLaunch,
-  disabledReason,
-  isCurrentMediaPlaying,
 }: GlobalSearchResultRowProps) {
   const [imageError, setImageError] = useState(false);
   const posterAsset = getHeroPosterAsset(item.assets);
   const posterUrl = posterAsset ? getAssetUrl(posterAsset.id) : "";
   const Icon = MEDIA_ICONS[item.media_type] ?? Sparkles;
   const isGame = item.media_type === "game";
+
+  const canLaunch = launcher.canLaunchMedia(item);
+  const disabledReason = launcher.getDisabledReason(item);
+  const isCurrentMediaPlaying = launcher.isMediaPlaying(item.id);
 
   const btnClass = (isActive: boolean) =>
     cn(
@@ -66,7 +66,7 @@ export function GlobalSearchResultRow({
     <CommandItem
       value={item.id}
       onSelect={() => onSelect(activeAction)}
-      onMouseEnter={onHover}
+      onMouseEnter={() => onHover()}
       className={cn(
         "flex items-center justify-between gap-3 p-2 rounded-xl border transition-all duration-150 cursor-pointer select-none",
         isSelected
@@ -114,7 +114,7 @@ export function GlobalSearchResultRow({
             title={disabledReason}
             onMouseEnter={(e) => {
               e.stopPropagation();
-              onHoverAction("start");
+              onHover("start");
             }}
             onClick={(e) => {
               e.stopPropagation();
@@ -143,7 +143,7 @@ export function GlobalSearchResultRow({
           type="button"
           onMouseEnter={(e) => {
             e.stopPropagation();
-            onHoverAction("detail");
+            onHover("detail");
           }}
           onClick={(e) => {
             e.stopPropagation();

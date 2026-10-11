@@ -107,6 +107,23 @@ export function useMediaLauncher({
     setActiveDialogMedia(media);
   };
 
+  const isLoading = isLaunching || Boolean(launchMutation.isPending);
+
+  const dialogProps = activeDialogMedia
+    ? {
+        open: true,
+        onOpenChange: (nextOpen: boolean) => {
+          if (!nextOpen) setActiveDialogMedia(null);
+        },
+        title: activeDialogMedia.title,
+        profiles: activeDialogMedia.launches ?? [],
+        isProfileAvailable,
+        onSelectProfile: (profileId: string) =>
+          launch(profileId, { mediaTitle: activeDialogMedia.title }),
+        isLoading,
+      }
+    : null;
+
   return {
     isServerConnected,
     hasConnectedAgent,
@@ -122,12 +139,13 @@ export function useMediaLauncher({
     open,
     setOpen,
     isLaunching,
-    isLoading: isLaunching || Boolean(launchMutation.isPending),
+    isLoading,
     isPlaying: isCurrentPlaying,
     formattedElapsed,
     canLaunch: canLaunch(initialProfiles),
     disabledReason: getDisabledReason(initialProfiles),
     profiles: initialProfiles,
     handleLaunchClick,
+    dialogProps,
   };
 }
