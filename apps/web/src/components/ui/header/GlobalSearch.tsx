@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Loader2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,27 +22,8 @@ const KEY_HINTS = [
   { key: "↵", label: "Select" },
 ];
 
-export type GlobalSearchProps = {
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  defaultOpen?: boolean;
-};
-
-export function GlobalSearch({
-  open: controlledOpen,
-  onOpenChange: controlledOnOpenChange,
-  defaultOpen = false,
-}: GlobalSearchProps = {}) {
-  const [internalOpen, setInternalOpen] = useState(defaultOpen);
-  const open = controlledOpen ?? internalOpen;
-  const setOpen = useCallback(
-    (val: boolean) => {
-      setInternalOpen(val);
-      controlledOnOpenChange?.(val);
-    },
-    [controlledOnOpenChange],
-  );
-
+export function GlobalSearch() {
+  const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState("");
   const [actionOverride, setActionOverride] = useState<SearchAction | null>(null);
@@ -73,12 +54,12 @@ export function GlobalSearch({
     const onGlobalKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K")) {
         e.preventDefault();
-        setOpen(!open);
+        setOpen((prev) => !prev);
       }
     };
     window.addEventListener("keydown", onGlobalKey);
     return () => window.removeEventListener("keydown", onGlobalKey);
-  }, [open, setOpen]);
+  }, []);
 
   const onExecuteAction = (item: MediaItem, action: SearchAction) => {
     setOpen(false);

@@ -129,6 +129,11 @@ describe("GlobalSearch Component", () => {
     });
   });
 
+  const renderOpenSearch = () => {
+    render(<GlobalSearch />);
+    fireEvent.click(screen.getByRole("button", { name: /search media/i }));
+  };
+
   it("renders search trigger with placeholder text and ⌘K shortcut badge", () => {
     render(<GlobalSearch />);
 
@@ -157,7 +162,7 @@ describe("GlobalSearch Component", () => {
       createMediaResponse({ items: [singleProfileGame, movieMedia] }),
     );
 
-    render(<GlobalSearch defaultOpen />);
+    renderOpenSearch();
 
     const input = screen.getByPlaceholderText("Search media, games, movies...");
     fireEvent.change(input, { target: { value: "el" } });
@@ -176,7 +181,7 @@ describe("GlobalSearch Component", () => {
       createMediaResponse({ items: [] }),
     );
 
-    render(<GlobalSearch defaultOpen />);
+    renderOpenSearch();
 
     const input = screen.getByPlaceholderText("Search media, games, movies...");
     fireEvent.change(input, { target: { value: "nonexistent" } });
@@ -193,7 +198,7 @@ describe("GlobalSearch Component", () => {
       createMediaResponse({ items: [singleProfileGame, movieMedia] }),
     );
 
-    render(<GlobalSearch defaultOpen />);
+    renderOpenSearch();
 
     const input = screen.getByPlaceholderText("Search media, games, movies...");
     fireEvent.change(input, { target: { value: "test" } });
@@ -222,7 +227,7 @@ describe("GlobalSearch Component", () => {
       createMediaResponse({ items: [singleProfileGame] }),
     );
 
-    render(<GlobalSearch defaultOpen />);
+    renderOpenSearch();
 
     const input = screen.getByPlaceholderText("Search media, games, movies...");
     fireEvent.change(input, { target: { value: "elden" } });
@@ -254,7 +259,7 @@ describe("GlobalSearch Component", () => {
       createMediaResponse({ items: [movieMedia] }),
     );
 
-    render(<GlobalSearch defaultOpen />);
+    renderOpenSearch();
 
     const input = screen.getByPlaceholderText("Search media, games, movies...");
     fireEvent.change(input, { target: { value: "inter" } });
@@ -276,7 +281,7 @@ describe("GlobalSearch Component", () => {
       createMediaResponse({ items: [singleProfileGame] }),
     );
 
-    render(<GlobalSearch defaultOpen />);
+    renderOpenSearch();
 
     const input = screen.getByPlaceholderText("Search media, games, movies...");
     fireEvent.change(input, { target: { value: "elden" } });
@@ -296,7 +301,7 @@ describe("GlobalSearch Component", () => {
       createMediaResponse({ items: [singleProfileGame] }),
     );
 
-    render(<GlobalSearch defaultOpen />);
+    renderOpenSearch();
 
     const input = screen.getByPlaceholderText("Search media, games, movies...");
     fireEvent.change(input, { target: { value: "elden" } });
@@ -322,7 +327,7 @@ describe("GlobalSearch Component", () => {
       createMediaResponse({ items: [multiProfileGame] }),
     );
 
-    render(<GlobalSearch defaultOpen />);
+    renderOpenSearch();
 
     const input = screen.getByPlaceholderText("Search media, games, movies...");
     fireEvent.change(input, { target: { value: "cyber" } });
@@ -349,7 +354,7 @@ describe("GlobalSearch Component", () => {
       createMediaResponse({ items: [singleProfileGame] }),
     );
 
-    render(<GlobalSearch defaultOpen />);
+    renderOpenSearch();
 
     const input = screen.getByPlaceholderText("Search media, games, movies...");
     fireEvent.change(input, { target: { value: "elden" } });
@@ -400,7 +405,7 @@ describe("GlobalSearch Component", () => {
       createMediaResponse({ items: [singleProfileGame] }),
     );
 
-    render(<GlobalSearch defaultOpen />);
+    renderOpenSearch();
 
     const input = screen.getByPlaceholderText("Search media, games, movies...");
     fireEvent.change(input, { target: { value: "elden" } });
