@@ -49,6 +49,7 @@ export const MediaDetails = () => {
   const syncMutation = useSyncMedia();
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [isAudioPlaying, setIsAudioPlaying] = useState(true);
+  const [volume, setVolume] = useState(0.75);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const media = mediaQuery.data;
@@ -56,7 +57,12 @@ export const MediaDetails = () => {
 
   useEffect(() => {
     if (audioRef.current) {
-      audioRef.current.volume = 0.35;
+      audioRef.current.volume = volume;
+    }
+  }, [volume]);
+
+  useEffect(() => {
+    if (audioRef.current) {
       const playPromise = audioRef.current.play();
       if (playPromise !== undefined) {
         playPromise
@@ -69,6 +75,13 @@ export const MediaDetails = () => {
       }
     }
   }, [audioAsset?.id]);
+
+  const handleVolumeChange = (newVolume: number) => {
+    setVolume(newVolume);
+    if (audioRef.current) {
+      audioRef.current.volume = newVolume;
+    }
+  };
 
   const toggleAudio = () => {
     if (!audioRef.current) return;
@@ -152,7 +165,7 @@ export const MediaDetails = () => {
               ref={(node) => {
                 audioRef.current = node;
                 if (node) {
-                  node.volume = 0.35;
+                  node.volume = volume;
                 }
               }}
               src={getAssetUrl(audioAsset.id)}
@@ -164,8 +177,11 @@ export const MediaDetails = () => {
             />
             <FloatingOstPlayer
               title={media.title}
+              trackName={audioAsset.name}
               isPlaying={isAudioPlaying}
               onToggle={toggleAudio}
+              volume={volume}
+              onVolumeChange={handleVolumeChange}
             />
           </>
         )}

@@ -17,6 +17,8 @@ use crate::{
     sync::{context::SyncContext, errors::SyncError, pipeline::SyncStep},
 };
 
+pub const MAX_AUDIO_DURATION_SECS: u64 = 5 * 60;
+
 pub struct DownloadStep {
     pool: SqlitePool,
     paths: AppPaths,
@@ -122,6 +124,7 @@ impl SyncStep for DownloadStep {
                             media.assets.push(Asset {
                                 id: inserted.id,
                                 asset_type: AssetType::Video,
+                                name: None,
                             });
                         }
 
@@ -150,39 +153,82 @@ impl SyncStep for DownloadStep {
         }
 
         // 2. Audio (e.g. soundtrack / theme converted to MP3)
-        let has_audio_asset = existing_assets
+        let existing_audio_asset = existing_assets
             .iter()
-            .any(|a| a.asset_id == AssetType::Audio.id());
-        let audio_rel_path = "audio/audio.mp3";
-        let audio_abs_path = self.paths.media_dir(media_uuid).join(audio_rel_path);
+            .find(|a| a.asset_id == AssetType::Audio.id());
+        let has_audio_asset = existing_audio_asset.is_some();
+        let existing_file_exists = existing_audio_asset
+            .map(|a| self.paths.media_dir(media_uuid).join(&a.path).exists())
+            .unwrap_or(false);
 
-        if !has_audio_asset || !audio_abs_path.exists() || context.force {
+        if !has_audio_asset || !existing_file_exists || context.force {
             let audio_query = format!("{} soundtrack", media.title);
-            let audio_target = match self.client.search(&audio_query, 1).await {
-                Ok(results) => results.into_iter().next().map(|r| r.id),
+            let mut search_results = match self
+                .client
+                .search_with_filter(&audio_query, 10, Some(MAX_AUDIO_DURATION_SECS))
+                .await
+            {
+                Ok(results) => results,
                 Err(err) => {
                     tracing::warn!("Failed to search YouTube audio for '{}': {err}", media.title);
-                    None
+                    Vec::new()
                 }
             };
 
-            if let Some(target) = audio_target {
+            if search_results.is_empty() {
+                let theme_query = format!("{} theme", media.title);
+                if let Ok(theme_results) = self
+                    .client
+                    .search_with_filter(&theme_query, 10, Some(MAX_AUDIO_DURATION_SECS))
+                    .await
+                {
+                    search_results = theme_results;
+                }
+            }
+
+            let audio_info = search_results
+                .into_iter()
+                .find(|info| info.duration.map_or(false, |d| d <= MAX_AUDIO_DURATION_SECS));
+
+            if let Some(info) = audio_info {
+                let track_title = info.title.clone();
+                let sanitized_title = sanitize_filename(&track_title);
+                let audio_rel_path = format!("audio/{sanitized_title}.mp3");
+                let audio_abs_path = self.paths.media_dir(media_uuid).join(&audio_rel_path);
+
                 tracing::info!(
-                    "Downloading audio for '{}' (ID: {}) to {}",
+                    "Downloading audio for '{}' (ID: {}, Title: '{}', Duration: {:?}s) to {}",
                     media.title,
-                    target,
+                    info.id,
+                    track_title,
+                    info.duration,
                     audio_abs_path.display()
                 );
 
-                match self.client.download(&target, AssetType::Audio, &audio_abs_path).await {
+                match self.client.download(&info.id, AssetType::Audio, &audio_abs_path).await {
                     Ok(_) => {
-                        if !has_audio_asset {
+                        if let Some(existing) = existing_audio_asset {
+                            if existing.path != audio_rel_path {
+                                let old_abs_path = self.paths.media_dir(media_uuid).join(&existing.path);
+                                if old_abs_path.exists() && old_abs_path != audio_abs_path {
+                                    let _ = tokio::fs::remove_file(&old_abs_path).await;
+                                }
+                                let _ = sqlx::query("UPDATE media_assets SET path = ? WHERE id = ?")
+                                    .bind(&audio_rel_path)
+                                    .bind(&existing.id)
+                                    .execute(&self.pool)
+                                    .await;
+                            }
+                            if let Some(asset) = media.assets.iter_mut().find(|a| a.asset_type == AssetType::Audio) {
+                                asset.name = Some(track_title.clone());
+                            }
+                        } else {
                             let inserted = insert_media_asset(
                                 &self.pool,
                                 MediaAssetInsert {
                                     media_id: media.id.clone(),
                                     asset_id: AssetType::Audio.id(),
-                                    path: audio_rel_path.to_string(),
+                                    path: audio_rel_path.clone(),
                                 },
                             )
                             .await?;
@@ -190,6 +236,7 @@ impl SyncStep for DownloadStep {
                             media.assets.push(Asset {
                                 id: inserted.id,
                                 asset_type: AssetType::Audio,
+                                name: Some(track_title),
                             });
                         }
                     }
@@ -201,6 +248,26 @@ impl SyncStep for DownloadStep {
         }
 
         Ok(())
+    }
+}
+
+pub fn sanitize_filename(name: &str) -> String {
+    let sanitized: String = name
+        .chars()
+        .map(|c| match c {
+            '/' | '\\' | '?' | '%' | '*' | ':' | '|' | '"' | '<' | '>' => ' ',
+            c if c.is_control() => ' ',
+            c => c,
+        })
+        .collect();
+
+    let words: Vec<&str> = sanitized.split_whitespace().collect();
+    let result = words.join(" ");
+    let trimmed = result.trim_matches(&[' ', '.', '-'][..]);
+    if trimmed.is_empty() {
+        "audio".to_string()
+    } else {
+        trimmed.chars().take(150).collect()
     }
 }
 
@@ -289,5 +356,24 @@ mod tests {
         let step = DownloadStep::new(pool, paths);
         let result = step.execute(&mut context).await;
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_sanitize_filename() {
+        assert_eq!(
+            sanitize_filename("Kingdom Come: Deliverance OST - A World Unforgiving"),
+            "Kingdom Come Deliverance OST - A World Unforgiving"
+        );
+        assert_eq!(
+            sanitize_filename("Elden Ring / Main Theme? (Official)"),
+            "Elden Ring Main Theme (Official)"
+        );
+        assert_eq!(sanitize_filename(""), "audio");
+    }
+
+    #[test]
+    fn test_max_audio_duration_secs_constant() {
+        // 5 minutes = 300 seconds
+        assert_eq!(MAX_AUDIO_DURATION_SECS, 300);
     }
 }

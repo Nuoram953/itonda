@@ -57,6 +57,7 @@ export function FeaturedMedia({ media }: FeaturedMediaProps) {
           poster={still ? getAssetUrl(still.id) : undefined}
           autoPlay
           muted
+          loop
           controls
           playsInline
           preload="auto"

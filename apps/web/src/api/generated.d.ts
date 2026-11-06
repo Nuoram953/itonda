@@ -307,6 +307,7 @@ export interface components {
         Asset: {
             asset_type: components["schemas"]["AssetType"];
             id: string;
+            name?: string | null;
         };
         AssetStoreSettings: {
             /**

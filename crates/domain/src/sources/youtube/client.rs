@@ -132,6 +132,15 @@ impl YoutubeClient {
     }
 
     pub async fn search(&self, query: &str, limit: usize) -> Result<Vec<YoutubeVideoInfo>, YoutubeError> {
+        self.search_with_filter(query, limit, None).await
+    }
+
+    pub async fn search_with_filter(
+        &self,
+        query: &str,
+        limit: usize,
+        max_duration_secs: Option<u64>,
+    ) -> Result<Vec<YoutubeVideoInfo>, YoutubeError> {
         let trimmed = query.trim();
         if trimmed.is_empty() {
             return Ok(Vec::new());
@@ -140,22 +149,39 @@ impl YoutubeClient {
         // If it's a direct URL or ID, fetch single video
         if let Some(id) = Self::extract_video_id(trimmed) {
             match self.get_video_info(&id).await {
-                Ok(info) => return Ok(vec![info]),
+                Ok(info) => {
+                    if let Some(max_secs) = max_duration_secs {
+                        if info.duration.map_or(false, |d| d <= max_secs) {
+                            return Ok(vec![info]);
+                        } else {
+                            return Ok(Vec::new());
+                        }
+                    }
+                    return Ok(vec![info]);
+                }
                 Err(err) => tracing::warn!("Failed to fetch direct video info for ID {id}: {err}"),
             }
         }
 
         let search_target = format!("ytsearch{limit}:{trimmed}");
-        let output = Command::new(&self.binary_path)
-            .arg("--dump-single-json")
+        let mut cmd = Command::new(&self.binary_path);
+        cmd.arg("--dump-single-json")
             .arg("--no-playlist")
-            .arg("--skip-download")
-            .arg(&search_target)
-            .output()
-            .await?;
+            .arg("--skip-download");
+
+        if let Some(max_secs) = max_duration_secs {
+            cmd.arg("--match-filter")
+                .arg(format!("duration <= {max_secs}"));
+        }
+
+        cmd.arg(&search_target);
+        let output = cmd.output().await?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+            if stderr.contains("does not pass filter") || stderr.contains("No video formats found") {
+                return Ok(Vec::new());
+            }
             return Err(YoutubeError::CommandFailed {
                 code: output.status.code(),
                 stderr,
@@ -166,11 +192,27 @@ impl YoutubeClient {
         if let Some(entries) = parsed.entries {
             let results: Vec<YoutubeVideoInfo> = entries
                 .into_iter()
+                .flatten()
                 .filter_map(|entry| entry.into_video_info())
+                .filter(|info| {
+                    if let Some(max_secs) = max_duration_secs {
+                        info.duration.map_or(false, |d| d <= max_secs)
+                    } else {
+                        true
+                    }
+                })
                 .collect();
             Ok(results)
         } else if let Some(single) = parsed.into_video_info() {
-            Ok(vec![single])
+            if let Some(max_secs) = max_duration_secs {
+                if single.duration.map_or(false, |d| d <= max_secs) {
+                    Ok(vec![single])
+                } else {
+                    Ok(Vec::new())
+                }
+            } else {
+                Ok(vec![single])
+            }
         } else {
             Ok(Vec::new())
         }
@@ -232,7 +274,9 @@ impl YoutubeClient {
                     .arg("--audio-format")
                     .arg("mp3")
                     .arg("--audio-quality")
-                    .arg("0");
+                    .arg("0")
+                    .arg("--match-filter")
+                    .arg("duration <= 300");
             }
             _ => {
                 cmd.arg("-f")
@@ -248,6 +292,13 @@ impl YoutubeClient {
             return Err(YoutubeError::CommandFailed {
                 code: output.status.code(),
                 stderr,
+            });
+        }
+
+        if !output_path.exists() {
+            return Err(YoutubeError::CommandFailed {
+                code: output.status.code(),
+                stderr: "Downloaded file was not created (it may have been filtered out by duration limit)".to_string(),
             });
         }
 

@@ -24,7 +24,7 @@ pub(crate) struct YtDlpRawOutput {
     pub thumbnail: Option<String>,
     pub upload_date: Option<String>,
     pub tags: Option<Vec<String>>,
-    pub entries: Option<Vec<YtDlpRawOutput>>,
+    pub entries: Option<Vec<Option<YtDlpRawOutput>>>,
 }
 
 impl YtDlpRawOutput {
