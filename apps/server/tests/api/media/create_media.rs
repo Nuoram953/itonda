@@ -119,3 +119,38 @@ async fn create_media_returns_validation_error_on_empty_title() {
 
     assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 }
+
+#[tokio::test]
+async fn create_media_with_youtube_url_sets_youtube_provider() {
+    let app = test_app().await;
+
+    let body = serde_json::json!({
+        "title": "Elden Ring",
+        "media_type": "game",
+        "external_id": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    });
+
+    let response = app
+        .router
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/media")
+                .method("POST")
+                .header("content-type", "application/json")
+                .body(Body::from(body.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let created: Media = json(response).await;
+    assert_eq!(created.media_type, MediaType::Game);
+
+    let ext_ids = find_external_ids_by_media_ids(&app.db, std::slice::from_ref(&created.id))
+        .await
+        .unwrap();
+    assert_eq!(ext_ids[0].provider, "youtube");
+    assert_eq!(ext_ids[0].external_id, "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+}

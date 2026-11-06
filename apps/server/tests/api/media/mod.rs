@@ -6,3 +6,4 @@ pub mod launch_media;
 pub mod patch_media_status;
 pub mod refresh_media;
 pub mod search_media;
+pub mod sync_media;

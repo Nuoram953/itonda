@@ -35,6 +35,9 @@ pub enum SyncError {
     #[error("serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
 
+    #[error("download error: {0}")]
+    Download(String),
+
     #[error("sync step failed: {step}: {source}")]
     Step {
         step: String,

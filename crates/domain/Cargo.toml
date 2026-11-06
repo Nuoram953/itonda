@@ -16,7 +16,7 @@ thiserror = { workspace = true }
 uuid = { workspace = true, features = ["v4", "serde"] }
 chrono = { workspace = true, features = ["serde"] }
 utoipa = { version = "5", features = ["axum_extras"] }
-tokio = { workspace = true, features = ["macros", "rt"] }
+tokio = { workspace = true, features = ["macros", "rt", "process", "io-util"] }
 tracing = {workspace=true}
 async-trait = {workspace=true}
 http = {workspace=true}

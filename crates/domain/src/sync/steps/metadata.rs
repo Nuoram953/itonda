@@ -218,6 +218,7 @@ impl SyncStep for MetadataStep {
                     }
                 }
             }
+            crate::metadata::models::GeneralMetadata::Common(_) => {}
         }
 
         Ok(())

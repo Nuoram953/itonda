@@ -32,13 +32,13 @@ describe("HeroHeader Component", () => {
     expect(screen.getByText("3h")).toBeDefined();
     expect(screen.getByText("Playtime")).toBeDefined();
     expect(screen.getByText("Last Played")).toBeDefined();
-    expect(screen.getByText("Trailer")).toBeDefined();
   });
 
-  it("renders trailer controls when trailer asset is present", () => {
+  it("does not render trailer video or trailer controls in hero header", () => {
     render(<HeroHeader media={mockMedia} />);
 
-    expect(screen.getByTitle("Pause Trailer")).toBeDefined();
-    expect(screen.getByTitle("Unmute Audio")).toBeDefined();
+    expect(screen.queryByTitle("Pause Trailer")).toBeNull();
+    expect(screen.queryByTitle("Play Trailer")).toBeNull();
+    expect(screen.queryByText("Trailer")).toBeNull();
   });
 });

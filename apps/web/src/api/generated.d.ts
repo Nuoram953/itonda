@@ -307,6 +307,7 @@ export interface components {
         Asset: {
             asset_type: components["schemas"]["AssetType"];
             id: string;
+            name?: string | null;
         };
         AssetStoreSettings: {
             /**
@@ -323,7 +324,7 @@ export interface components {
             tmdb: components["schemas"]["TheMovieDatabaseSettings"];
         };
         /** @enum {string} */
-        AssetType: "poster" | "backdrop" | "logo" | "banner" | "thumbnail" | "icon" | "trailer" | "screenshot";
+        AssetType: "poster" | "backdrop" | "logo" | "banner" | "thumbnail" | "icon" | "trailer" | "screenshot" | "video" | "audio";
         AssetsSettings: {
             /**
              * @default {
@@ -426,7 +427,7 @@ export interface components {
             title: string;
         };
         /** @enum {string} */
-        ExternalIdProvider: "steam" | "igdb" | "steam_grid_db" | "tmdb";
+        ExternalIdProvider: "steam" | "igdb" | "steam_grid_db" | "tmdb" | "youtube";
         GameReview: {
             created_at: string;
             media_id: string;
@@ -559,7 +560,7 @@ export interface components {
         /** @enum {string} */
         MediaSortField: "title" | "last_played_at";
         /** @enum {string} */
-        MediaSource: "steam";
+        MediaSource: "steam" | "youtube";
         /** @enum {string} */
         MediaStatus: "not_started" | "in_progress" | "completed" | "abandoned" | "paused";
         MediaStorefront: {

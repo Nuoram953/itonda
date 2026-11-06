@@ -14,7 +14,8 @@ use crate::{
         errors::SyncError,
         pipeline::{MediaSyncPipeline, SyncStep},
         steps::{
-            assets::AssetStep, identify::IdentifyStep, metadata::MetadataStep, persist::PersistStep,
+            assets::AssetStep, download::DownloadStep, identify::IdentifyStep,
+            metadata::MetadataStep, persist::PersistStep,
         },
     },
 };
@@ -56,6 +57,7 @@ impl LibrarySyncService {
                 assets,
                 AssetDownloader::new(AppPaths::new()),
             )),
+            Box::new(DownloadStep::new(db.clone(), AppPaths::new())),
         ];
         let pipeline = MediaSyncPipeline::new(steps);
         Self {
