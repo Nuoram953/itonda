@@ -3,7 +3,7 @@ import { render, screen, createMedia, createAsset } from "@/test/test-utils";
 import { FeaturedMedia } from "../FeaturedMedia";
 
 describe("FeaturedMedia Component", () => {
-  it("renders a video with controls and poster when trailer is available", () => {
+  it("renders a video with controls, autoplay, muted, and poster when trailer is available", () => {
     const media = createMedia({
       assets: [
         createAsset({ id: "t1", asset_type: "trailer" }),
@@ -18,6 +18,9 @@ describe("FeaturedMedia Component", () => {
     expect(video?.getAttribute("src")).toContain("t1");
     expect(video?.getAttribute("poster")).toContain("s1");
     expect(video?.hasAttribute("controls")).toBe(true);
+    expect(video?.hasAttribute("autoplay")).toBe(true);
+    expect(video?.muted).toBe(true);
+    expect(video?.volume).toBe(0.75);
   });
 
   it("falls back to screenshot when no trailer is available", () => {

@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useParams } from "@tanstack/react-router";
 import { Bookmark, MoreVertical, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -48,14 +48,44 @@ export const MediaDetails = () => {
   const mediaQuery = useMediaById({ mediaId });
   const syncMutation = useSyncMedia();
   const [activeTab, setActiveTab] = useState<TabId>("overview");
-  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(true);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const media = mediaQuery.data;
+  const audioAsset = getHeroAudioAsset(media?.assets);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = 0.35;
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            setIsAudioPlaying(true);
+          })
+          .catch(() => {
+            setIsAudioPlaying(false);
+          });
+      }
+    }
+  }, [audioAsset?.id]);
+
+  const toggleAudio = () => {
+    if (!audioRef.current) return;
+    if (isAudioPlaying) {
+      audioRef.current.pause();
+      setIsAudioPlaying(false);
+    } else {
+      audioRef.current
+        .play()
+        .then(() => setIsAudioPlaying(true))
+        .catch(() => setIsAudioPlaying(false));
+    }
+  };
 
   if (mediaQuery.isPending) {
     return <LoadingState message="Loading media details..." />;
   }
-
-  const media = mediaQuery.data;
 
   if (!media) {
     return (
@@ -65,19 +95,6 @@ export const MediaDetails = () => {
       />
     );
   }
-
-  const audioAsset = getHeroAudioAsset(media.assets);
-
-  const toggleAudio = () => {
-    if (!audioRef.current) return;
-    if (isAudioPlaying) {
-      audioRef.current.pause();
-      setIsAudioPlaying(false);
-    } else {
-      audioRef.current.play();
-      setIsAudioPlaying(true);
-    }
-  };
 
   return (
     <Workspace>
@@ -98,7 +115,7 @@ export const MediaDetails = () => {
               <RefreshCw
                 className={cn(
                   "w-4 h-4",
-                  syncMutation.isPending && "animate-spin"
+                  syncMutation.isPending && "animate-spin",
                 )}
               />
             }
@@ -132,10 +149,18 @@ export const MediaDetails = () => {
         {audioAsset && (
           <>
             <audio
-              ref={audioRef}
+              ref={(node) => {
+                audioRef.current = node;
+                if (node) {
+                  node.volume = 0.35;
+                }
+              }}
               src={getAssetUrl(audioAsset.id)}
+              autoPlay
+              preload="auto"
+              onPlay={() => setIsAudioPlaying(true)}
+              onPause={() => setIsAudioPlaying(false)}
               onEnded={() => setIsAudioPlaying(false)}
-              preload="none"
             />
             <FloatingOstPlayer
               title={media.title}

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { ImageOff } from "lucide-react";
 import type { components } from "@/api/generated.d";
 import { getAssetUrl } from "../../utils/asset-url";
@@ -12,6 +13,13 @@ export function FeaturedMedia({ media }: FeaturedMediaProps) {
   const still =
     findAssetByType(media.assets, "screenshot") ??
     findAssetByType(media.assets, ["backdrop", "banner"]);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.volume = 0.75;
+    }
+  }, [trailer?.id]);
 
   if (!trailer && !still) {
     return (
@@ -38,12 +46,20 @@ export function FeaturedMedia({ media }: FeaturedMediaProps) {
     >
       {trailer ? (
         <video
+          ref={(node) => {
+            videoRef.current = node;
+            if (node) {
+              node.volume = 0.75;
+            }
+          }}
           key={trailer.id}
           src={getAssetUrl(trailer.id)}
           poster={still ? getAssetUrl(still.id) : undefined}
+          autoPlay
+          muted
           controls
           playsInline
-          preload="metadata"
+          preload="auto"
           className="w-full h-full object-contain"
         />
       ) : (
