@@ -139,6 +139,49 @@ pub async fn refresh(
 
 #[utoipa::path(
     post,
+    path = "/media/{media_id}/sync",
+    params(
+        ("media_id" = String, Path, description = "ID of the media to sync")
+    ),
+    responses(
+        (
+            status = 202,
+            body = JobResponse
+        )
+    )
+)]
+#[instrument(skip(state))]
+pub async fn sync_media_by_id(
+    State(state): State<AppState>,
+    Path(media_id): Path<String>,
+) -> Result<impl IntoResponse, ApiError> {
+    let job_id = Uuid::new_v4();
+
+    state
+        .jobs
+        .send(Job::Sync(SyncJob {
+            id: job_id,
+            storefront: None,
+            media_id: Some(media_id),
+            force: true,
+        }))
+        .await
+        .map_err(|err| {
+            tracing::error!(?err, "Failed to queue sync job");
+            ApiError::WorkerUnavailable
+        })?;
+
+    Ok((
+        StatusCode::ACCEPTED,
+        Json(JobResponse {
+            job_id: job_id.to_string(),
+            status: JobStatus::Queued,
+        }),
+    ))
+}
+
+#[utoipa::path(
+    post,
     path = "/media/import",
     request_body = MediaImportPayload,
     responses(
@@ -310,9 +353,14 @@ pub async fn create_media(
     if let Some(external_id) = request.external_id
         && !external_id.trim().is_empty()
     {
-        let provider = match request.media_type {
-            MediaType::Game => ExternalIdProvider::Igdb,
-            MediaType::Movie | MediaType::TvShow => ExternalIdProvider::Tmdb,
+        let is_youtube = itonda_domain::sources::youtube::client::YoutubeClient::extract_video_id(external_id.trim()).is_some();
+        let provider = if is_youtube {
+            ExternalIdProvider::Youtube
+        } else {
+            match request.media_type {
+                MediaType::Game => ExternalIdProvider::Igdb,
+                MediaType::Movie | MediaType::TvShow => ExternalIdProvider::Tmdb,
+            }
         };
 
         let _ = itonda_database::media::upsert_media_external_id(

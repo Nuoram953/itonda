@@ -109,12 +109,14 @@ impl TryFrom<String> for MediaLaunchType {
 #[serde(rename_all = "snake_case")]
 pub enum MediaSource {
     Steam,
+    Youtube,
 }
 
 impl MediaSource {
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Steam => "steam",
+            Self::Youtube => "youtube",
         }
     }
 }

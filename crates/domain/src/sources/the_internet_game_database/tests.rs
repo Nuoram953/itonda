@@ -179,7 +179,9 @@ fn test_into_general_metadata() {
     };
 
     let metadata = game.into_general_metadata();
-    let GeneralMetadata::Game(game_meta) = metadata;
+    let GeneralMetadata::Game(game_meta) = metadata else {
+        panic!("expected Game metadata");
+    };
 
     assert_eq!(
         game_meta.common.description.as_deref(),

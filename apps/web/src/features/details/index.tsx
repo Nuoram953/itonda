@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useParams } from "@tanstack/react-router";
-import { Bookmark, MoreVertical } from "lucide-react";
+import { Bookmark, MoreVertical, RefreshCw } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Workspace } from "@/components/workspace/Workspace";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { ErrorState } from "@/components/feedback/ErrorState";
 import { useMediaById } from "./api/get-media-id";
+import { useSyncMedia } from "./api/post-media-sync";
 import { Launch } from "./components/action/Launch";
 import { Status } from "./components/action/status";
 import { HeroHeader } from "./components/hero/HeroHeader";
@@ -13,6 +15,9 @@ import { OverviewTab } from "./components/overview/OverviewTab";
 import { ReviewsTab } from "./components/tabs/ReviewsTab";
 import { GalleryTab } from "./components/tabs/GalleryTab";
 import { DetailsInfoTab } from "./components/tabs/DetailsInfoTab";
+import { FloatingOstPlayer } from "./components/audio/FloatingOstPlayer";
+import { getHeroAudioAsset } from "./utils/media-assets";
+import { getAssetUrl } from "./utils/asset-url";
 
 type HeaderActionButtonProps = {
   icon: React.ReactNode;
@@ -41,7 +46,10 @@ export const MediaDetails = () => {
   });
 
   const mediaQuery = useMediaById({ mediaId });
+  const syncMutation = useSyncMedia();
   const [activeTab, setActiveTab] = useState<TabId>("overview");
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   if (mediaQuery.isPending) {
     return <LoadingState message="Loading media details..." />;
@@ -58,6 +66,19 @@ export const MediaDetails = () => {
     );
   }
 
+  const audioAsset = getHeroAudioAsset(media.assets);
+
+  const toggleAudio = () => {
+    if (!audioRef.current) return;
+    if (isAudioPlaying) {
+      audioRef.current.pause();
+      setIsAudioPlaying(false);
+    } else {
+      audioRef.current.play();
+      setIsAudioPlaying(true);
+    }
+  };
+
   return (
     <Workspace>
       <Workspace.Header
@@ -72,6 +93,18 @@ export const MediaDetails = () => {
         <Workspace.Actions className="flex items-center gap-3">
           <Launch profiles={media.launches} mediaId={mediaId} />
           <Status mediaId={mediaId} currentStatus={media.status} />
+          <HeaderActionButton
+            icon={
+              <RefreshCw
+                className={cn(
+                  "w-4 h-4",
+                  syncMutation.isPending && "animate-spin"
+                )}
+              />
+            }
+            title="Sync Media"
+            onClick={() => syncMutation.mutate(mediaId)}
+          />
           <HeaderActionButton
             icon={<Bookmark className="w-4 h-4" />}
             title="Bookmark"
@@ -95,6 +128,22 @@ export const MediaDetails = () => {
           {activeTab === "gallery" && <GalleryTab media={media} />}
           {activeTab === "details" && <DetailsInfoTab media={media} />}
         </div>
+
+        {audioAsset && (
+          <>
+            <audio
+              ref={audioRef}
+              src={getAssetUrl(audioAsset.id)}
+              onEnded={() => setIsAudioPlaying(false)}
+              preload="none"
+            />
+            <FloatingOstPlayer
+              title={media.title}
+              isPlaying={isAudioPlaying}
+              onToggle={toggleAudio}
+            />
+          </>
+        )}
       </Workspace.Content>
     </Workspace>
   );

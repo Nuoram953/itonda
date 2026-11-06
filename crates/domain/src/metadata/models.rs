@@ -42,6 +42,7 @@ impl MetadataType {
 pub enum MetadataProviderId {
     TheInternetGameDatabase,
     HowLongToBeat,
+    Youtube,
 }
 
 impl MetadataProviderId {
@@ -49,6 +50,7 @@ impl MetadataProviderId {
         match self {
             Self::TheInternetGameDatabase => "igdb",
             Self::HowLongToBeat => "howlongtobeat",
+            Self::Youtube => "youtube",
         }
     }
 }
@@ -130,18 +132,21 @@ impl GameGeneralMetadata {
 #[serde(tag = "type", content = "data")]
 pub enum GeneralMetadata {
     Game(GameGeneralMetadata),
+    Common(CommonMetadata),
 }
 
 impl GeneralMetadata {
     pub fn common(&self) -> &CommonMetadata {
         match self {
             Self::Game(g) => &g.common,
+            Self::Common(c) => c,
         }
     }
 
     pub fn common_mut(&mut self) -> &mut CommonMetadata {
         match self {
             Self::Game(g) => &mut g.common,
+            Self::Common(c) => c,
         }
     }
 
@@ -149,6 +154,15 @@ impl GeneralMetadata {
         match (self, other) {
             (Self::Game(target), GeneralMetadata::Game(source)) => {
                 target.merge(source);
+            }
+            (Self::Game(target), GeneralMetadata::Common(source)) => {
+                target.common.merge(source);
+            }
+            (Self::Common(target), GeneralMetadata::Common(source)) => {
+                target.merge(source);
+            }
+            (Self::Common(target), GeneralMetadata::Game(source)) => {
+                target.merge(source.common);
             }
         }
     }

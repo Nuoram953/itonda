@@ -41,6 +41,7 @@ pub enum ExternalIdProvider {
     Igdb,
     SteamGridDb,
     Tmdb,
+    Youtube,
 }
 
 impl ExternalIdProvider {
@@ -50,6 +51,7 @@ impl ExternalIdProvider {
             Self::Igdb => "igdb",
             Self::SteamGridDb => "steamgriddb",
             Self::Tmdb => "tmdb",
+            Self::Youtube => "youtube",
         }
     }
 }
@@ -63,6 +65,7 @@ impl TryFrom<&str> for ExternalIdProvider {
             "igdb" => Ok(Self::Igdb),
             "steamgriddb" => Ok(Self::SteamGridDb),
             "tmdb" => Ok(Self::Tmdb),
+            "youtube" => Ok(Self::Youtube),
             _ => Err(MediaError::InvalidExternalProvider(value.to_string())),
         }
     }

@@ -20,6 +20,7 @@ pub fn router() -> Router<AppState> {
             patch(handlers::update_status),
         )
         .route("/media/refresh", post(handlers::refresh))
+        .route("/media/{media_id}/sync", post(handlers::sync_media_by_id))
         .route("/media/import", post(handlers::import_media))
         .route("/media/launch/{launch_id}", post(handlers::launch_media))
 }
