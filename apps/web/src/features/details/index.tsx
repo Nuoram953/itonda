@@ -49,7 +49,7 @@ export const MediaDetails = () => {
   const syncMutation = useSyncMedia();
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [isAudioPlaying, setIsAudioPlaying] = useState(true);
-  const [volume, setVolume] = useState(0.75);
+  const [volume, setVolume] = useState(0.3);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const media = mediaQuery.data;

@@ -21,7 +21,7 @@ describe("FeaturedMedia Component", () => {
     expect(video?.hasAttribute("autoplay")).toBe(true);
     expect(video?.hasAttribute("loop")).toBe(true);
     expect(video?.muted).toBe(true);
-    expect(video?.volume).toBe(0.75);
+    expect(video?.volume).toBe(0.3);
   });
 
   it("falls back to screenshot when no trailer is available", () => {

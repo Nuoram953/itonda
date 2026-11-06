@@ -29,7 +29,7 @@ export function FloatingOstPlayer({
   volume = 0.75,
   onVolumeChange,
 }: FloatingOstPlayerProps) {
-  const prevVolumeRef = useRef(volume > 0 ? volume : 0.75);
+  const prevVolumeRef = useRef(volume > 0 ? volume : 0.3);
 
   const handleToggleMute = () => {
     if (!onVolumeChange) return;
@@ -37,7 +37,7 @@ export function FloatingOstPlayer({
       prevVolumeRef.current = volume;
       onVolumeChange(0);
     } else {
-      onVolumeChange(prevVolumeRef.current || 0.75);
+      onVolumeChange(prevVolumeRef.current || 0.3);
     }
   };
 
@@ -54,16 +54,9 @@ export function FloatingOstPlayer({
       className={cn(
         "fixed bottom-6 right-6 z-50 flex items-center gap-3.5 px-4 py-3",
         "bg-surface/95 backdrop-blur-xl border border-white/15 rounded-2xl shadow-2xl ring-1 ring-black/40",
-        "transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 select-none"
+        "transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 select-none",
       )}
     >
-      {/* Album Artwork Square */}
-      <div className="w-10 h-10 rounded-lg overflow-hidden bg-slate-900 border border-white/10 shrink-0 flex items-center justify-center relative">
-        <div className="absolute inset-0 bg-linear-to-br from-amber-600/30 to-amber-950/80 flex items-center justify-center">
-          <Music className="w-5 h-5 text-primary" />
-        </div>
-      </div>
-
       {/* Track Title & Subtitle */}
       <div className="flex flex-col max-w-40 sm:max-w-48">
         <span className="text-xs font-bold text-foreground truncate leading-tight">
@@ -75,27 +68,6 @@ export function FloatingOstPlayer({
         >
           {trackName || "Original Soundtrack"}
         </span>
-      </div>
-
-      {/* Animated Gold Soundwave Visualizer */}
-      <div className="hidden sm:flex items-end gap-0.5 h-4 px-2">
-        {[
-          "h-2",
-          "h-4",
-          "h-3",
-          "h-4",
-          "h-2.5",
-          "h-3.5",
-          "h-2",
-        ].map((heightClass, idx) => (
-          <div
-            key={idx}
-            className={cn(
-              "w-0.5 bg-primary rounded-full transition-all",
-              isPlaying ? `${heightClass} animate-pulse` : "h-1 opacity-40"
-            )}
-          />
-        ))}
       </div>
 
       {/* Player Action Buttons: Prev, Play/Pause, Next */}

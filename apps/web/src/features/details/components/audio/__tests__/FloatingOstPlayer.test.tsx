@@ -10,7 +10,7 @@ describe("FloatingOstPlayer Component", () => {
         trackName="The Final Battle"
         isPlaying={true}
         onToggle={vi.fn()}
-      />
+      />,
     );
 
     expect(screen.getByText("Elden Ring OST")).toBeDefined();
@@ -23,7 +23,7 @@ describe("FloatingOstPlayer Component", () => {
         title="Elden Ring"
         isPlaying={true}
         onToggle={vi.fn()}
-      />
+      />,
     );
 
     expect(screen.getByText("Elden Ring OST")).toBeDefined();
@@ -37,7 +37,7 @@ describe("FloatingOstPlayer Component", () => {
         title="Elden Ring"
         isPlaying={false}
         onToggle={handleToggle}
-      />
+      />,
     );
 
     const playBtn = screen.getByTitle("Play OST");
@@ -52,12 +52,14 @@ describe("FloatingOstPlayer Component", () => {
         isPlaying={true}
         onToggle={vi.fn()}
         volume={0.75}
-      />
+      />,
     );
 
-    const slider = screen.getByRole("slider", { name: "Volume" }) as HTMLInputElement;
+    const slider = screen.getByRole("slider", {
+      name: "Volume",
+    }) as HTMLInputElement;
     expect(slider).toBeDefined();
-    expect(Number(slider.value)).toBe(0.75);
+    expect(Number(slider.value)).toBe(0.3);
     expect(slider.title).toBe("Volume: 75%");
   });
 
@@ -70,7 +72,7 @@ describe("FloatingOstPlayer Component", () => {
         onToggle={vi.fn()}
         volume={0.75}
         onVolumeChange={handleVolumeChange}
-      />
+      />,
     );
 
     const slider = screen.getByRole("slider", { name: "Volume" });
@@ -88,7 +90,7 @@ describe("FloatingOstPlayer Component", () => {
         onToggle={vi.fn()}
         volume={0.75}
         onVolumeChange={handleVolumeChange}
-      />
+      />,
     );
 
     // Initial state: volume > 0, button is "Mute"
@@ -105,13 +107,13 @@ describe("FloatingOstPlayer Component", () => {
         onToggle={vi.fn()}
         volume={0}
         onVolumeChange={handleVolumeChange}
-      />
+      />,
     );
 
     // Now button should be "Unmute"
     const unmuteBtn = screen.getByRole("button", { name: "Unmute" });
     fireEvent.click(unmuteBtn);
 
-    expect(handleVolumeChange).toHaveBeenCalledWith(0.75);
+    expect(handleVolumeChange).toHaveBeenCalledWith(0.3);
   });
 });
