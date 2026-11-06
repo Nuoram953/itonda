@@ -4,6 +4,8 @@ import {
   getAssetsByType,
   findAssetByType,
   getTrailerAssets,
+  getAudioAssets,
+  getHeroAudioAsset,
   getScreenshotAssets,
   getHeroBannerAsset,
   getHeroPosterAsset,
@@ -20,6 +22,7 @@ describe("media-assets utilities", () => {
     createAsset({ id: "asset-3", asset_type: "trailer" }),
     createAsset({ id: "asset-4", asset_type: "screenshot" }),
     createAsset({ id: "asset-5", asset_type: "backdrop" }),
+    createAsset({ id: "asset-6", asset_type: "audio" }),
   ];
 
 
@@ -39,13 +42,15 @@ describe("media-assets utilities", () => {
 
   it("extracts trailer and screenshot assets", () => {
     expect(getTrailerAssets(mockAssets)).toHaveLength(1);
+    expect(getAudioAssets(mockAssets)).toHaveLength(1);
     expect(getScreenshotAssets(mockAssets)).toHaveLength(3); // banner, screenshot, backdrop
   });
 
-  it("extracts hero assets (banner, poster, trailer)", () => {
+  it("extracts hero assets (banner, poster, trailer, audio)", () => {
     expect(getHeroPosterAsset(mockAssets)?.id).toBe("asset-1");
     expect(getHeroBannerAsset(mockAssets)?.id).toBe("asset-2");
     expect(getHeroTrailerAsset(mockAssets)?.id).toBe("asset-3");
+    expect(getHeroAudioAsset(mockAssets)?.id).toBe("asset-6");
   });
 
   it("evaluates hasMediaBeenPlayed correctly", () => {

@@ -41,6 +41,7 @@ pub enum ExternalIdProvider {
     Igdb,
     SteamGridDb,
     Tmdb,
+    Youtube,
 }
 
 impl ExternalIdProvider {
@@ -50,6 +51,7 @@ impl ExternalIdProvider {
             Self::Igdb => "igdb",
             Self::SteamGridDb => "steamgriddb",
             Self::Tmdb => "tmdb",
+            Self::Youtube => "youtube",
         }
     }
 }
@@ -63,6 +65,7 @@ impl TryFrom<&str> for ExternalIdProvider {
             "igdb" => Ok(Self::Igdb),
             "steamgriddb" => Ok(Self::SteamGridDb),
             "tmdb" => Ok(Self::Tmdb),
+            "youtube" => Ok(Self::Youtube),
             _ => Err(MediaError::InvalidExternalProvider(value.to_string())),
         }
     }
@@ -96,6 +99,8 @@ pub struct PaginatedMedia {
 pub struct Asset {
     pub id: String,
     pub asset_type: AssetType,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
@@ -141,9 +146,30 @@ impl TryFrom<MediaAssetRow> for Asset {
     type Error = AssetError;
 
     fn try_from(row: MediaAssetRow) -> Result<Self, Self::Error> {
+        let name = std::path::Path::new(&row.path)
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .filter(|s| {
+                !matches!(
+                    *s,
+                    "audio"
+                        | "video"
+                        | "poster"
+                        | "banner"
+                        | "backdrop"
+                        | "screenshot"
+                        | "logo"
+                        | "thumbnail"
+                        | "icon"
+                        | "trailer"
+                )
+            })
+            .map(|s| s.to_string());
+
         Ok(Self {
             id: row.id,
             asset_type: AssetType::try_from(row.asset_id)?,
+            name,
         })
     }
 }

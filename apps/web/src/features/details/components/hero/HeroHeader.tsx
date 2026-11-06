@@ -1,11 +1,9 @@
-import { useState, useRef } from "react";
-import { Play, Pause, Volume2, VolumeX } from "lucide-react";
+import { useState } from "react";
 import type { components } from "@/api/generated.d";
 import { getAssetUrl } from "../../utils/asset-url";
 import {
   getHeroBannerAsset,
   getHeroPosterAsset,
-  getHeroTrailerAsset,
 } from "../../utils/media-assets";
 import { formatLastPlayedDate, formatPlaytime } from "@/utils/datetime";
 import { cn } from "@/lib/utils";
@@ -23,37 +21,10 @@ const DEFAULT_TAGS = [
 ];
 
 export function HeroHeader({ media }: HeroHeaderProps) {
-  const trailerAsset = getHeroTrailerAsset(media.assets);
   const bannerAsset = getHeroBannerAsset(media.assets);
   const posterAsset = getHeroPosterAsset(media.assets);
-
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [isVideoPlaying, setIsVideoPlaying] = useState(true);
-  const [isMuted, setIsMuted] = useState(true);
-  const [videoError, setVideoError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
-  const togglePlayVideo = () => {
-    if (!videoRef.current) return;
-    if (isVideoPlaying) {
-      videoRef.current.pause();
-      setIsVideoPlaying(false);
-    } else {
-      videoRef.current
-        .play()
-        .then(() => setIsVideoPlaying(true))
-        .catch(() => setIsVideoPlaying(false));
-    }
-  };
-
-  const toggleMuteVideo = () => {
-    if (!videoRef.current) return;
-    const nextMuted = !isMuted;
-    videoRef.current.muted = nextMuted;
-    setIsMuted(nextMuted);
-  };
-
-  const showVideo = Boolean(trailerAsset && !videoError);
   const playtimeHours = formatPlaytime(media.details?.playtime_minutes, {
     mode: "compact",
   });
@@ -62,22 +33,7 @@ export function HeroHeader({ media }: HeroHeaderProps) {
   return (
     <div className="relative w-full min-h-120 md:min-h-136 overflow-hidden bg-background select-none flex flex-col justify-end">
       <div className="absolute inset-0 w-full h-full">
-        {showVideo && trailerAsset ? (
-          <video
-            ref={videoRef}
-            src={getAssetUrl(trailerAsset.id)}
-            autoPlay
-            muted={isMuted}
-            loop
-            playsInline
-            onError={() => setVideoError(true)}
-            onPlay={() => setIsVideoPlaying(true)}
-            onPause={() => setIsVideoPlaying(false)}
-            className="w-full h-full object-cover transition-opacity duration-700"
-          />
-        ) : null}
-
-        {bannerAsset && (!showVideo || !isVideoPlaying) && (
+        {bannerAsset ? (
           <img
             src={getAssetUrl(bannerAsset.id)}
             alt={media.title}
@@ -87,9 +43,7 @@ export function HeroHeader({ media }: HeroHeaderProps) {
               imageLoaded ? "opacity-100" : "opacity-0",
             )}
           />
-        )}
-
-        {!bannerAsset && !showVideo && (
+        ) : (
           <div className="w-full h-full bg-linear-to-br from-slate-900 via-surface to-slate-950" />
         )}
       </div>
@@ -167,42 +121,6 @@ export function HeroHeader({ media }: HeroHeaderProps) {
               </div>
             </div>
           </div>
-
-          {showVideo && (
-            <div className="flex items-center gap-2 self-start bg-surface/70 backdrop-blur px-3 py-1.5 rounded-full border border-white/10 shadow-lg">
-              <button
-                type="button"
-                onClick={togglePlayVideo}
-                className="p-1.5 rounded-full hover:bg-white/10 text-foreground transition-colors"
-                title={isVideoPlaying ? "Pause Trailer" : "Play Trailer"}
-              >
-                {isVideoPlaying ? (
-                  <Pause className="w-4 h-4" />
-                ) : (
-                  <Play className="w-4 h-4" />
-                )}
-              </button>
-
-              <div className="w-px h-4 bg-border" />
-
-              <button
-                type="button"
-                onClick={toggleMuteVideo}
-                className="p-1.5 rounded-full hover:bg-white/10 text-foreground transition-colors"
-                title={isMuted ? "Unmute Audio" : "Mute Audio"}
-              >
-                {isMuted ? (
-                  <VolumeX className="w-4 h-4 text-text-muted" />
-                ) : (
-                  <Volume2 className="w-4 h-4 text-primary" />
-                )}
-              </button>
-
-              <span className="text-xs font-medium text-text-muted uppercase px-1">
-                Trailer
-              </span>
-            </div>
-          )}
         </div>
       </div>
     </div>

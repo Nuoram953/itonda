@@ -59,7 +59,7 @@ impl SyncHandler {
             if let Err(err) = sync.sync_media(&media_id, job.force).await {
                 tracing::warn!("Failed to sync media {media_id}: {err}");
             }
-        } else if let Err(err) = sync.sync_all(job.force).await {
+        } else if let Err(err) = sync.sync_filtered(job.force, job.storefront).await {
             tracing::warn!("Failed to sync library: {err}");
         }
 

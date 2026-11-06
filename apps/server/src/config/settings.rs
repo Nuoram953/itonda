@@ -14,6 +14,23 @@ pub struct Settings {
 pub struct MetadataSettings {
     pub steam: SteamSettings,
     pub igdb: TheInternetGameDatabaseMetadataSettings,
+    pub youtube: YoutubeSettings,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(default)]
+pub struct YoutubeSettings {
+    pub enabled: bool,
+    pub binary_path: Option<String>,
+}
+
+impl Default for YoutubeSettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            binary_path: Some("Downloads/yt-dlp".to_string()),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
@@ -101,6 +118,20 @@ impl MetadataSettings {
         if let Some(igdb) = patch.igdb {
             self.igdb.apply_patch(igdb);
         }
+        if let Some(youtube) = patch.youtube {
+            self.youtube.apply_patch(youtube);
+        }
+    }
+}
+
+impl YoutubeSettings {
+    pub fn apply_patch(&mut self, patch: PatchYoutubeSettings) {
+        if let Some(enabled) = patch.enabled {
+            self.enabled = enabled;
+        }
+        if let Some(binary_path) = patch.binary_path {
+            self.binary_path = binary_path;
+        }
     }
 }
 
@@ -163,6 +194,13 @@ pub struct PatchSettings {
 pub struct PatchMetadataSettings {
     pub steam: Option<PatchSteamSettings>,
     pub igdb: Option<PatchTheInternetGameDatabaseMetadataSettings>,
+    pub youtube: Option<PatchYoutubeSettings>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
+pub struct PatchYoutubeSettings {
+    pub enabled: Option<bool>,
+    pub binary_path: Option<Option<String>>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]

@@ -15,6 +15,8 @@ pub enum AssetType {
     Icon = 6,
     Trailer = 7,
     Screenshot = 8,
+    Video = 9,
+    Audio = 10,
 }
 
 impl AssetType {
@@ -32,6 +34,8 @@ impl AssetType {
             AssetType::Icon => "icon",
             AssetType::Trailer => "trailer",
             AssetType::Screenshot => "screenshot",
+            AssetType::Video => "video",
+            AssetType::Audio => "audio",
         }
     }
 }
@@ -49,6 +53,8 @@ impl TryFrom<i64> for AssetType {
             6 => Ok(AssetType::Icon),
             7 => Ok(AssetType::Trailer),
             8 => Ok(AssetType::Screenshot),
+            9 => Ok(AssetType::Video),
+            10 => Ok(AssetType::Audio),
             _ => Err(AssetError::InvalidAssetType),
         }
     }

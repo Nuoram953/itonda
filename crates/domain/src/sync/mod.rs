@@ -10,11 +10,12 @@ use crate::{
     storage::path::AppPaths,
     storefronts::{models::StorefrontId, registry::StorefrontRegistry},
     sync::{
-        context::{SyncAction, SyncContext},
+        context::SyncContext,
         errors::SyncError,
         pipeline::{MediaSyncPipeline, SyncStep},
         steps::{
-            assets::AssetStep, identify::IdentifyStep, metadata::MetadataStep, persist::PersistStep,
+            assets::AssetStep, download::DownloadStep, identify::IdentifyStep,
+            metadata::MetadataStep, persist::PersistStep,
         },
     },
 };
@@ -56,6 +57,7 @@ impl LibrarySyncService {
                 assets,
                 AssetDownloader::new(AppPaths::new()),
             )),
+            Box::new(DownloadStep::new(db.clone(), AppPaths::new())),
         ];
         let pipeline = MediaSyncPipeline::new(steps);
         Self {
@@ -68,8 +70,68 @@ impl LibrarySyncService {
         }
     }
 
-    pub async fn sync_storefront(&self, _storefront: StorefrontId) -> Result<(), SyncError> {
-        Ok(())
+    pub async fn discover_storefronts(
+        &self,
+        storefront_filter: Option<StorefrontId>,
+    ) -> Result<Vec<String>, SyncError> {
+        let mut discovered_ids = Vec::new();
+
+        for (id, storefront) in self.storefronts.get_all() {
+            if storefront_filter.is_some_and(|filter| id != filter) {
+                continue;
+            }
+
+            self.events.publish_job(
+                self.job_id,
+                JobType::Sync,
+                JobEventType::Sync(SyncEvent::StepProgress {
+                    media_id: None,
+                    title: None,
+                    step: "discovery".to_string(),
+                    message: format!("Scanning {} for games...", storefront.name()),
+                }),
+            );
+
+            let discovered_media = storefront.owned_games().await?;
+
+            info!(
+                "Found {} items for storefront {}",
+                discovered_media.len(),
+                storefront.name()
+            );
+
+            self.events.publish_job(
+                self.job_id,
+                JobType::Sync,
+                JobEventType::Sync(SyncEvent::StepProgress {
+                    media_id: None,
+                    title: None,
+                    step: "discovery".to_string(),
+                    message: format!(
+                        "Found {} games in {}",
+                        discovered_media.len(),
+                        storefront.name()
+                    ),
+                }),
+            );
+
+            let persist = PersistStep::new(self.db.clone());
+            for media in discovered_media {
+                debug!("Persisting discovered media {}", media.title);
+                let mut context = SyncContext::new(media, false);
+
+                if let Err(err) = persist.execute(&mut context).await {
+                    tracing::warn!("Failed to persist discovered media: {err}");
+                    continue;
+                }
+
+                if let Some(persisted) = context.media {
+                    discovered_ids.push(persisted.id);
+                }
+            }
+        }
+
+        Ok(discovered_ids)
     }
 
     pub async fn sync_media(&self, media_id: &str, force: bool) -> Result<(), SyncError> {
@@ -81,8 +143,46 @@ impl LibrarySyncService {
         let mut context = SyncContext::from_media(media.clone());
         context.force = force;
 
-        if let Err(err) = self.pipeline.execute(&mut context).await {
+        let events = self.events.clone();
+        let job_id = self.job_id;
+        let title = media.title.clone();
+        let m_id = media.id.clone();
+
+        let res = self
+            .pipeline
+            .execute_with_listener(&mut context, |step_name| {
+                let msg = match step_name {
+                    "Metadata" => Some("Fetching metadata..."),
+                    "Assets" => Some("Searching artwork..."),
+                    "Download" => Some("Downloading media..."),
+                    _ => None,
+                };
+
+                if let Some(message) = msg {
+                    events.publish_job(
+                        job_id,
+                        JobType::Sync,
+                        JobEventType::Sync(SyncEvent::StepProgress {
+                            media_id: Some(m_id.clone()),
+                            title: Some(title.clone()),
+                            step: step_name.to_lowercase(),
+                            message: message.to_string(),
+                        }),
+                    );
+                }
+            })
+            .await;
+
+        if let Err(err) = res {
             tracing::warn!("Failed to sync database media '{}': {err}", media.title);
+            self.events.publish_job(
+                self.job_id,
+                JobType::Sync,
+                JobEventType::Sync(SyncEvent::MediaSyncFailed {
+                    media_id: media.id,
+                    error: err.to_string(),
+                }),
+            );
             return Err(err);
         }
 
@@ -97,78 +197,62 @@ impl LibrarySyncService {
         Ok(())
     }
 
+    pub async fn sync_storefront(
+        &self,
+        storefront: StorefrontId,
+        force: bool,
+    ) -> Result<(), SyncError> {
+        self.sync_filtered(force, Some(storefront)).await
+    }
+
     pub async fn sync_all(&self, force: bool) -> Result<(), SyncError> {
-        info!("Starting sync process for all");
+        self.sync_filtered(force, None).await
+    }
 
-        let mut synced_ids = std::collections::HashSet::new();
+    pub async fn sync_filtered(
+        &self,
+        force: bool,
+        storefront_filter: Option<StorefrontId>,
+    ) -> Result<(), SyncError> {
+        info!(
+            "Starting sync process (storefront filter: {:?})",
+            storefront_filter
+        );
 
-        for (_, storefront) in self.storefronts.get_all() {
-            let discovered_media = storefront.owned_games().await?;
+        let discovered_ids = self.discover_storefronts(storefront_filter).await?;
 
-            info!(
-                "Found {} items for storefront {}",
-                discovered_media.len(),
-                storefront.name()
-            );
-            for media in discovered_media {
-                debug!("Syncing {}", media.title);
-                let mut context = SyncContext::new(media, force);
+        let target_ids: Vec<String> = if storefront_filter.is_some() {
+            discovered_ids
+        } else {
+            let db_rows = itonda_database::media::find_all(&self.db, None).await?;
+            db_rows.into_iter().map(|row| row.id).collect()
+        };
 
-                if let Err(err) = self.pipeline.execute(&mut context).await {
-                    tracing::warn!(
-                        "Failed to sync media '{}': {err}",
-                        context
-                            .discovered
-                            .as_ref()
-                            .map(|d| d.title.as_str())
-                            .unwrap_or("unknown")
-                    );
-                    continue;
-                }
+        let total = target_ids.len();
+        info!("Found {} media items to sync", total);
 
-                if let Some(media) = &context.media {
-                    synced_ids.insert(media.id.clone());
-
-                    if context.action != SyncAction::Unchanged {
-                        self.events.publish_job(
-                            self.job_id,
-                            JobType::Sync,
-                            JobEventType::Sync(SyncEvent::MediaSynced {
-                                media_id: media.title.clone(),
-                            }),
-                        );
-                    }
-                }
-            }
-        }
-
-        let db_rows = itonda_database::media::find_all(&self.db, None).await?;
-        info!("Found {} media items in database", db_rows.len());
-
-        for row in db_rows {
-            if synced_ids.contains(&row.id) {
-                continue;
-            }
-
-            let media = crate::media::models::Media::try_from(row).unwrap();
-            debug!("Syncing database media item {}", media.title);
-            let mut context = SyncContext::from_media(media.clone());
-
-            if let Err(err) = self.pipeline.execute(&mut context).await {
-                tracing::warn!("Failed to sync database media '{}': {err}", media.title);
-                continue;
-            }
-
-            if context.action != SyncAction::Unchanged {
+        for (idx, media_id) in target_ids.into_iter().enumerate() {
+            if total > 1 {
                 self.events.publish_job(
                     self.job_id,
                     JobType::Sync,
-                    JobEventType::Sync(SyncEvent::MediaSynced { media_id: media.id }),
+                    JobEventType::Sync(SyncEvent::StepProgress {
+                        media_id: Some(media_id.clone()),
+                        title: None,
+                        step: "syncing".to_string(),
+                        message: format!("Syncing item {} of {}...", idx + 1, total),
+                    }),
                 );
+            }
+
+            if let Err(err) = self.sync_media(&media_id, force).await {
+                tracing::warn!("Failed to sync media '{media_id}': {err}");
             }
         }
 
-        self.agents.scan_all().await?;
+        if storefront_filter.is_none() {
+            self.agents.scan_all().await?;
+        }
 
         info!("Sync completed");
 

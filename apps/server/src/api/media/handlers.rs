@@ -22,8 +22,8 @@ use crate::{
         error::ApiError,
         extractor::AppJson,
         media::schemas::{
-            CreateMediaPayload, MediaImportPayload, MediaQueryParams, MediaRefreshPayload,
-            MediaResponse, MediaSearchQueryParams,
+            CreateMediaPayload, MediaImportPayload, MediaItemSyncPayload, MediaQueryParams,
+            MediaResponse, MediaSearchQueryParams, MediaSyncPayload,
         },
         response::{CommandResponse, CommandStatus, JobResponse, JobStatus},
     },
@@ -98,8 +98,8 @@ pub async fn get_media_by_id(
 
 #[utoipa::path(
     post,
-    path = "/media/refresh",
-    request_body = MediaRefreshPayload,
+    path = "/media/sync",
+    request_body = Option<MediaSyncPayload>,
     responses(
         (
             status = 202,
@@ -108,19 +108,66 @@ pub async fn get_media_by_id(
     )
 )]
 #[instrument(skip(state, request))]
-pub async fn refresh(
+pub async fn sync_library(
     State(state): State<AppState>,
-    AppJson(request): AppJson<MediaRefreshPayload>,
+    request: Option<Json<MediaSyncPayload>>,
 ) -> Result<impl IntoResponse, ApiError> {
+    let payload = request.map(|Json(r)| r).unwrap_or_default();
     let job_id = Uuid::new_v4();
 
     state
         .jobs
         .send(Job::Sync(SyncJob {
             id: job_id,
-            storefront: request.storefront,
+            storefront: payload.storefront,
             media_id: None,
-            force: request.force,
+            force: payload.force,
+        }))
+        .await
+        .map_err(|err| {
+            tracing::error!(?err, "Failed to queue sync job");
+            ApiError::WorkerUnavailable
+        })?;
+
+    Ok((
+        StatusCode::ACCEPTED,
+        Json(JobResponse {
+            job_id: job_id.to_string(),
+            status: JobStatus::Queued,
+        }),
+    ))
+}
+
+#[utoipa::path(
+    post,
+    path = "/media/{media_id}/sync",
+    params(
+        ("media_id" = String, Path, description = "ID of the media to sync")
+    ),
+    request_body = Option<MediaItemSyncPayload>,
+    responses(
+        (
+            status = 202,
+            body = JobResponse
+        )
+    )
+)]
+#[instrument(skip(state, request))]
+pub async fn sync_media_by_id(
+    State(state): State<AppState>,
+    Path(media_id): Path<String>,
+    request: Option<Json<MediaItemSyncPayload>>,
+) -> Result<impl IntoResponse, ApiError> {
+    let force = request.map(|Json(r)| r.force).unwrap_or(true);
+    let job_id = Uuid::new_v4();
+
+    state
+        .jobs
+        .send(Job::Sync(SyncJob {
+            id: job_id,
+            storefront: None,
+            media_id: Some(media_id),
+            force,
         }))
         .await
         .map_err(|err| {
@@ -310,9 +357,17 @@ pub async fn create_media(
     if let Some(external_id) = request.external_id
         && !external_id.trim().is_empty()
     {
-        let provider = match request.media_type {
-            MediaType::Game => ExternalIdProvider::Igdb,
-            MediaType::Movie | MediaType::TvShow => ExternalIdProvider::Tmdb,
+        let is_youtube = itonda_domain::sources::youtube::client::YoutubeClient::extract_video_id(
+            external_id.trim(),
+        )
+        .is_some();
+        let provider = if is_youtube {
+            ExternalIdProvider::Youtube
+        } else {
+            match request.media_type {
+                MediaType::Game => ExternalIdProvider::Igdb,
+                MediaType::Movie | MediaType::TvShow => ExternalIdProvider::Tmdb,
+            }
         };
 
         let _ = itonda_database::media::upsert_media_external_id(

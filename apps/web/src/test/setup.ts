@@ -30,3 +30,17 @@ window.ResizeObserver = MockResizeObserver;
 
 window.HTMLElement.prototype.scrollIntoView = () => {};
 
+if (typeof document !== "undefined") {
+  document.hasFocus = () => true;
+  Object.defineProperty(document, "visibilityState", {
+    value: "visible",
+    writable: true,
+  });
+}
+
+if (typeof window !== "undefined" && window.HTMLMediaElement) {
+  window.HTMLMediaElement.prototype.play = () => Promise.resolve();
+  window.HTMLMediaElement.prototype.pause = () => {};
+}
+
+

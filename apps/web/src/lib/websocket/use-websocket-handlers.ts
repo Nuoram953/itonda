@@ -71,6 +71,16 @@ export function handleJobEvent(
     return;
   }
 
+  if (event.type === "Sync" && event.payload.type === "StepProgress") {
+    const { title, message } = event.payload.payload;
+    notify.updateBySourceId(job.job_id, {
+      sourceId: job.job_id,
+      title: title ? `Syncing ${title}` : "Syncing Library",
+      description: message,
+    });
+    return;
+  }
+
   if (event.type === "Sync" && event.payload.type === "MediaSynced") {
     queryClient.invalidateQueries({
       queryKey: ["media"],

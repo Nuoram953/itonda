@@ -164,6 +164,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/media/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["sync_library"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/media/refresh": {
         parameters: {
             query?: never;
@@ -173,7 +189,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["refresh"];
+        post: operations["sync_library"];
         delete?: never;
         options?: never;
         head?: never;
@@ -307,6 +323,7 @@ export interface components {
         Asset: {
             asset_type: components["schemas"]["AssetType"];
             id: string;
+            name?: string | null;
         };
         AssetStoreSettings: {
             /**
@@ -323,7 +340,7 @@ export interface components {
             tmdb: components["schemas"]["TheMovieDatabaseSettings"];
         };
         /** @enum {string} */
-        AssetType: "poster" | "backdrop" | "logo" | "banner" | "thumbnail" | "icon" | "trailer" | "screenshot";
+        AssetType: "poster" | "backdrop" | "logo" | "banner" | "thumbnail" | "icon" | "trailer" | "screenshot" | "video" | "audio";
         AssetsSettings: {
             /**
              * @default {
@@ -426,7 +443,7 @@ export interface components {
             title: string;
         };
         /** @enum {string} */
-        ExternalIdProvider: "steam" | "igdb" | "steam_grid_db" | "tmdb";
+        ExternalIdProvider: "steam" | "igdb" | "steam_grid_db" | "tmdb" | "youtube";
         GameReview: {
             created_at: string;
             media_id: string;
@@ -527,6 +544,13 @@ export interface components {
             storefront?: string | null;
             type?: null | components["schemas"]["MediaType"];
         };
+        MediaSyncPayload: {
+            force?: boolean;
+            storefront?: null | components["schemas"]["StorefrontId"];
+        };
+        MediaItemSyncPayload: {
+            force?: boolean;
+        };
         MediaRefreshPayload: {
             force?: boolean;
             storefront?: null | components["schemas"]["StorefrontId"];
@@ -559,7 +583,7 @@ export interface components {
         /** @enum {string} */
         MediaSortField: "title" | "last_played_at";
         /** @enum {string} */
-        MediaSource: "steam";
+        MediaSource: "steam" | "youtube";
         /** @enum {string} */
         MediaStatus: "not_started" | "in_progress" | "completed" | "abandoned" | "paused";
         MediaStorefront: {
@@ -1115,6 +1139,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CommandResponse"];
+                };
+            };
+        };
+    };
+    sync_library: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json"?: components["schemas"]["MediaSyncPayload"];
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobResponse"];
                 };
             };
         };

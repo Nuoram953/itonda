@@ -6,6 +6,7 @@ use crate::media::models::MediaExternalId;
 pub enum AssetStoreId {
     SteamGridDb,
     TheMovieDatabase,
+    Youtube,
 }
 
 impl AssetStoreId {
@@ -13,6 +14,7 @@ impl AssetStoreId {
         match self {
             Self::SteamGridDb => "steamgriddb",
             Self::TheMovieDatabase => "tmdb",
+            Self::Youtube => "youtube",
         }
     }
 }
@@ -22,6 +24,7 @@ impl From<AssetStoreId> for u32 {
         match value {
             AssetStoreId::SteamGridDb => 0,
             AssetStoreId::TheMovieDatabase => 1,
+            AssetStoreId::Youtube => 2,
         }
     }
 }

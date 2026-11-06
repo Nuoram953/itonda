@@ -11,12 +11,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   const add = useCallback(
     (severity: NotificationSeverity, input: NotificationInput) => {
+      const defaultDuration = severity === "loading" ? Infinity : 5000;
       const notification: Notification = {
         id: crypto.randomUUID(),
         severity,
         dismissible: true,
-        duration: severity === "loading" ? undefined : 5000,
         ...input,
+        duration: input.duration ?? defaultDuration,
       };
 
       setNotifications((current) => [...current, notification]);
@@ -27,21 +28,80 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   const update = useCallback((id: string, changes: Partial<Notification>) => {
     setNotifications((current) =>
-      current.map((notification) =>
-        notification.id === id ? { ...notification, ...changes } : notification,
-      ),
+      current.map((notification) => {
+        if (notification.id !== id) {
+          return notification;
+        }
+
+        const updatedSeverity = changes.severity ?? notification.severity;
+        let updatedDuration =
+          changes.duration !== undefined
+            ? changes.duration
+            : notification.duration;
+
+        if (
+          notification.severity === "loading" &&
+          updatedSeverity !== "loading" &&
+          changes.duration === undefined
+        ) {
+          updatedDuration = 5000;
+        }
+
+        return {
+          ...notification,
+          ...changes,
+          duration: updatedDuration,
+        };
+      }),
     );
   }, []);
 
   const updateBySourceId = useCallback(
     (sourceId: string, changes: Partial<Notification>) => {
-      setNotifications((current) =>
-        current.map((notification) =>
-          notification.sourceId === sourceId
-            ? { ...notification, ...changes }
-            : notification,
-        ),
-      );
+      setNotifications((current) => {
+        const exists = current.some((n) => n.sourceId === sourceId);
+        if (!exists) {
+          const severity = changes.severity ?? "loading";
+          const defaultDuration = severity === "loading" ? Infinity : 5000;
+          const notification: Notification = {
+            id: crypto.randomUUID(),
+            severity,
+            dismissible: true,
+            title: changes.title ?? "Syncing Library",
+            description: changes.description,
+            ...changes,
+            duration: changes.duration ?? defaultDuration,
+            sourceId,
+          };
+          return [...current, notification];
+        }
+
+        return current.map((notification) => {
+          if (notification.sourceId !== sourceId) {
+            return notification;
+          }
+
+          const updatedSeverity = changes.severity ?? notification.severity;
+          let updatedDuration =
+            changes.duration !== undefined
+              ? changes.duration
+              : notification.duration;
+
+          if (
+            notification.severity === "loading" &&
+            updatedSeverity !== "loading" &&
+            changes.duration === undefined
+          ) {
+            updatedDuration = 5000;
+          }
+
+          return {
+            ...notification,
+            ...changes,
+            duration: updatedDuration,
+          };
+        });
+      });
     },
     [],
   );

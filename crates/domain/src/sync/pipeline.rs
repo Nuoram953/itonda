@@ -19,13 +19,25 @@ impl MediaSyncPipeline {
         Self { steps }
     }
 
-    pub async fn execute(&self, context: &mut SyncContext) -> Result<(), SyncError> {
+    pub async fn execute_with_listener<F>(
+        &self,
+        context: &mut SyncContext,
+        mut on_step_start: F,
+    ) -> Result<(), SyncError>
+    where
+        F: FnMut(&str) + Send,
+    {
         for step in &self.steps {
             debug!("Running step {}", step.name());
+            on_step_start(step.name());
             step.execute(context).await?;
         }
 
         Ok(())
+    }
+
+    pub async fn execute(&self, context: &mut SyncContext) -> Result<(), SyncError> {
+        self.execute_with_listener(context, |_| {}).await
     }
 }
 
