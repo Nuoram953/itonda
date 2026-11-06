@@ -22,10 +22,19 @@ export function findAssetByType(
 }
 
 /**
- * Get all trailer assets for a media item.
+ * Get all trailer/video assets for a media item.
  */
 export function getTrailerAssets(assets: MediaAsset[] = []): MediaAsset[] {
-  return getAssetsByType(assets, "trailer");
+  return assets.filter(
+    (asset) => asset.asset_type === "trailer" || asset.asset_type === "video"
+  );
+}
+
+/**
+ * Get all audio assets for a media item.
+ */
+export function getAudioAssets(assets: MediaAsset[] = []): MediaAsset[] {
+  return getAssetsByType(assets, "audio");
 }
 
 /**
@@ -55,10 +64,17 @@ export function getHeroPosterAsset(assets: MediaAsset[] = []): MediaAsset | unde
 }
 
 /**
- * Get the main trailer asset.
+ * Get the main trailer or video asset.
  */
 export function getHeroTrailerAsset(assets: MediaAsset[] = []): MediaAsset | undefined {
-  return findAssetByType(assets, "trailer");
+  return findAssetByType(assets, ["trailer", "video"]);
+}
+
+/**
+ * Get the main audio asset.
+ */
+export function getHeroAudioAsset(assets: MediaAsset[] = []): MediaAsset | undefined {
+  return findAssetByType(assets, "audio");
 }
 
 /**

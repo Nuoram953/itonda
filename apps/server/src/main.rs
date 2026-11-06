@@ -8,6 +8,7 @@ use itonda_domain::{
     sources::{
         steam::SteamStorefront, steam_grid_db::SteamGridDb,
         the_internet_game_database::TheInternetGameDatabase, the_movie_database::TheMovieDatabase,
+        youtube::YoutubeSource,
     },
     storage::path::AppPaths,
     store::toml::TomlCodec,
@@ -221,6 +222,15 @@ async fn init_asset_store(
         )));
     }
 
+    if settings.metadata.youtube.enabled {
+        let client = if let Some(bin) = &settings.metadata.youtube.binary_path {
+            itonda_domain::sources::youtube::client::YoutubeClient::with_binary_path(bin.clone())
+        } else {
+            itonda_domain::sources::youtube::client::YoutubeClient::new()
+        };
+        registry.register_poster(Arc::new(YoutubeSource::with_client(client)));
+    }
+
     Ok(registry)
 }
 
@@ -250,6 +260,17 @@ async fn init_metadata(
             secrets.asset_store.tmdb.api_key.clone(),
         ));
         registry.register_searcher(tmdb);
+    }
+
+    if settings.metadata.youtube.enabled {
+        let client = if let Some(bin) = &settings.metadata.youtube.binary_path {
+            itonda_domain::sources::youtube::client::YoutubeClient::with_binary_path(bin.clone())
+        } else {
+            itonda_domain::sources::youtube::client::YoutubeClient::new()
+        };
+        let yt = Arc::new(YoutubeSource::with_client(client));
+        registry.register(yt.clone());
+        registry.register_searcher(yt);
     }
 
     Ok(registry)

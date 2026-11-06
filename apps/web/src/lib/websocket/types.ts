@@ -56,6 +56,15 @@ export type SyncEvent =
       };
     }
   | {
+      type: "StepProgress";
+      payload: {
+        media_id?: string;
+        title?: string;
+        step: string;
+        message: string;
+      };
+    }
+  | {
       type: "Started";
     }
   | {

@@ -31,6 +31,9 @@ impl MetadataPolicy {
                     && !game.platforms.is_empty()
                     && game.series.is_some()
             }
+            GeneralMetadata::Common(common) => {
+                common.description.is_some() || common.summary.is_some()
+            }
         }
     }
 

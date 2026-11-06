@@ -158,6 +158,58 @@ describe("use-websocket-handlers", () => {
       });
     });
 
+    it("handles Sync StepProgress event with title", () => {
+      const jobEvent: JobEvent = {
+        job_id: "job-1b",
+        job_type: { type: "Sync" },
+        event: {
+          type: "Sync",
+          payload: {
+            type: "StepProgress",
+            payload: {
+              media_id: "media-1",
+              title: "Hollow Knight",
+              step: "metadata",
+              message: "Fetching metadata...",
+            },
+          },
+        },
+      };
+
+      handleJobEvent(jobEvent, mockQueryClient, mockNotify as never);
+
+      expect(mockNotify.updateBySourceId).toHaveBeenCalledWith("job-1b", {
+        sourceId: "job-1b",
+        title: "Syncing Hollow Knight",
+        description: "Fetching metadata...",
+      });
+    });
+
+    it("handles Sync StepProgress event without title", () => {
+      const jobEvent: JobEvent = {
+        job_id: "job-1c",
+        job_type: { type: "Sync" },
+        event: {
+          type: "Sync",
+          payload: {
+            type: "StepProgress",
+            payload: {
+              step: "discovery",
+              message: "Scanning Steam for games...",
+            },
+          },
+        },
+      };
+
+      handleJobEvent(jobEvent, mockQueryClient, mockNotify as never);
+
+      expect(mockNotify.updateBySourceId).toHaveBeenCalledWith("job-1c", {
+        sourceId: "job-1c",
+        title: "Syncing Library",
+        description: "Scanning Steam for games...",
+      });
+    });
+
     it("handles Sync MediaSynced event", () => {
       const jobEvent: JobEvent = {
         job_id: "job-2",

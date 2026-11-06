@@ -5,7 +5,7 @@ use itonda_server::workers::jobs::Job;
 use tower::ServiceExt;
 
 #[tokio::test]
-async fn refresh_media_creates_job() {
+async fn sync_library_creates_job() {
     let mut app = test_app().await;
 
     let body = serde_json::json!({
@@ -16,7 +16,7 @@ async fn refresh_media_creates_job() {
         .router
         .oneshot(
             Request::builder()
-                .uri("/media/refresh")
+                .uri("/media/sync")
                 .method("POST")
                 .header("content-type", "application/json")
                 .body(Body::from(body.to_string()))
@@ -32,6 +32,35 @@ async fn refresh_media_creates_job() {
     match job {
         Job::Sync(sync_job) => {
             assert_eq!(sync_job.media_id, None);
+        }
+        _ => panic!("expected Job::Sync"),
+    }
+}
+
+#[tokio::test]
+async fn sync_library_without_body_creates_job() {
+    let mut app = test_app().await;
+
+    let response = app
+        .router
+        .oneshot(
+            Request::builder()
+                .uri("/media/sync")
+                .method("POST")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::ACCEPTED);
+
+    let job = app.jobs.recv().await.unwrap();
+
+    match job {
+        Job::Sync(sync_job) => {
+            assert_eq!(sync_job.media_id, None);
+            assert!(!sync_job.force);
         }
         _ => panic!("expected Job::Sync"),
     }

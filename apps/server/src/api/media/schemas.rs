@@ -32,12 +32,24 @@ pub struct MediaResponse {
     pub has_next: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct MediaRefreshPayload {
+#[derive(Debug, Default, Serialize, Deserialize, ToSchema)]
+pub struct MediaSyncPayload {
     pub storefront: Option<StorefrontId>,
     #[serde(default)]
     pub force: bool,
 }
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct MediaItemSyncPayload {
+    #[serde(default = "default_force")]
+    pub force: bool,
+}
+
+fn default_force() -> bool {
+    true
+}
+
+pub type MediaRefreshPayload = MediaSyncPayload;
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct MediaLaunchPayload {

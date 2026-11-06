@@ -81,11 +81,14 @@ export function NotificationItem({ notification }: Props) {
   const { notify } = useNotification();
   const config = SEVERITY_CONFIG[notification.severity];
   const IconComponent = config.icon;
+  const duration =
+    notification.duration ??
+    (notification.severity === "loading" ? Infinity : undefined);
 
   return (
     <Toast.Root
       open
-      duration={notification.duration}
+      duration={duration}
       onOpenChange={(open) => {
         if (!open) {
           notify.dismiss(notification.id);
