@@ -12,7 +12,7 @@ use itonda_database::{
     },
     media::{
         MediaInstallationUpsert, MediaLaunchSessionInsert, MediaLaunchUpsert,
-        upsert_media_installation, upsert_media_launch,
+        delete_stale_agent_installations, upsert_media_installation, upsert_media_launch,
     },
 };
 pub use itonda_domain::agents::AgentManager;
@@ -195,6 +195,8 @@ pub async fn handle_agent_scan_result(
         }));
     }
 
+    let mut active_installation_ids = Vec::with_capacity(scan_result.items.len());
+
     for item in scan_result.items {
         let storefront_id = StorefrontId::try_from(item.source.as_str()).ok();
         let storefront_db_id = storefront_id
@@ -226,7 +228,7 @@ pub async fn handle_agent_scan_result(
                 .and_then(|l| l.working_directory.clone())
         });
 
-        upsert_media_installation(
+        let installation = upsert_media_installation(
             pool,
             MediaInstallationUpsert {
                 media_id: media_row.id.clone(),
@@ -241,6 +243,7 @@ pub async fn handle_agent_scan_result(
             },
         )
         .await?;
+        active_installation_ids.push(installation.value.id);
 
         if let Some(launch) = item.launch {
             upsert_media_launch(
@@ -259,6 +262,16 @@ pub async fn handle_agent_scan_result(
             )
             .await?;
         }
+    }
+
+    let removed =
+        delete_stale_agent_installations(pool, &scan_result.agent_id, &active_installation_ids)
+            .await?;
+    if removed > 0 {
+        info!(
+            "Removed {} uninstalled media installation(s) for agent {}",
+            removed, scan_result.agent_id
+        );
     }
 
     if let Ok(agent_uuid) = Uuid::parse_str(&scan_result.agent_id) {
@@ -301,4 +314,161 @@ async fn wait_for_registration(socket: &mut WebSocket) -> anyhow::Result<AgentRe
     }
 
     anyhow::bail!("Socket closed");
+}
+
+#[cfg(test)]
+mod tests {
+    use itonda_database::{
+        agent::{AgentsInsert, upsert_agent},
+        media::{find_installations_by_media_id, find_media_by_title},
+        test_utils::setup_db,
+    };
+    use itonda_domain::{
+        events::EventBus,
+        media::types::{MediaLaunchType, MediaType},
+        protocol::ScanResult,
+        scanner::models::{ScannedLaunch, ScannedMedia},
+    };
+    use uuid::Uuid;
+
+    use super::handle_agent_scan_result;
+
+    fn scanned_game(title: &str, app_id: &str, dir: &str) -> ScannedMedia {
+        ScannedMedia {
+            media_type: MediaType::Game,
+            title: title.into(),
+            external_id: Some(app_id.into()),
+            source: "0".into(),
+            working_directory: Some(dir.into()),
+            launch: Some(ScannedLaunch {
+                name: "Steam".into(),
+                launch_type: MediaLaunchType::Storefront,
+                program: "steam".into(),
+                arguments: vec![format!("steam://run/{app_id}")],
+                working_directory: Some(dir.into()),
+            }),
+        }
+    }
+
+    #[tokio::test]
+    async fn handle_agent_scan_result_removes_uninstalled_games() {
+        let pool = setup_db().await;
+        let events = EventBus::new();
+
+        for agent_id in ["agent-1", "agent-2"] {
+            upsert_agent(
+                &pool,
+                AgentsInsert {
+                    id: agent_id.into(),
+                    name: format!("Agent {agent_id}"),
+                    hostname: "desktop".into(),
+                    platform: "linux".into(),
+                    agent_version: "1.0.0".into(),
+                },
+            )
+            .await
+            .unwrap();
+        }
+
+        handle_agent_scan_result(
+            &pool,
+            &events,
+            ScanResult {
+                request_id: Uuid::new_v4(),
+                agent_id: "agent-1".into(),
+                items: vec![
+                    scanned_game("Portal 2", "620", "/games/portal2"),
+                    scanned_game("Half-Life 2", "220", "/games/hl2"),
+                ],
+            },
+        )
+        .await
+        .unwrap();
+
+        handle_agent_scan_result(
+            &pool,
+            &events,
+            ScanResult {
+                request_id: Uuid::new_v4(),
+                agent_id: "agent-2".into(),
+                items: vec![scanned_game("Half-Life 2", "220", "/games/hl2")],
+            },
+        )
+        .await
+        .unwrap();
+
+        let portal2 = find_media_by_title(&pool, "Portal 2".into())
+            .await
+            .unwrap()
+            .unwrap();
+        let hl2 = find_media_by_title(&pool, "Half-Life 2".into())
+            .await
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(
+            find_installations_by_media_id(&pool, &portal2.id)
+                .await
+                .unwrap()
+                .len(),
+            1
+        );
+        assert_eq!(
+            find_installations_by_media_id(&pool, &hl2.id)
+                .await
+                .unwrap()
+                .len(),
+            2
+        );
+
+        handle_agent_scan_result(
+            &pool,
+            &events,
+            ScanResult {
+                request_id: Uuid::new_v4(),
+                agent_id: "agent-1".into(),
+                items: vec![scanned_game("Portal 2", "620", "/games/portal2")],
+            },
+        )
+        .await
+        .unwrap();
+
+        let portal2_installs = find_installations_by_media_id(&pool, &portal2.id)
+            .await
+            .unwrap();
+        assert_eq!(portal2_installs.len(), 1);
+        assert_eq!(portal2_installs[0].agent_id, "agent-1");
+
+        let hl2_installs = find_installations_by_media_id(&pool, &hl2.id)
+            .await
+            .unwrap();
+        assert_eq!(hl2_installs.len(), 1);
+        assert_eq!(hl2_installs[0].agent_id, "agent-2");
+
+        handle_agent_scan_result(
+            &pool,
+            &events,
+            ScanResult {
+                request_id: Uuid::new_v4(),
+                agent_id: "agent-1".into(),
+                items: vec![],
+            },
+        )
+        .await
+        .unwrap();
+
+        assert!(
+            find_installations_by_media_id(&pool, &portal2.id)
+                .await
+                .unwrap()
+                .is_empty()
+        );
+        assert_eq!(
+            find_installations_by_media_id(&pool, &hl2.id)
+                .await
+                .unwrap()
+                .len(),
+            1
+        );
+    }
 }

@@ -1347,6 +1347,44 @@ pub async fn delete_media_installation(
     Ok(())
 }
 
+pub async fn delete_stale_agent_installations(
+    pool: &SqlitePool,
+    agent_id: &str,
+    active_ids: &[String],
+) -> Result<u64, DatabaseError> {
+    if active_ids.is_empty() {
+        let result = sqlx::query(
+            r#"
+            DELETE FROM media_installations
+            WHERE agent_id = ?
+            "#,
+        )
+        .bind(agent_id)
+        .execute(pool)
+        .await
+        .map_err(DatabaseError::from)?;
+
+        return Ok(result.rows_affected());
+    }
+
+    let mut qb = QueryBuilder::<Sqlite>::new("DELETE FROM media_installations WHERE agent_id = ");
+    qb.push_bind(agent_id);
+    qb.push(" AND id NOT IN (");
+
+    let mut separated = qb.separated(", ");
+    for id in active_ids {
+        separated.push_bind(id);
+    }
+    separated.push_unseparated(")");
+
+    let result = qb
+        .build()
+        .execute(pool)
+        .await
+        .map_err(DatabaseError::from)?;
+    Ok(result.rows_affected())
+}
+
 pub async fn find_installations_by_media_ids(
     pool: &SqlitePool,
     ids: &[String],

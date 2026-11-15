@@ -1222,3 +1222,126 @@ async fn review_and_thought_lifecycle() {
         .unwrap();
     assert!(review_after.is_none());
 }
+
+#[tokio::test]
+async fn delete_stale_agent_installations_removes_only_stale_entries_for_agent() {
+    use crate::agent::{AgentsInsert, upsert_agent};
+
+    let pool = setup_db().await;
+
+    for agent_id in ["agent-1", "agent-2"] {
+        upsert_agent(
+            &pool,
+            AgentsInsert {
+                id: agent_id.into(),
+                name: format!("Agent {agent_id}"),
+                hostname: "desktop".into(),
+                platform: "linux".into(),
+                agent_version: "1.0.0".into(),
+            },
+        )
+        .await
+        .unwrap();
+    }
+
+    let media_a = MediaQueries::insert_media(
+        &pool,
+        MediaQueries::MediaInsert {
+            title: "Portal 2".into(),
+            media_type: "game".into(),
+            status_id: 1,
+            description: None,
+            summary: None,
+            release_date: None,
+        },
+    )
+    .await
+    .unwrap();
+
+    let media_b = MediaQueries::insert_media(
+        &pool,
+        MediaQueries::MediaInsert {
+            title: "Half-Life 2".into(),
+            media_type: "game".into(),
+            status_id: 1,
+            description: None,
+            summary: None,
+            release_date: None,
+        },
+    )
+    .await
+    .unwrap();
+
+    let inst_a1 = MediaQueries::upsert_media_installation(
+        &pool,
+        MediaQueries::MediaInstallationUpsert {
+            media_id: media_a.id.clone(),
+            agent_id: "agent-1".into(),
+            storefront_id: Some("0".into()),
+            external_id: Some("620".into()),
+            path: Some("/games/portal2".into()),
+        },
+    )
+    .await
+    .unwrap();
+
+    MediaQueries::upsert_media_installation(
+        &pool,
+        MediaQueries::MediaInstallationUpsert {
+            media_id: media_b.id.clone(),
+            agent_id: "agent-1".into(),
+            storefront_id: Some("0".into()),
+            external_id: Some("220".into()),
+            path: Some("/games/hl2".into()),
+        },
+    )
+    .await
+    .unwrap();
+
+    MediaQueries::upsert_media_installation(
+        &pool,
+        MediaQueries::MediaInstallationUpsert {
+            media_id: media_b.id.clone(),
+            agent_id: "agent-2".into(),
+            storefront_id: Some("0".into()),
+            external_id: Some("220".into()),
+            path: Some("/games/hl2".into()),
+        },
+    )
+    .await
+    .unwrap();
+
+    let removed =
+        MediaQueries::delete_stale_agent_installations(&pool, "agent-1", &[inst_a1.value.id])
+            .await
+            .unwrap();
+    assert_eq!(removed, 1);
+
+    let media_a_installs = MediaQueries::find_installations_by_media_id(&pool, &media_a.id)
+        .await
+        .unwrap();
+    assert_eq!(media_a_installs.len(), 1);
+    assert_eq!(media_a_installs[0].agent_id, "agent-1");
+
+    let media_b_installs = MediaQueries::find_installations_by_media_id(&pool, &media_b.id)
+        .await
+        .unwrap();
+    assert_eq!(media_b_installs.len(), 1);
+    assert_eq!(media_b_installs[0].agent_id, "agent-2");
+
+    let removed_all = MediaQueries::delete_stale_agent_installations(&pool, "agent-1", &[])
+        .await
+        .unwrap();
+    assert_eq!(removed_all, 1);
+
+    let media_a_installs_after = MediaQueries::find_installations_by_media_id(&pool, &media_a.id)
+        .await
+        .unwrap();
+    assert!(media_a_installs_after.is_empty());
+
+    let media_b_installs_after = MediaQueries::find_installations_by_media_id(&pool, &media_b.id)
+        .await
+        .unwrap();
+    assert_eq!(media_b_installs_after.len(), 1);
+    assert_eq!(media_b_installs_after[0].agent_id, "agent-2");
+}
