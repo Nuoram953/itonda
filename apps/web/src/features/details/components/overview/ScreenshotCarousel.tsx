@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import type { components } from "@/api/generated.d";
-import { cn } from "@/lib/utils";
 import { getAssetUrl } from "../../utils/asset-url";
 import { getAssetsByType } from "../../utils/media-assets";
+
+const SCREENSHOTS_PER_PAGE = 8;
 
 type ScreenshotCarouselProps = {
   media: components["schemas"]["Media"];
@@ -38,10 +39,15 @@ export function ScreenshotCarousel({
   const scrollByPage = (direction: 1 | -1) => {
     const el = trackRef.current;
     if (!el) return;
-    el.scrollBy({ left: direction * el.clientWidth * 0.9, behavior: "smooth" });
+    el.scrollBy({ left: direction * el.clientWidth, behavior: "smooth" });
   };
 
   if (screenshots.length === 0) return null;
+
+  const pages: (typeof screenshots)[] = [];
+  for (let i = 0; i < screenshots.length; i += SCREENSHOTS_PER_PAGE) {
+    pages.push(screenshots.slice(i, i + SCREENSHOTS_PER_PAGE));
+  }
 
   return (
     <section className="space-y-4">
@@ -87,22 +93,30 @@ export function ScreenshotCarousel({
         ref={trackRef}
         onScroll={updateScrollState}
         data-testid="screenshot-track"
-        className="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {screenshots.map((shot, idx) => (
+        {pages.map((page, pageIdx) => (
           <div
-            key={shot.id}
-            className={cn(
-              "shrink-0 snap-start aspect-video rounded-xl overflow-hidden bg-slate-900 border border-white/10",
-              "w-[85%] sm:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.667rem)]",
-            )}
+            key={page[0].id}
+            data-testid="screenshot-page"
+            className="w-full shrink-0 snap-start grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
           >
-            <img
-              src={getAssetUrl(shot.id)}
-              alt={`${media.title} screenshot ${idx + 1}`}
-              loading="lazy"
-              className="w-full h-full object-cover"
-            />
+            {page.map((shot, idx) => {
+              const globalIdx = pageIdx * SCREENSHOTS_PER_PAGE + idx;
+              return (
+                <div
+                  key={shot.id}
+                  className="aspect-video rounded-xl overflow-hidden bg-slate-900 border border-white/10"
+                >
+                  <img
+                    src={getAssetUrl(shot.id)}
+                    alt={`${media.title} screenshot ${globalIdx + 1}`}
+                    loading="lazy"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              );
+            })}
           </div>
         ))}
       </div>

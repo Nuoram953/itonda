@@ -47,4 +47,22 @@ describe("ScreenshotCarousel Component", () => {
     expect(screen.queryByText("Screenshots")).toBeNull();
     expect(screen.queryByTestId("screenshot-track")).toBeNull();
   });
+
+  it("groups screenshots into pages of 8 (2 rows of 4 columns)", () => {
+    const media = createMedia({
+      title: "Test Game",
+      assets: Array.from({ length: 10 }, (_, idx) =>
+        createAsset({ id: `s-${idx + 1}`, asset_type: "screenshot" }),
+      ),
+    });
+
+    render(<ScreenshotCarousel media={media} onViewGallery={vi.fn()} />);
+
+    const pages = screen.getAllByTestId("screenshot-page");
+    expect(pages).toHaveLength(2);
+    expect(pages[0].className).toContain("lg:grid-cols-4");
+    expect(pages[0].querySelectorAll("img")).toHaveLength(8);
+    expect(pages[1].querySelectorAll("img")).toHaveLength(2);
+    expect(screen.getByAltText("Test Game screenshot 10")).toBeDefined();
+  });
 });
