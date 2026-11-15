@@ -23,4 +23,12 @@ pub fn router() -> Router<AppState> {
         .route("/media/{media_id}/sync", post(handlers::sync_media_by_id))
         .route("/media/import", post(handlers::import_media))
         .route("/media/launch/{launch_id}", post(handlers::launch_media))
+        .route(
+            "/media/{media_id}/launches",
+            post(handlers::create_media_launch),
+        )
+        .route(
+            "/media/{media_id}/launches/{launch_id}",
+            patch(handlers::update_media_launch).delete(handlers::delete_media_launch),
+        )
 }

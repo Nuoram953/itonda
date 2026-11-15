@@ -473,12 +473,71 @@ export interface components {
             job_id: string;
             status: components["schemas"]["JobStatus"];
         };
+        Emulator: {
+            arguments: string[];
+            created_at: string;
+            id: string;
+            name: string;
+            program: string;
+            updated_at: string;
+            working_directory?: string | null;
+        };
+        GetEmulatorsResponse: {
+            items: components["schemas"]["Emulator"][];
+        };
+        CreateEmulatorPayload: {
+            arguments?: string[];
+            name: string;
+            program: string;
+            working_directory?: string | null;
+        };
+        UpdateEmulatorPayload: {
+            arguments?: string[] | null;
+            name?: string | null;
+            program?: string | null;
+            working_directory?: string | null;
+        };
+        CreateMediaLaunchPayload: {
+            agent_id?: string | null;
+            argument_mode?: string;
+            arguments?: string[];
+            emulator_id?: string | null;
+            enabled?: boolean;
+            game_location?: string | null;
+            is_default?: boolean;
+            launch_type: string;
+            name: string;
+            program?: string;
+            working_directory?: string | null;
+        };
+        UpdateMediaLaunchPayload: {
+            agent_id?: string | null;
+            argument_mode?: string | null;
+            arguments?: string[] | null;
+            emulator_id?: string | null;
+            enabled?: boolean | null;
+            game_location?: string | null;
+            is_default?: boolean | null;
+            launch_type?: string | null;
+            name?: string | null;
+            program?: string | null;
+            working_directory?: string | null;
+        };
         /** @enum {string} */
         JobStatus: "queued" | "running" | "completed" | "failed";
         Launch: {
             agent_id?: string | null;
+            argument_mode: string;
+            arguments: string[];
+            emulator_id?: string | null;
+            enabled: boolean;
+            game_location?: string | null;
             id: string;
+            is_default: boolean;
+            launch_type: string;
             name: string;
+            program: string;
+            working_directory?: string | null;
         };
         Media: {
             assets: components["schemas"]["Asset"][];

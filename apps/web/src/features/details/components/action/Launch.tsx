@@ -7,9 +7,14 @@ import { cn } from "@/lib/utils";
 type LaunchProps = {
   profiles: components["schemas"]["Media"]["launches"];
   mediaId?: string;
+  onManageProfiles?: () => void;
 };
 
-export const Launch = ({ profiles = [], mediaId }: LaunchProps) => {
+export const Launch = ({
+  profiles = [],
+  mediaId,
+  onManageProfiles,
+}: LaunchProps) => {
   const {
     open,
     setOpen,
@@ -58,6 +63,7 @@ export const Launch = ({ profiles = [], mediaId }: LaunchProps) => {
         profiles={profiles}
         isProfileAvailable={isProfileAvailable}
         onSelectProfile={launch}
+        onManageProfiles={onManageProfiles}
         isLoading={isLoading}
       />
     </>

@@ -22,6 +22,15 @@ export function createLaunch(overrides?: Partial<Launch>): Launch {
     id: "launch-1",
     name: "Default Profile",
     agent_id: null,
+    launch_type: "custom",
+    emulator_id: null,
+    program: "",
+    arguments: [],
+    argument_mode: "append",
+    working_directory: null,
+    game_location: null,
+    is_default: false,
+    enabled: true,
     ...overrides,
   };
 }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Workspace } from "@/components/workspace/Workspace";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { SettingsSection } from "./components/sections/SettingsSection";
+import { EmulatorsSection } from "./components/sections/EmulatorsSection";
 import { IntegrationRow } from "./components/rows/IntegrationRow";
 import { useConfig } from "./api/get-config";
 import { usePatchConfig } from "./api/patch-config";
@@ -69,6 +70,8 @@ export const Settings = () => {
             />
           ),
         )}
+
+        <EmulatorsSection />
       </Workspace.Content>
     </Workspace>
   );

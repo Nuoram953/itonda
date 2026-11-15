@@ -3,7 +3,10 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use itonda_domain::{agents::errors::AgentsError, launch::LaunchError, media::errors::MediaError};
+use itonda_domain::{
+    agents::errors::AgentsError, emulators::errors::EmulatorError, launch::LaunchError,
+    media::errors::MediaError,
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -171,6 +174,18 @@ impl From<itonda_domain::reviews::ReviewError> for ApiError {
             }
             itonda_domain::reviews::ReviewError::Validation(msg) => ApiError::Validation(msg),
             itonda_domain::reviews::ReviewError::Database(err) => ApiError::Database(err),
+        }
+    }
+}
+
+impl From<EmulatorError> for ApiError {
+    fn from(err: EmulatorError) -> Self {
+        match err {
+            EmulatorError::NotFound => ApiError::not_found("Emulator not found"),
+            EmulatorError::AlreadyExists => {
+                ApiError::validation("An emulator with this name already exists")
+            }
+            EmulatorError::Database(err) => ApiError::Database(err),
         }
     }
 }

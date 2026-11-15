@@ -4,10 +4,20 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
 };
-use itonda_domain::{
-    launch::service::get_launch_media_details,
+use itonda_database::{
+    emulators::queries::find_emulator_by_id,
     media::{
-        models::{ExternalIdProvider, Media},
+        MediaLaunchCreate, MediaLaunchUpdate,
+        create_media_launch as db_create_media_launch,
+        delete_media_launch as db_delete_media_launch, find_media_launch_by_id,
+        update_media_launch as db_update_media_launch,
+    },
+};
+use itonda_domain::{
+    emulators::errors::EmulatorError,
+    launch::service::{derive_working_directory, get_launch_media_details, resolve_emulator_fields},
+    media::{
+        models::{ExternalIdProvider, Launch, Media},
         service as MediaService,
         types::{MediaStatus, MediaType},
     },
@@ -22,8 +32,9 @@ use crate::{
         error::ApiError,
         extractor::AppJson,
         media::schemas::{
-            CreateMediaPayload, MediaImportPayload, MediaItemSyncPayload, MediaQueryParams,
-            MediaResponse, MediaSearchQueryParams, MediaSyncPayload,
+            CreateMediaLaunchPayload, CreateMediaPayload, MediaImportPayload, MediaItemSyncPayload,
+            MediaQueryParams, MediaResponse, MediaSearchQueryParams, MediaSyncPayload,
+            UpdateMediaLaunchPayload,
         },
         response::{CommandResponse, CommandStatus, JobResponse, JobStatus},
     },
@@ -395,4 +406,268 @@ pub async fn create_media(
     let media = MediaService::get_media_by_id(&state.db, inserted.id).await?;
 
     Ok((StatusCode::CREATED, Json(media)))
+}
+
+#[utoipa::path(
+    post,
+    path = "/media/{media_id}/launches",
+    params(
+        ("media_id" = String, Path, description = "ID of the media")
+    ),
+    request_body = CreateMediaLaunchPayload,
+    responses(
+        (status = 201, body = Launch, description = "Create a launch profile for a media item")
+    )
+)]
+#[instrument(skip(state))]
+pub async fn create_media_launch(
+    State(state): State<AppState>,
+    Path(media_id): Path<String>,
+    Json(payload): Json<CreateMediaLaunchPayload>,
+) -> Result<impl IntoResponse, ApiError> {
+    let _ = MediaService::get_media_by_id(&state.db, media_id.clone()).await?;
+
+    let name = payload.name.trim().to_string();
+    if name.is_empty() {
+        return Err(ApiError::validation("Launch profile name cannot be empty"));
+    }
+
+    if payload.argument_mode != "append" && payload.argument_mode != "replace" {
+        return Err(ApiError::validation(
+            "argument_mode must be 'append' or 'replace'",
+        ));
+    }
+
+    let emulator_id = payload
+        .emulator_id
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+
+    let emulator = if let Some(ref emu_id) = emulator_id {
+        Some(
+            find_emulator_by_id(&state.db, emu_id)
+                .await
+                .map_err(EmulatorError::from)?,
+        )
+    } else {
+        None
+    };
+
+    let override_program = payload.program.trim().to_string();
+    if emulator.is_none() && override_program.is_empty() {
+        return Err(ApiError::validation(
+            "Program cannot be empty for non-emulator launch profiles",
+        ));
+    }
+
+    let game_location = payload
+        .game_location
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+
+    if emulator.is_some() && game_location.is_none() {
+        return Err(ApiError::validation(
+            "Game location is required for emulator launch profiles",
+        ));
+    }
+
+    let override_working_directory = payload
+        .working_directory
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+
+    let (program, resolved_args, working_directory) = if let Some(ref emu) = emulator {
+        let emu_args: Vec<String> = serde_json::from_str(&emu.arguments).unwrap_or_default();
+        resolve_emulator_fields(
+            &emu.program,
+            &emu_args,
+            emu.working_directory.as_deref(),
+            &override_program,
+            &payload.arguments,
+            &payload.argument_mode,
+            override_working_directory.as_deref(),
+            game_location.as_deref(),
+        )
+    } else {
+        let working_dir = override_working_directory
+            .or_else(|| derive_working_directory(&override_program, game_location.as_deref()));
+        (override_program, payload.arguments, working_dir)
+    };
+
+    let agent_id = payload
+        .agent_id
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+
+    let arguments = serde_json::to_string(&resolved_args).unwrap_or_else(|_| "[]".to_string());
+
+    let row = db_create_media_launch(
+        &state.db,
+        MediaLaunchCreate {
+            media_id,
+            agent_id,
+            name,
+            launch_type: payload.launch_type.trim().to_string(),
+            emulator_id,
+            program,
+            arguments,
+            argument_mode: payload.argument_mode,
+            working_directory,
+            game_location,
+            is_default: payload.is_default,
+            enabled: payload.enabled,
+        },
+    )
+    .await?;
+
+    Ok((StatusCode::CREATED, Json(Launch::from(row))))
+}
+
+#[utoipa::path(
+    patch,
+    path = "/media/{media_id}/launches/{launch_id}",
+    params(
+        ("media_id" = String, Path, description = "ID of the media"),
+        ("launch_id" = String, Path, description = "ID of the launch profile")
+    ),
+    request_body = UpdateMediaLaunchPayload,
+    responses(
+        (status = 200, body = Launch, description = "Update a launch profile")
+    )
+)]
+#[instrument(skip(state))]
+pub async fn update_media_launch(
+    State(state): State<AppState>,
+    Path((media_id, launch_id)): Path<(String, String)>,
+    Json(payload): Json<UpdateMediaLaunchPayload>,
+) -> Result<Json<Launch>, ApiError> {
+    let existing = find_media_launch_by_id(&state.db, launch_id.clone())
+        .await
+        .map_err(|_| ApiError::not_found("Launch profile not found"))?;
+
+    if existing.media_id != media_id {
+        return Err(ApiError::not_found("Launch profile not found"));
+    }
+
+    let name = match payload.name {
+        Some(n) => {
+            let trimmed = n.trim().to_string();
+            if trimmed.is_empty() {
+                return Err(ApiError::validation("Launch profile name cannot be empty"));
+            }
+            trimmed
+        }
+        None => existing.name,
+    };
+
+    let launch_type = payload
+        .launch_type
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or(existing.launch_type);
+
+    let emulator_id = match payload.emulator_id {
+        Some(opt) => opt.map(|s| s.trim().to_string()).filter(|s| !s.is_empty()),
+        None => existing.emulator_id,
+    };
+
+    if let Some(ref emu_id) = emulator_id {
+        find_emulator_by_id(&state.db, emu_id)
+            .await
+            .map_err(EmulatorError::from)?;
+    }
+
+    let argument_mode = match payload.argument_mode {
+        Some(mode) => {
+            if mode != "append" && mode != "replace" {
+                return Err(ApiError::validation(
+                    "argument_mode must be 'append' or 'replace'",
+                ));
+            }
+            mode
+        }
+        None => existing.argument_mode,
+    };
+
+    let program = payload
+        .program
+        .map(|s| s.trim().to_string())
+        .unwrap_or(existing.program);
+
+    if emulator_id.is_none() && program.is_empty() {
+        return Err(ApiError::validation(
+            "Program cannot be empty for non-emulator launch profiles",
+        ));
+    }
+
+    let game_location = match payload.game_location {
+        Some(opt) => opt.map(|s| s.trim().to_string()).filter(|s| !s.is_empty()),
+        None => existing.game_location,
+    };
+
+    if emulator_id.is_some() && game_location.is_none() {
+        return Err(ApiError::validation(
+            "Game location is required for emulator launch profiles",
+        ));
+    }
+
+    let working_directory = match payload.working_directory {
+        Some(opt) => opt.map(|s| s.trim().to_string()).filter(|s| !s.is_empty()),
+        None => existing.working_directory,
+    };
+
+    let agent_id = match payload.agent_id {
+        Some(opt) => opt.map(|s| s.trim().to_string()).filter(|s| !s.is_empty()),
+        None => existing.agent_id,
+    };
+
+    let arguments = match payload.arguments {
+        Some(args) => serde_json::to_string(&args).unwrap_or_else(|_| "[]".to_string()),
+        None => existing.arguments,
+    };
+
+    let updated = db_update_media_launch(
+        &state.db,
+        &media_id,
+        &launch_id,
+        MediaLaunchUpdate {
+            agent_id,
+            name,
+            launch_type,
+            emulator_id,
+            program,
+            arguments,
+            argument_mode,
+            working_directory,
+            game_location,
+            is_default: payload.is_default.unwrap_or(existing.is_default),
+            enabled: payload.enabled.unwrap_or(existing.enabled),
+        },
+    )
+    .await?;
+
+    Ok(Json(Launch::from(updated)))
+}
+
+#[utoipa::path(
+    delete,
+    path = "/media/{media_id}/launches/{launch_id}",
+    params(
+        ("media_id" = String, Path, description = "ID of the media"),
+        ("launch_id" = String, Path, description = "ID of the launch profile")
+    ),
+    responses(
+        (status = 204, description = "Delete a launch profile")
+    )
+)]
+#[instrument(skip(state))]
+pub async fn delete_media_launch(
+    State(state): State<AppState>,
+    Path((media_id, launch_id)): Path<(String, String)>,
+) -> Result<StatusCode, ApiError> {
+    let rows_affected = db_delete_media_launch(&state.db, &media_id, &launch_id).await?;
+    if rows_affected == 0 {
+        return Err(ApiError::not_found("Launch profile not found"));
+    }
+    Ok(StatusCode::NO_CONTENT)
 }

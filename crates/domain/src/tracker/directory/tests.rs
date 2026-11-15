@@ -37,6 +37,18 @@ fn test_matches_directory_handles_none() {
     assert!(!matches_directory(target, None, None));
 }
 
+#[test]
+fn test_matches_process_directory_by_cmd_arg() {
+    let target = Path::new("/home/nuoram/emu/ps2");
+    let cwd = Path::new("/home/nuoram");
+    let exe = Path::new("/tmp/.mount_pcsx2/usr/bin/pcsx2-qt");
+    let cmd = vec![
+        std::ffi::OsString::from("/tmp/.mount_pcsx2/usr/bin/pcsx2-qt"),
+        std::ffi::OsString::from("/home/nuoram/emu/ps2/ffx.iso"),
+    ];
+    assert!(matches_process_directory(target, Some(cwd), Some(exe), &cmd));
+}
+
 #[tokio::test]
 async fn test_directory_tracker_errors_on_missing_working_directory() {
     let tracker = DirectoryTracker::new();

@@ -86,3 +86,46 @@ pub struct CreateMediaPayload {
     pub media_type: MediaType,
     pub external_id: Option<String>,
 }
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct CreateMediaLaunchPayload {
+    pub name: String,
+    pub launch_type: String,
+    pub emulator_id: Option<String>,
+    pub game_location: Option<String>,
+    #[serde(default)]
+    pub program: String,
+    #[serde(default)]
+    pub arguments: Vec<String>,
+    #[serde(default = "default_argument_mode")]
+    pub argument_mode: String,
+    pub working_directory: Option<String>,
+    pub agent_id: Option<String>,
+    #[serde(default)]
+    pub is_default: bool,
+    #[serde(default = "default_enabled")]
+    pub enabled: bool,
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct UpdateMediaLaunchPayload {
+    pub name: Option<String>,
+    pub launch_type: Option<String>,
+    pub emulator_id: Option<Option<String>>,
+    pub game_location: Option<Option<String>>,
+    pub program: Option<String>,
+    pub arguments: Option<Vec<String>>,
+    pub argument_mode: Option<String>,
+    pub working_directory: Option<Option<String>>,
+    pub agent_id: Option<Option<String>>,
+    pub is_default: Option<bool>,
+    pub enabled: Option<bool>,
+}
+
+fn default_argument_mode() -> String {
+    "append".to_string()
+}
+
+fn default_enabled() -> bool {
+    true
+}

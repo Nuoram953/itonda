@@ -18,6 +18,7 @@ type LaunchProfileDialogProps = {
   profiles: LaunchProfile[];
   isProfileAvailable: (profile: LaunchProfile) => boolean;
   onSelectProfile: (profileId: string) => void;
+  onManageProfiles?: () => void;
   isLoading?: boolean;
 };
 
@@ -28,6 +29,7 @@ export function LaunchProfileDialog({
   profiles,
   isProfileAvailable,
   onSelectProfile,
+  onManageProfiles,
   isLoading = false,
 }: LaunchProfileDialogProps) {
   return (
@@ -59,7 +61,21 @@ export function LaunchProfileDialog({
           })}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-row justify-between sm:justify-between gap-2">
+          {onManageProfiles ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                onOpenChange(false);
+                onManageProfiles();
+              }}
+            >
+              Manage Profiles
+            </Button>
+          ) : (
+            <span />
+          )}
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>

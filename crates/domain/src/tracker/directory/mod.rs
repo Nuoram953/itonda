@@ -11,6 +11,28 @@ use crate::tracker::{
 #[cfg(test)]
 mod tests;
 
+pub fn matches_process_directory(
+    target_dir: &Path,
+    proc_cwd: Option<&Path>,
+    proc_exe: Option<&Path>,
+    proc_cmd: &[std::ffi::OsString],
+) -> bool {
+    if matches_directory(target_dir, proc_cwd, proc_exe) {
+        return true;
+    }
+
+    let target = std::fs::canonicalize(target_dir).unwrap_or_else(|_| target_dir.to_path_buf());
+    proc_cmd.iter().any(|arg| {
+        let arg_path = Path::new(arg);
+        if !arg_path.is_absolute() {
+            return false;
+        }
+        std::fs::canonicalize(arg_path)
+            .unwrap_or_else(|_| arg_path.to_path_buf())
+            .starts_with(&target)
+    })
+}
+
 pub fn matches_directory(
     target_dir: &Path,
     proc_cwd: Option<&Path>,
@@ -65,7 +87,8 @@ impl MediaTracker for DirectoryTracker {
             true,
             ProcessRefreshKind::nothing()
                 .with_cwd(UpdateKind::Always)
-                .with_exe(UpdateKind::Always),
+                .with_exe(UpdateKind::Always)
+                .with_cmd(UpdateKind::Always),
         );
 
         let matched = sys
@@ -74,8 +97,9 @@ impl MediaTracker for DirectoryTracker {
             .filter_map(|(pid, proc)| {
                 let cwd = proc.cwd();
                 let exe = proc.exe();
+                let cmd = proc.cmd();
 
-                if matches_directory(target_dir, cwd, exe) {
+                if matches_process_directory(target_dir, cwd, exe, cmd) {
                     Some(ProcessInfo {
                         pid: pid.as_u32(),
                         name: proc.name().to_string_lossy().to_string(),

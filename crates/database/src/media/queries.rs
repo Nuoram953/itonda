@@ -10,8 +10,9 @@ use crate::{
     media::{
         MediaAssetInsert, MediaAssetRow, MediaAssetSearchInsert, MediaAssetSearchRow,
         MediaExternalIdRow, MediaExternalIdUpsert, MediaGameDetailsRow, MediaGameDetailsUpsert,
-        MediaInsert, MediaInstallationRow, MediaInstallationUpsert, MediaLaunchRow,
-        MediaLaunchSessionInsert, MediaLaunchSessionRow, MediaLaunchUpsert,
+        MediaInsert, MediaInstallationRow, MediaInstallationUpsert, MediaLaunchCreate,
+        MediaLaunchRow, MediaLaunchSessionInsert, MediaLaunchSessionRow, MediaLaunchUpdate,
+        MediaLaunchUpsert,
         MediaMetadataSearchInsert, MediaMetadataSearchRow, MediaStatusHistoryRow,
         MediaStorefrontRow, MediaStorefrontUpsert,
     },
@@ -334,94 +335,68 @@ pub async fn insert_media(
     .map_err(DatabaseError::from)
 }
 
+const MEDIA_LAUNCH_COLUMNS: &str = r#"
+    id,
+    media_id,
+    agent_id,
+    name,
+    launch_type,
+    emulator_id,
+    program,
+    arguments,
+    argument_mode,
+    working_directory,
+    game_location,
+    is_default,
+    enabled
+"#;
+
 pub async fn find_media_launch_by_media_id(
     pool: &SqlitePool,
     media_id: String,
 ) -> Result<Vec<MediaLaunchRow>, DatabaseError> {
-    sqlx::query_as!(
-        MediaLaunchRow,
-        r#"
-        SELECT
-            id,
-            media_id,
-            agent_id,
-            name,
-            launch_type,
-            program,
-            arguments,
-            working_directory,
-            is_default AS "is_default: bool",
-            enabled AS "enabled: bool"
-        from media_launches
-        where media_id=?
-        "#,
-        media_id,
-    )
-    .fetch_all(pool)
-    .await
-    .map_err(DatabaseError::from)
+    let query = format!("SELECT {MEDIA_LAUNCH_COLUMNS} FROM media_launches WHERE media_id = ?");
+    sqlx::query_as::<Sqlite, MediaLaunchRow>(&query)
+        .bind(media_id)
+        .fetch_all(pool)
+        .await
+        .map_err(DatabaseError::from)
 }
 
 pub async fn find_media_launch_by_id(
     pool: &SqlitePool,
     launch_id: String,
 ) -> Result<MediaLaunchRow, DatabaseError> {
-    sqlx::query_as!(
-        MediaLaunchRow,
-        r#"
-        SELECT
-            id,
-            media_id,
-            agent_id,
-            name,
-            launch_type,
-            program,
-            arguments,
-            working_directory,
-            is_default AS "is_default: bool",
-            enabled AS "enabled: bool"
-        from media_launches
-        where id=?
-        "#,
-        launch_id,
-    )
-    .fetch_one(pool)
-    .await
-    .map_err(DatabaseError::from)
+    let query = format!("SELECT {MEDIA_LAUNCH_COLUMNS} FROM media_launches WHERE id = ?");
+    sqlx::query_as::<Sqlite, MediaLaunchRow>(&query)
+        .bind(launch_id)
+        .fetch_one(pool)
+        .await
+        .map_err(DatabaseError::from)
 }
 
 pub async fn upsert_media_launch(
     pool: &SqlitePool,
     media_launch: MediaLaunchUpsert,
 ) -> Result<UpsertResult<MediaLaunchRow>, DatabaseError> {
-    let existing = sqlx::query_as!(
-        MediaLaunchRow,
+    let find_query = format!(
         r#"
-        SELECT
-            id,
-            media_id,
-            agent_id,
-            name,
-            launch_type,
-            program,
-            arguments,
-            working_directory,
-            is_default AS "is_default: bool",
-            enabled AS "enabled: bool"
+        SELECT {MEDIA_LAUNCH_COLUMNS}
         FROM media_launches
         WHERE media_id = ?
           AND agent_id IS ?
           AND name = ?
           AND launch_type = ?
-        "#,
-        media_launch.media_id,
-        media_launch.agent_id,
-        media_launch.name,
-        media_launch.launch_type,
-    )
-    .fetch_optional(pool)
-    .await
-    .map_err(DatabaseError::from)?;
+        "#
+    );
+    let existing = sqlx::query_as::<Sqlite, MediaLaunchRow>(&find_query)
+        .bind(&media_launch.media_id)
+        .bind(&media_launch.agent_id)
+        .bind(&media_launch.name)
+        .bind(&media_launch.launch_type)
+        .fetch_optional(pool)
+        .await
+        .map_err(DatabaseError::from)?;
 
     let Some(existing) = existing else {
         let row = insert_media_launch(pool, media_launch).await?;
@@ -445,8 +420,7 @@ pub async fn upsert_media_launch(
         });
     }
 
-    let row = sqlx::query_as!(
-        MediaLaunchRow,
+    let update_query = format!(
         r#"
         UPDATE media_launches
         SET
@@ -457,28 +431,19 @@ pub async fn upsert_media_launch(
             enabled = ?,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
-        RETURNING
-            id,
-            media_id,
-            agent_id,
-            name,
-            launch_type,
-            program,
-            arguments,
-            working_directory,
-            is_default AS "is_default: bool",
-            enabled AS "enabled: bool"
-        "#,
-        media_launch.program,
-        media_launch.arguments,
-        media_launch.working_directory,
-        media_launch.is_default,
-        media_launch.enabled,
-        existing.id,
-    )
-    .fetch_one(pool)
-    .await
-    .map_err(DatabaseError::from)?;
+        RETURNING {MEDIA_LAUNCH_COLUMNS}
+        "#
+    );
+    let row = sqlx::query_as::<Sqlite, MediaLaunchRow>(&update_query)
+        .bind(media_launch.program)
+        .bind(media_launch.arguments)
+        .bind(media_launch.working_directory)
+        .bind(media_launch.is_default)
+        .bind(media_launch.enabled)
+        .bind(existing.id)
+        .fetch_one(pool)
+        .await
+        .map_err(DatabaseError::from)?;
 
     Ok(UpsertResult {
         value: row,
@@ -491,9 +456,7 @@ async fn insert_media_launch(
     media_launch: MediaLaunchUpsert,
 ) -> Result<MediaLaunchRow, DatabaseError> {
     let id = Uuid::new_v4().to_string();
-
-    sqlx::query_as!(
-        MediaLaunchRow,
+    let insert_query = format!(
         r#"
         INSERT INTO media_launches (
             id,
@@ -508,32 +471,158 @@ async fn insert_media_launch(
             enabled
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        RETURNING
+        RETURNING {MEDIA_LAUNCH_COLUMNS}
+        "#
+    );
+
+    sqlx::query_as::<Sqlite, MediaLaunchRow>(&insert_query)
+        .bind(id)
+        .bind(media_launch.media_id)
+        .bind(media_launch.agent_id)
+        .bind(media_launch.name)
+        .bind(media_launch.launch_type)
+        .bind(media_launch.program)
+        .bind(media_launch.arguments)
+        .bind(media_launch.working_directory)
+        .bind(media_launch.is_default)
+        .bind(media_launch.enabled)
+        .fetch_one(pool)
+        .await
+        .map_err(DatabaseError::from)
+}
+
+pub async fn create_media_launch(
+    pool: &SqlitePool,
+    launch: MediaLaunchCreate,
+) -> Result<MediaLaunchRow, DatabaseError> {
+    let mut tx = pool.begin().await.map_err(DatabaseError::from)?;
+
+    if launch.is_default {
+        sqlx::query("UPDATE media_launches SET is_default = 0 WHERE media_id = ?")
+            .bind(&launch.media_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(DatabaseError::from)?;
+    }
+
+    let id = Uuid::new_v4().to_string();
+    let query = format!(
+        r#"
+        INSERT INTO media_launches (
             id,
             media_id,
             agent_id,
             name,
             launch_type,
+            emulator_id,
             program,
             arguments,
+            argument_mode,
             working_directory,
-            is_default AS "is_default: bool",
-            enabled AS "enabled: bool"
-        "#,
-        id,
-        media_launch.media_id,
-        media_launch.agent_id,
-        media_launch.name,
-        media_launch.launch_type,
-        media_launch.program,
-        media_launch.arguments,
-        media_launch.working_directory,
-        media_launch.is_default,
-        media_launch.enabled,
-    )
-    .fetch_one(pool)
-    .await
-    .map_err(DatabaseError::from)
+            game_location,
+            is_default,
+            enabled
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        RETURNING {MEDIA_LAUNCH_COLUMNS}
+        "#
+    );
+
+    let row = sqlx::query_as::<Sqlite, MediaLaunchRow>(&query)
+        .bind(id)
+        .bind(launch.media_id)
+        .bind(launch.agent_id)
+        .bind(launch.name)
+        .bind(launch.launch_type)
+        .bind(launch.emulator_id)
+        .bind(launch.program)
+        .bind(launch.arguments)
+        .bind(launch.argument_mode)
+        .bind(launch.working_directory)
+        .bind(launch.game_location)
+        .bind(launch.is_default)
+        .bind(launch.enabled)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(DatabaseError::from)?;
+
+    tx.commit().await.map_err(DatabaseError::from)?;
+    Ok(row)
+}
+
+pub async fn update_media_launch(
+    pool: &SqlitePool,
+    media_id: &str,
+    launch_id: &str,
+    launch: MediaLaunchUpdate,
+) -> Result<MediaLaunchRow, DatabaseError> {
+    let mut tx = pool.begin().await.map_err(DatabaseError::from)?;
+
+    if launch.is_default {
+        sqlx::query("UPDATE media_launches SET is_default = 0 WHERE media_id = ? AND id != ?")
+            .bind(media_id)
+            .bind(launch_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(DatabaseError::from)?;
+    }
+
+    let query = format!(
+        r#"
+        UPDATE media_launches
+        SET
+            agent_id = ?,
+            name = ?,
+            launch_type = ?,
+            emulator_id = ?,
+            program = ?,
+            arguments = ?,
+            argument_mode = ?,
+            working_directory = ?,
+            game_location = ?,
+            is_default = ?,
+            enabled = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ? AND media_id = ?
+        RETURNING {MEDIA_LAUNCH_COLUMNS}
+        "#
+    );
+
+    let row = sqlx::query_as::<Sqlite, MediaLaunchRow>(&query)
+        .bind(launch.agent_id)
+        .bind(launch.name)
+        .bind(launch.launch_type)
+        .bind(launch.emulator_id)
+        .bind(launch.program)
+        .bind(launch.arguments)
+        .bind(launch.argument_mode)
+        .bind(launch.working_directory)
+        .bind(launch.game_location)
+        .bind(launch.is_default)
+        .bind(launch.enabled)
+        .bind(launch_id)
+        .bind(media_id)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(DatabaseError::from)?;
+
+    tx.commit().await.map_err(DatabaseError::from)?;
+    Ok(row)
+}
+
+pub async fn delete_media_launch(
+    pool: &SqlitePool,
+    media_id: &str,
+    launch_id: &str,
+) -> Result<u64, DatabaseError> {
+    let result = sqlx::query("DELETE FROM media_launches WHERE id = ? AND media_id = ?")
+        .bind(launch_id)
+        .bind(media_id)
+        .execute(pool)
+        .await
+        .map_err(DatabaseError::from)?;
+
+    Ok(result.rows_affected())
 }
 
 pub async fn update_media_status(
@@ -763,9 +852,12 @@ pub async fn find_media_launches_by_media_ids(
             agent_id,
             name,
             launch_type,
+            emulator_id,
             program,
             arguments,
+            argument_mode,
             working_directory,
+            game_location,
             is_default,
             enabled
         FROM media_launches
@@ -791,30 +883,12 @@ pub async fn find_media_launches_by_media_id(
     pool: &SqlitePool,
     media_id: &str,
 ) -> Result<Vec<MediaLaunchRow>, DatabaseError> {
-    let row = sqlx::query_as!(
-        MediaLaunchRow,
-        r#"
-        SELECT
-            id,
-            media_id,
-            agent_id,
-            name,
-            launch_type,
-            program,
-            arguments,
-            working_directory,
-            is_default AS "is_default: bool",
-            enabled AS "enabled: bool"
-        FROM media_launches
-        WHERE media_id = ?
-        "#,
-        media_id
-    )
-    .fetch_all(pool)
-    .await
-    .map_err(DatabaseError::from)?;
-
-    Ok(row)
+    let query = format!("SELECT {MEDIA_LAUNCH_COLUMNS} FROM media_launches WHERE media_id = ?");
+    sqlx::query_as::<Sqlite, MediaLaunchRow>(&query)
+        .bind(media_id)
+        .fetch_all(pool)
+        .await
+        .map_err(DatabaseError::from)
 }
 
 pub async fn find_asset_searches_by_media_ids(

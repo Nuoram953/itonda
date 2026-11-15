@@ -86,6 +86,15 @@ describe("Test Factories", () => {
         id: "launch-1",
         name: "Default Profile",
         agent_id: null,
+        launch_type: "custom",
+        emulator_id: null,
+        program: "",
+        arguments: [],
+        argument_mode: "append",
+        working_directory: null,
+        game_location: null,
+        is_default: false,
+        enabled: true,
       });
     });
 
@@ -99,6 +108,15 @@ describe("Test Factories", () => {
         id: "dx11",
         name: "DirectX 11",
         agent_id: "agent-1",
+        launch_type: "custom",
+        emulator_id: null,
+        program: "",
+        arguments: [],
+        argument_mode: "append",
+        working_directory: null,
+        game_location: null,
+        is_default: false,
+        enabled: true,
       });
     });
   });

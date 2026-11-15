@@ -108,6 +108,15 @@ pub struct Launch {
     pub id: String,
     pub agent_id: Option<String>,
     pub name: String,
+    pub launch_type: String,
+    pub emulator_id: Option<String>,
+    pub program: String,
+    pub arguments: Vec<String>,
+    pub argument_mode: String,
+    pub working_directory: Option<String>,
+    pub game_location: Option<String>,
+    pub is_default: bool,
+    pub enabled: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq)]
@@ -176,10 +185,20 @@ impl TryFrom<MediaAssetRow> for Asset {
 
 impl From<MediaLaunchRow> for Launch {
     fn from(row: MediaLaunchRow) -> Self {
+        let arguments = serde_json::from_str(&row.arguments).unwrap_or_default();
         Self {
             id: row.id,
             agent_id: row.agent_id,
             name: row.name,
+            launch_type: row.launch_type,
+            emulator_id: row.emulator_id,
+            program: row.program,
+            arguments,
+            argument_mode: row.argument_mode,
+            working_directory: row.working_directory,
+            game_location: row.game_location,
+            is_default: row.is_default,
+            enabled: row.enabled,
         }
     }
 }

@@ -1,5 +1,6 @@
 pub mod agents;
 pub mod assets;
+pub mod emulators;
 pub mod events;
 pub mod http;
 pub mod launch;

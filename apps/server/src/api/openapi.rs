@@ -1,6 +1,7 @@
 use itonda_domain::{
     agents::models::Agent,
     assets::types::AssetType,
+    emulators::models::Emulator,
     media::{
         models::{
             Asset, ExternalIdProvider, Launch, Media, MediaDetails, MediaExternalId,
@@ -15,10 +16,11 @@ use utoipa::OpenApi;
 
 use crate::api::{
     agents::schemas::GetAgentsResponse,
+    emulators::schemas::{CreateEmulatorPayload, GetEmulatorsResponse, UpdateEmulatorPayload},
     media::schemas::{
-        CreateMediaPayload, MediaImportItem, MediaImportPayload, MediaImportResponse,
-        MediaItemSyncPayload, MediaLaunchPayload, MediaQueryParams, MediaResponse,
-        MediaSearchQueryParams, MediaSyncPayload,
+        CreateMediaLaunchPayload, CreateMediaPayload, MediaImportItem, MediaImportPayload,
+        MediaImportResponse, MediaItemSyncPayload, MediaLaunchPayload, MediaQueryParams,
+        MediaResponse, MediaSearchQueryParams, MediaSyncPayload, UpdateMediaLaunchPayload,
     },
     response::{CommandResponse, CommandStatus, JobResponse, JobStatus},
 };
@@ -34,7 +36,14 @@ use crate::api::{
         crate::api::media::handlers::sync_library,
         crate::api::media::handlers::sync_media_by_id,
         crate::api::media::handlers::launch_media,
+        crate::api::media::handlers::create_media_launch,
+        crate::api::media::handlers::update_media_launch,
+        crate::api::media::handlers::delete_media_launch,
         crate::api::media::handlers::update_status,
+        crate::api::emulators::handlers::get_emulators,
+        crate::api::emulators::handlers::create_emulator,
+        crate::api::emulators::handlers::update_emulator,
+        crate::api::emulators::handlers::delete_emulator,
         crate::api::assets::handlers::get_asset,
         crate::api::agents::handlers::get_connected_agents,
         crate::api::config::handlers::get_config,
@@ -62,6 +71,12 @@ use crate::api::{
             MediaQueryParams,
             MediaSearchQueryParams,
             CreateMediaPayload,
+            CreateMediaLaunchPayload,
+            UpdateMediaLaunchPayload,
+            CreateEmulatorPayload,
+            UpdateEmulatorPayload,
+            GetEmulatorsResponse,
+            Emulator,
             MediaSearchResult,
             MediaSyncPayload,
             MediaItemSyncPayload,

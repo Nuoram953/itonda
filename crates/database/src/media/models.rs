@@ -110,9 +110,12 @@ pub struct MediaLaunchRow {
     pub agent_id: Option<String>,
     pub name: String,
     pub launch_type: String,
+    pub emulator_id: Option<String>,
     pub program: String,
     pub arguments: String,
+    pub argument_mode: String,
     pub working_directory: Option<String>,
+    pub game_location: Option<String>,
     pub is_default: bool,
     pub enabled: bool,
 }
@@ -126,6 +129,37 @@ pub struct MediaLaunchUpsert {
     pub program: String,
     pub arguments: String,
     pub working_directory: Option<String>,
+    pub is_default: bool,
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct MediaLaunchCreate {
+    pub media_id: String,
+    pub agent_id: Option<String>,
+    pub name: String,
+    pub launch_type: String,
+    pub emulator_id: Option<String>,
+    pub program: String,
+    pub arguments: String,
+    pub argument_mode: String,
+    pub working_directory: Option<String>,
+    pub game_location: Option<String>,
+    pub is_default: bool,
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct MediaLaunchUpdate {
+    pub agent_id: Option<String>,
+    pub name: String,
+    pub launch_type: String,
+    pub emulator_id: Option<String>,
+    pub program: String,
+    pub arguments: String,
+    pub argument_mode: String,
+    pub working_directory: Option<String>,
+    pub game_location: Option<String>,
     pub is_default: bool,
     pub enabled: bool,
 }
