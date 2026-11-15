@@ -41,4 +41,44 @@ describe("HeroHeader Component", () => {
     expect(screen.queryByTitle("Play Trailer")).toBeNull();
     expect(screen.queryByText("Trailer")).toBeNull();
   });
+
+  it("renders genres, developers, release year, and tags from media without hardcoded values", () => {
+    const mediaWithMetadata = createMedia({
+      title: "Kingdom Come: Deliverance",
+      genres: ["RPG", "Adventure"],
+      tags: ["Historical", "Realistic"],
+      release_date: 1518480000, // 2018-02-13 UTC
+      details: createMediaDetails({
+        developers: ["Warhorse Studios"],
+      }),
+    });
+
+    render(<HeroHeader media={mediaWithMetadata} />);
+
+    expect(
+      screen.getByText("RPG · Adventure · Warhorse Studios · 2018"),
+    ).toBeDefined();
+    expect(screen.getByText("#Historical")).toBeDefined();
+    expect(screen.getByText("#Realistic")).toBeDefined();
+
+    expect(screen.queryByText(/FromSoftware/)).toBeNull();
+    expect(screen.queryByText("#Souls-like")).toBeNull();
+    expect(screen.queryByText("#Masterpiece")).toBeNull();
+  });
+
+  it("omits metadata and tags sections when media has none", () => {
+    const emptyMedia = createMedia({
+      title: "Empty Game",
+      genres: [],
+      tags: [],
+      release_date: null,
+      details: null,
+    });
+
+    render(<HeroHeader media={emptyMedia} />);
+
+    expect(screen.getByRole("heading", { name: "Empty Game" })).toBeDefined();
+    expect(screen.queryByText(/FromSoftware/)).toBeNull();
+    expect(screen.queryByText("#Souls-like")).toBeNull();
+  });
 });

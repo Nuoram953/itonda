@@ -5,20 +5,16 @@ import {
   getHeroBannerAsset,
   getHeroPosterAsset,
 } from "../../utils/media-assets";
-import { formatLastPlayedDate, formatPlaytime } from "@/utils/datetime";
+import {
+  formatLastPlayedDate,
+  formatPlaytime,
+  parseBackendTimestamp,
+} from "@/utils/datetime";
 import { cn } from "@/lib/utils";
 
 type HeroHeaderProps = {
   media: components["schemas"]["Media"];
 };
-
-//TODO: Should come from the api
-const DEFAULT_TAGS = [
-  "Souls-like",
-  "Dark Fantasy",
-  "Singleplayer",
-  "Masterpiece",
-];
 
 export function HeroHeader({ media }: HeroHeaderProps) {
   const bannerAsset = getHeroBannerAsset(media.assets);
@@ -29,6 +25,12 @@ export function HeroHeader({ media }: HeroHeaderProps) {
     mode: "compact",
   });
   const lastPlayedDate = formatLastPlayedDate(media.details?.last_played_at);
+  const releaseYear = parseBackendTimestamp(media.release_date)?.getFullYear();
+  const metadataItems = [
+    ...media.genres,
+    ...(media.details?.developers ?? []),
+    ...(releaseYear ? [String(releaseYear)] : []),
+  ];
 
   return (
     <div className="relative w-full min-h-120 md:min-h-136 overflow-hidden bg-background select-none flex flex-col justify-end">
@@ -75,22 +77,24 @@ export function HeroHeader({ media }: HeroHeaderProps) {
                 {media.title}
               </h1>
 
-              <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm font-medium text-text-muted">
-                <span>
-                  Action RPG · Open World · Medieval · FromSoftware · 2022
-                </span>
-              </div>
+              {metadataItems.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm font-medium text-text-muted">
+                  <span>{metadataItems.join(" · ")}</span>
+                </div>
+              )}
 
-              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                {DEFAULT_TAGS.map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-surface-hover border border-white/10 text-text-muted"
-                  >
-                    #{tag}
-                  </span>
-                ))}
-              </div>
+              {media.tags.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                  {media.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-surface-hover border border-white/10 text-text-muted"
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              )}
 
               <div className="flex flex-wrap items-end justify-between gap-4 pt-1">
                 {media.media_type == "game" && (
