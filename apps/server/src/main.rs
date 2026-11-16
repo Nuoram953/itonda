@@ -58,6 +58,13 @@ async fn main() -> anyhow::Result<()> {
     let (jobs, events) =
         init_worker(&pool, &storefronts, &asset_store, &metadata, &agent_manager).await?;
 
+    let paths = AppPaths::new();
+    let emulators_dir = paths.config_dir.join("emulators");
+    if let Err(err) = itonda_domain::emulators::definitions::seed_emulator_definitions(&emulators_dir)
+    {
+        tracing::warn!("Failed to seed emulator definitions: {err}");
+    }
+
     let state = state::AppState {
         db: pool,
         jobs,
@@ -65,6 +72,7 @@ async fn main() -> anyhow::Result<()> {
         settings,
         config,
         secrets,
+        emulators_dir,
         storefronts,
         metadata,
         agent_manager,

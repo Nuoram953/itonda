@@ -7,6 +7,7 @@ pub struct EmulatorRow {
     pub name: String,
     pub program: String,
     pub arguments: String,
+    pub options: String,
     pub working_directory: Option<String>,
     pub created_at: String,
     pub updated_at: String,
@@ -17,6 +18,7 @@ pub struct EmulatorInsert {
     pub name: String,
     pub program: String,
     pub arguments: String,
+    pub options: String,
     pub working_directory: Option<String>,
 }
 
@@ -25,5 +27,6 @@ pub struct EmulatorUpdate {
     pub name: String,
     pub program: String,
     pub arguments: String,
+    pub options: String,
     pub working_directory: Option<String>,
 }

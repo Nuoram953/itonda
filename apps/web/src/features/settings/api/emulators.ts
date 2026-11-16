@@ -10,6 +10,9 @@ import { api } from "@/lib/api-client";
 import { type MutationConfig, type QueryConfig } from "@/lib/react-query";
 
 export type Emulator = components["schemas"]["Emulator"];
+export type EmulatorDefinition = components["schemas"]["EmulatorDefinition"];
+export type GetEmulatorDefinitionsResponse =
+  components["schemas"]["GetEmulatorDefinitionsResponse"];
 export type GetEmulatorsResponse = components["schemas"]["GetEmulatorsResponse"];
 export type CreateEmulatorPayload =
   components["schemas"]["CreateEmulatorPayload"];
@@ -35,6 +38,24 @@ export const useEmulators = ({ queryConfig }: UseEmulatorsOptions = {}) => {
   return useQuery({
     ...getEmulatorsQueryOptions(),
     ...queryConfig,
+  });
+};
+
+export const getEmulatorDefinitions =
+  (): Promise<GetEmulatorDefinitionsResponse> => {
+    return api.get("/emulators/definitions");
+  };
+
+export const getEmulatorDefinitionsQueryOptions = () => {
+  return queryOptions({
+    queryKey: ["emulator-definitions"],
+    queryFn: () => getEmulatorDefinitions(),
+  });
+};
+
+export const useEmulatorDefinitions = () => {
+  return useQuery({
+    ...getEmulatorDefinitionsQueryOptions(),
   });
 };
 

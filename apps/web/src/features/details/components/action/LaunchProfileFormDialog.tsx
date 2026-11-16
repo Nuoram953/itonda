@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -11,8 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { useAgents } from "@/api/get-agents";
-import { useEmulators } from "@/features/settings/api/emulators";
+import { useEmulators, type Emulator } from "@/features/settings/api/emulators";
 import { formatArgsString, parseArgsString } from "@/utils/launch-args";
 import {
   useCreateLaunchProfile,
@@ -29,6 +30,66 @@ type LaunchProfileFormDialogProps = {
 
 const SELECT_CLASS =
   "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+
+type OptionValue = boolean | string;
+
+function formatOptionTokens(flag: string, value: OptionValue): string[] {
+  if (typeof value === "boolean") {
+    return value ? parseArgsString(flag) : [];
+  }
+  const trimmed = value.trim();
+  if (!trimmed) return [];
+  if (flag.includes("{value}")) {
+    return parseArgsString(flag.replace(/\{value\}/g, trimmed));
+  }
+  return [...parseArgsString(flag), trimmed];
+}
+
+function buildInitialOptionsState(
+  emulator: Emulator | undefined,
+  profile: Launch | null,
+): Record<string, OptionValue> {
+  if (!emulator) return {};
+  const state: Record<string, OptionValue> = {};
+  const profileArgs = profile?.arguments ?? [];
+  for (const opt of emulator.options ?? []) {
+    const optType = opt.type ?? "flag";
+    if (optType === "flag") {
+      if (profile) {
+        const flagTokens = parseArgsString(opt.flag);
+        state[opt.key] =
+          flagTokens.length > 0 &&
+          flagTokens.every((tok) => profileArgs.includes(tok));
+      } else {
+        state[opt.key] = Boolean(opt.default_enabled);
+      }
+    } else if (profile) {
+      let matched = "";
+      if (opt.flag.includes("{value}")) {
+        const [prefix, suffix] = opt.flag.split("{value}");
+        const found = profileArgs.find(
+          (a) => a.startsWith(prefix) && a.endsWith(suffix),
+        );
+        if (found) {
+          matched = found.slice(
+            prefix.length,
+            suffix.length ? -suffix.length : undefined,
+          );
+        }
+      } else {
+        const flagTokens = parseArgsString(opt.flag);
+        const idx = profileArgs.findIndex((a) => a === flagTokens[0]);
+        if (idx !== -1 && profileArgs[idx + flagTokens.length]) {
+          matched = profileArgs[idx + flagTokens.length];
+        }
+      }
+      state[opt.key] = matched;
+    } else {
+      state[opt.key] = opt.default_value ?? "";
+    }
+  }
+  return state;
+}
 
 export function LaunchProfileFormDialog({
   open,
@@ -69,19 +130,34 @@ function LaunchProfileFormBody({
   const emulators = emulatorsData?.items ?? [];
   const agents = agentsData?.agents ?? [];
 
-  const [emulatorId, setEmulatorId] = useState<string>(
-    profile?.emulator_id ?? emulators[0]?.id ?? "",
-  );
+  const initialEmulatorId = profile?.emulator_id ?? emulators[0]?.id ?? "";
+  const initialEmulator = emulators.find((e) => e.id === initialEmulatorId);
+
+  const [emulatorId, setEmulatorId] = useState<string>(initialEmulatorId);
   const [name, setName] = useState(
-    profile?.name ?? emulators[0]?.name ?? "",
+    profile?.name ?? initialEmulator?.name ?? "",
   );
   const [gameLocation, setGameLocation] = useState(
     profile?.game_location ?? "",
   );
-  const [program, setProgram] = useState(profile?.program ?? "");
-  const [argsText, setArgsText] = useState(
-    profile ? formatArgsString(profile.arguments ?? []) : "",
+  const [optionStates, setOptionStates] = useState<Record<string, OptionValue>>(
+    () => buildInitialOptionsState(initialEmulator, profile),
   );
+  const [program, setProgram] = useState(profile?.program ?? "");
+  const [argsText, setArgsText] = useState(() => {
+    if (!profile) return "";
+    // Strip option tokens already represented by option controls so they don't duplicate
+    const initialOpts = buildInitialOptionsState(initialEmulator, profile);
+    const optionTokens = new Set(
+      (initialEmulator?.options ?? []).flatMap((opt) =>
+        formatOptionTokens(opt.flag, initialOpts[opt.key] ?? ""),
+      ),
+    );
+    const remaining = (profile.arguments ?? []).filter(
+      (arg) => !optionTokens.has(arg),
+    );
+    return formatArgsString(remaining);
+  });
   const [argumentMode, setArgumentMode] = useState<"append" | "replace">(
     profile?.argument_mode === "replace" ? "replace" : "append",
   );
@@ -99,10 +175,59 @@ function LaunchProfileFormBody({
     const prevEmu = emulators.find((e) => e.id === emulatorId);
     const nextEmu = emulators.find((e) => e.id === nextEmulatorId);
     setEmulatorId(nextEmulatorId);
+    setOptionStates(buildInitialOptionsState(nextEmu, null));
     if (!profile && (!name || name === prevEmu?.name)) {
       setName(nextEmu?.name ?? "");
     }
   };
+
+  const selectedOptionArgs = useMemo(() => {
+    if (!selectedEmulator) return [];
+    const tokens: string[] = [];
+    for (const opt of selectedEmulator.options ?? []) {
+      const val = optionStates[opt.key];
+      if (val !== undefined) {
+        tokens.push(...formatOptionTokens(opt.flag, val));
+      }
+    }
+    return tokens;
+  }, [selectedEmulator, optionStates]);
+
+  const commandPreview = useMemo(() => {
+    const exe =
+      program.trim() || selectedEmulator?.program || "<executable>";
+    const extra = parseArgsString(argsText);
+    const base =
+      isEmulatorMode && argumentMode === "append" && !profile
+        ? [...(selectedEmulator?.arguments ?? [])]
+        : [];
+    const allArgs = [...base, ...selectedOptionArgs, ...extra];
+    const loc = gameLocation.trim();
+    if (loc) {
+      let replaced = false;
+      for (let i = 0; i < allArgs.length; i++) {
+        if (allArgs[i].includes("{game}") || allArgs[i].includes("{rom}")) {
+          allArgs[i] = allArgs[i]
+            .replace("{game}", loc)
+            .replace("{rom}", loc);
+          replaced = true;
+        }
+      }
+      if (!replaced && !allArgs.includes(loc)) {
+        allArgs.push(loc);
+      }
+    }
+    return [exe, ...allArgs].join(" ");
+  }, [
+    program,
+    selectedEmulator,
+    argsText,
+    isEmulatorMode,
+    argumentMode,
+    profile,
+    selectedOptionArgs,
+    gameLocation,
+  ]);
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
@@ -119,7 +244,9 @@ function LaunchProfileFormBody({
       return;
     }
     if (isEmulatorMode && !trimmedGameLocation) {
-      setError("Game location (ROM/ISO path) is required for emulator launches.");
+      setError(
+        "Game location (ROM/ISO path) is required for emulator launches.",
+      );
       return;
     }
     if (!isEmulatorMode && !trimmedProgram) {
@@ -127,7 +254,8 @@ function LaunchProfileFormBody({
       return;
     }
 
-    const parsedArgs = parseArgsString(argsText);
+    const parsedExtraArgs = parseArgsString(argsText);
+    const combinedLaunchArgs = [...selectedOptionArgs, ...parsedExtraArgs];
     const trimmedWorkDir = workingDirectory.trim() || null;
     const selectedAgent = agentId.trim() || null;
 
@@ -142,7 +270,7 @@ function LaunchProfileFormBody({
             emulator_id: isEmulatorMode ? emulatorId : null,
             game_location: trimmedGameLocation || null,
             program: trimmedProgram,
-            arguments: parsedArgs,
+            arguments: combinedLaunchArgs,
             argument_mode: argumentMode,
             working_directory: trimmedWorkDir,
             agent_id: selectedAgent,
@@ -158,7 +286,7 @@ function LaunchProfileFormBody({
             emulator_id: isEmulatorMode ? emulatorId : null,
             game_location: trimmedGameLocation || null,
             program: trimmedProgram,
-            arguments: parsedArgs,
+            arguments: combinedLaunchArgs,
             argument_mode: argumentMode,
             working_directory: trimmedWorkDir,
             agent_id: selectedAgent,
@@ -175,6 +303,8 @@ function LaunchProfileFormBody({
     }
   };
 
+  const emulatorOptions = selectedEmulator?.options ?? [];
+
   return (
     <>
       <DialogHeader>
@@ -182,8 +312,8 @@ function LaunchProfileFormBody({
           {profile ? `Edit "${profile.name}"` : "Add Launch Configuration"}
         </DialogTitle>
         <DialogDescription>
-          Configure an emulator or custom executable for this game and override
-          settings as needed.
+          Configure an emulator or custom executable for this game and toggle
+          launch options.
         </DialogDescription>
       </DialogHeader>
 
@@ -219,7 +349,7 @@ function LaunchProfileFormBody({
           <Label htmlFor="lp-name">Profile Name</Label>
           <Input
             id="lp-name"
-            placeholder="e.g. Dolphin, Dolphin (4K), Direct Launch"
+            placeholder="e.g. Dolphin, PCSX2 (Fullscreen)"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
@@ -231,15 +361,128 @@ function LaunchProfileFormBody({
           </Label>
           <Input
             id="lp-game-location"
-            placeholder="e.g. /roms/gamecube/Super Mario Sunshine.iso"
+            placeholder="e.g. /roms/ps2/Final Fantasy X.iso"
             value={gameLocation}
             onChange={(e) => setGameLocation(e.target.value)}
           />
         </div>
 
+        {isEmulatorMode && emulatorOptions.length > 0 && (
+          <div className="rounded-xl border border-border/60 bg-surface-raised/30 p-4 space-y-3">
+            <div className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+              Options
+            </div>
+            {emulatorOptions.map((opt) => {
+              const optType = opt.type ?? "flag";
+              if (optType === "flag") {
+                return (
+                  <label
+                    key={opt.key}
+                    className="flex items-center justify-between gap-3 py-1 cursor-pointer"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-foreground">
+                          {opt.label}
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className="font-mono text-[10px]"
+                        >
+                          {opt.flag}
+                        </Badge>
+                      </div>
+                      {opt.description && (
+                        <p className="text-xs text-text-muted">
+                          {opt.description}
+                        </p>
+                      )}
+                    </div>
+                    <Switch
+                      checked={Boolean(optionStates[opt.key])}
+                      onCheckedChange={(checked) =>
+                        setOptionStates((prev) => ({
+                          ...prev,
+                          [opt.key]: checked,
+                        }))
+                      }
+                    />
+                  </label>
+                );
+              }
+
+              if (optType === "select") {
+                return (
+                  <div key={opt.key} className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor={`opt-${opt.key}`}>{opt.label}</Label>
+                      <Badge
+                        variant="outline"
+                        className="font-mono text-[10px]"
+                      >
+                        {opt.flag}
+                      </Badge>
+                    </div>
+                    {opt.description && (
+                      <p className="text-xs text-text-muted">
+                        {opt.description}
+                      </p>
+                    )}
+                    <select
+                      id={`opt-${opt.key}`}
+                      className={SELECT_CLASS}
+                      value={String(optionStates[opt.key] ?? "")}
+                      onChange={(e) =>
+                        setOptionStates((prev) => ({
+                          ...prev,
+                          [opt.key]: e.target.value,
+                        }))
+                      }
+                    >
+                      <option value="">Default / Unset</option>
+                      {(opt.choices ?? []).map((choice) => (
+                        <option key={choice} value={choice}>
+                          {choice}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              }
+
+              return (
+                <div key={opt.key} className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor={`opt-${opt.key}`}>{opt.label}</Label>
+                    <Badge variant="outline" className="font-mono text-[10px]">
+                      {opt.flag}
+                    </Badge>
+                  </div>
+                  {opt.description && (
+                    <p className="text-xs text-text-muted">
+                      {opt.description}
+                    </p>
+                  )}
+                  <Input
+                    id={`opt-${opt.key}`}
+                    placeholder={opt.default_value ?? "Leave blank to omit"}
+                    value={String(optionStates[opt.key] ?? "")}
+                    onChange={(e) =>
+                      setOptionStates((prev) => ({
+                        ...prev,
+                        [opt.key]: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         <div className="rounded-xl border border-border/60 bg-surface-raised/30 p-4 space-y-3">
           <div className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-            {isEmulatorMode ? "Emulator Overrides" : "Execution Settings"}
+            {isEmulatorMode ? "Overrides (Optional)" : "Execution Settings"}
           </div>
 
           <div className="space-y-1.5">
@@ -264,14 +507,14 @@ function LaunchProfileFormBody({
 
           <div className="space-y-1.5">
             <Label htmlFor="lp-args">
-              {isEmulatorMode ? "Extra / Override Arguments" : "Arguments"}
+              {isEmulatorMode ? "Extra Arguments (Optional)" : "Arguments"}
             </Label>
             <Input
               id="lp-args"
               placeholder={
                 selectedEmulator && selectedEmulator.arguments.length > 0
                   ? `Emulator defaults: ${formatArgsString(selectedEmulator.arguments)}`
-                  : "e.g. --fullscreen"
+                  : "e.g. --batch"
               }
               value={argsText}
               onChange={(e) => setArgsText(e.target.value)}
@@ -305,7 +548,7 @@ function LaunchProfileFormBody({
               placeholder={
                 selectedEmulator?.working_directory
                   ? `Default: ${selectedEmulator.working_directory}`
-                  : "e.g. /path/to/working/dir"
+                  : "Defaults to game folder"
               }
               value={workingDirectory}
               onChange={(e) => setWorkingDirectory(e.target.value)}
@@ -327,6 +570,15 @@ function LaunchProfileFormBody({
                 </option>
               ))}
             </select>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-border/60 bg-background/60 p-3 space-y-1">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+            Command Preview
+          </div>
+          <div className="text-xs font-mono text-foreground break-all">
+            {commandPreview}
           </div>
         </div>
 

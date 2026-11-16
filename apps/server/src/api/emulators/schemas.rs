@@ -1,3 +1,4 @@
+use itonda_domain::emulators::models::{Emulator, EmulatorDefinition, EmulatorOption};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -7,6 +8,8 @@ pub struct CreateEmulatorPayload {
     pub program: String,
     #[serde(default)]
     pub arguments: Vec<String>,
+    #[serde(default)]
+    pub options: Vec<EmulatorOption>,
     pub working_directory: Option<String>,
 }
 
@@ -15,10 +18,16 @@ pub struct UpdateEmulatorPayload {
     pub name: Option<String>,
     pub program: Option<String>,
     pub arguments: Option<Vec<String>>,
+    pub options: Option<Vec<EmulatorOption>>,
     pub working_directory: Option<Option<String>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct GetEmulatorsResponse {
-    pub items: Vec<itonda_domain::emulators::models::Emulator>,
+    pub items: Vec<Emulator>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct GetEmulatorDefinitionsResponse {
+    pub items: Vec<EmulatorDefinition>,
 }

@@ -9,7 +9,7 @@ use crate::{
 pub async fn find_all_emulators(pool: &SqlitePool) -> Result<Vec<EmulatorRow>, DatabaseError> {
     sqlx::query_as::<sqlx::Sqlite, EmulatorRow>(
         r#"
-        SELECT id, name, program, arguments, working_directory, created_at, updated_at
+        SELECT id, name, program, arguments, options, working_directory, created_at, updated_at
         FROM emulators
         ORDER BY name COLLATE NOCASE ASC
         "#,
@@ -25,7 +25,7 @@ pub async fn find_emulator_by_id(
 ) -> Result<EmulatorRow, DatabaseError> {
     sqlx::query_as::<sqlx::Sqlite, EmulatorRow>(
         r#"
-        SELECT id, name, program, arguments, working_directory, created_at, updated_at
+        SELECT id, name, program, arguments, options, working_directory, created_at, updated_at
         FROM emulators
         WHERE id = ?
         "#,
@@ -44,15 +44,16 @@ pub async fn insert_emulator(
 
     sqlx::query_as::<sqlx::Sqlite, EmulatorRow>(
         r#"
-        INSERT INTO emulators (id, name, program, arguments, working_directory)
-        VALUES (?, ?, ?, ?, ?)
-        RETURNING id, name, program, arguments, working_directory, created_at, updated_at
+        INSERT INTO emulators (id, name, program, arguments, options, working_directory)
+        VALUES (?, ?, ?, ?, ?, ?)
+        RETURNING id, name, program, arguments, options, working_directory, created_at, updated_at
         "#,
     )
     .bind(id)
     .bind(emulator.name)
     .bind(emulator.program)
     .bind(emulator.arguments)
+    .bind(emulator.options)
     .bind(emulator.working_directory)
     .fetch_one(pool)
     .await
@@ -71,15 +72,17 @@ pub async fn update_emulator(
             name = ?,
             program = ?,
             arguments = ?,
+            options = ?,
             working_directory = ?,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
-        RETURNING id, name, program, arguments, working_directory, created_at, updated_at
+        RETURNING id, name, program, arguments, options, working_directory, created_at, updated_at
         "#,
     )
     .bind(emulator.name)
     .bind(emulator.program)
     .bind(emulator.arguments)
+    .bind(emulator.options)
     .bind(emulator.working_directory)
     .bind(id)
     .fetch_one(pool)

@@ -473,11 +473,34 @@ export interface components {
             job_id: string;
             status: components["schemas"]["JobStatus"];
         };
+        /** @enum {string} */
+        EmulatorOptionType: "flag" | "value" | "select";
+        EmulatorOption: {
+            choices?: string[];
+            default_enabled?: boolean;
+            default_value?: string | null;
+            description?: string | null;
+            flag: string;
+            key: string;
+            label: string;
+            type?: components["schemas"]["EmulatorOptionType"];
+        };
+        EmulatorDefinition: {
+            default_arguments: string[];
+            default_program: string;
+            id: string;
+            name: string;
+            options: components["schemas"]["EmulatorOption"][];
+        };
+        GetEmulatorDefinitionsResponse: {
+            items: components["schemas"]["EmulatorDefinition"][];
+        };
         Emulator: {
             arguments: string[];
             created_at: string;
             id: string;
             name: string;
+            options: components["schemas"]["EmulatorOption"][];
             program: string;
             updated_at: string;
             working_directory?: string | null;
@@ -488,12 +511,14 @@ export interface components {
         CreateEmulatorPayload: {
             arguments?: string[];
             name: string;
+            options?: components["schemas"]["EmulatorOption"][];
             program: string;
             working_directory?: string | null;
         };
         UpdateEmulatorPayload: {
             arguments?: string[] | null;
             name?: string | null;
+            options?: components["schemas"]["EmulatorOption"][] | null;
             program?: string | null;
             working_directory?: string | null;
         };

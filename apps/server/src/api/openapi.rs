@@ -1,7 +1,7 @@
 use itonda_domain::{
     agents::models::Agent,
     assets::types::AssetType,
-    emulators::models::Emulator,
+    emulators::models::{Emulator, EmulatorDefinition, EmulatorOption, EmulatorOptionType},
     media::{
         models::{
             Asset, ExternalIdProvider, Launch, Media, MediaDetails, MediaExternalId,
@@ -16,7 +16,10 @@ use utoipa::OpenApi;
 
 use crate::api::{
     agents::schemas::GetAgentsResponse,
-    emulators::schemas::{CreateEmulatorPayload, GetEmulatorsResponse, UpdateEmulatorPayload},
+    emulators::schemas::{
+        CreateEmulatorPayload, GetEmulatorDefinitionsResponse, GetEmulatorsResponse,
+        UpdateEmulatorPayload,
+    },
     media::schemas::{
         CreateMediaLaunchPayload, CreateMediaPayload, MediaImportItem, MediaImportPayload,
         MediaImportResponse, MediaItemSyncPayload, MediaLaunchPayload, MediaQueryParams,
@@ -40,6 +43,7 @@ use crate::api::{
         crate::api::media::handlers::update_media_launch,
         crate::api::media::handlers::delete_media_launch,
         crate::api::media::handlers::update_status,
+        crate::api::emulators::handlers::get_emulator_definitions,
         crate::api::emulators::handlers::get_emulators,
         crate::api::emulators::handlers::create_emulator,
         crate::api::emulators::handlers::update_emulator,
@@ -75,8 +79,12 @@ use crate::api::{
             UpdateMediaLaunchPayload,
             CreateEmulatorPayload,
             UpdateEmulatorPayload,
+            GetEmulatorDefinitionsResponse,
             GetEmulatorsResponse,
             Emulator,
+            EmulatorDefinition,
+            EmulatorOption,
+            EmulatorOptionType,
             MediaSearchResult,
             MediaSyncPayload,
             MediaItemSyncPayload,

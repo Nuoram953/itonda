@@ -1,0 +1,27 @@
+id = "rpcs3"
+name = "RPCS3"
+default_program = "rpcs3"
+default_arguments = ["{game}"]
+
+[[options]]
+key = "no_gui"
+label = "No GUI"
+description = "Run without the main RPCS3 window"
+type = "flag"
+flag = "--no-gui"
+default_enabled = true
+
+[[options]]
+key = "fullscreen"
+label = "Fullscreen"
+description = "Start game in fullscreen mode"
+type = "flag"
+flag = "--fullscreen"
+default_enabled = false
+
+[[options]]
+key = "config"
+label = "Custom Config File"
+description = "Path to a per-game config.yml override"
+type = "value"
+flag = "--config {value}"

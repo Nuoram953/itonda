@@ -48,6 +48,9 @@ pub async fn test_app() -> TestApp {
 
     agent_manager.register(agent_id, agent_tx).await;
 
+    let emulators_dir = temp.path().join("emulators");
+    itonda_domain::emulators::definitions::seed_emulator_definitions(&emulators_dir).unwrap();
+
     let state = AppState {
         db: db.clone(),
         jobs,
@@ -55,6 +58,7 @@ pub async fn test_app() -> TestApp {
         settings,
         config,
         secrets,
+        emulators_dir,
         storefronts: StorefrontRegistry::new(),
         metadata: itonda_domain::metadata::registry::MetadataRegistry::new(),
         agent_manager,

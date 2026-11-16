@@ -1,0 +1,35 @@
+id = "pcsx2"
+name = "PCSX2"
+default_program = "pcsx2"
+default_arguments = ["{args} -- {game}"]
+
+[[options]]
+key = "fullscreen"
+label = "Fullscreen"
+description = "Start directly in fullscreen mode"
+type = "flag"
+flag = "-fullscreen"
+default_enabled = false
+
+[[options]]
+key = "nogui"
+label = "No GUI"
+description = "Hide the main PCSX2 window while playing"
+type = "flag"
+flag = "-nogui"
+default_enabled = false
+
+[[options]]
+key = "bigpicture"
+label = "Big Picture Mode"
+description = "Launch in Big Picture interface"
+type = "flag"
+flag = "-bigpicture"
+default_enabled = false
+
+[[options]]
+key = "cfgpath"
+label = "Config Directory"
+description = "Override the PCSX2 configuration directory"
+type = "value"
+flag = "--cfgpath={value}"

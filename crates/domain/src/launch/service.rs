@@ -246,6 +246,7 @@ mod tests {
                 name: "Dolphin".to_string(),
                 program: "/usr/bin/dolphin-emu".to_string(),
                 arguments: r#"["-b","-e","{game}"]"#.to_string(),
+                options: "[]".to_string(),
                 working_directory: Some("/games/gc".to_string()),
             },
         )
@@ -293,6 +294,7 @@ mod tests {
                 name: "PCSX2".to_string(),
                 program: "/usr/bin/pcsx2".to_string(),
                 arguments: r#"["-fullscreen"]"#.to_string(),
+                options: "[]".to_string(),
                 working_directory: Some("/games/ps2".to_string()),
             },
         )

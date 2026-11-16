@@ -1,0 +1,28 @@
+id = "dolphin"
+name = "Dolphin"
+default_program = "dolphin-emu"
+default_arguments = ["-e", "{game}"]
+
+[[options]]
+key = "batch"
+label = "Batch Mode (No GUI)"
+description = "Exit Dolphin when emulation stops and hide main window"
+type = "flag"
+flag = "-b"
+default_enabled = true
+
+[[options]]
+key = "config_fullscreen"
+label = "Fullscreen"
+description = "Force fullscreen via Dolphin config override"
+type = "flag"
+flag = "-C Dolphin.Display.Fullscreen=True"
+default_enabled = false
+
+[[options]]
+key = "video_backend"
+label = "Video Backend"
+description = "Select graphics backend"
+type = "select"
+flag = "-C GFX.Hardware.VideoBackend={value}"
+choices = ["Vulkan", "OGL", "Software Renderer"]

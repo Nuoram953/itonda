@@ -1,0 +1,26 @@
+id = "retroarch"
+name = "RetroArch"
+default_program = "retroarch"
+default_arguments = ["{game}"]
+
+[[options]]
+key = "fullscreen"
+label = "Fullscreen"
+description = "Start RetroArch in fullscreen mode"
+type = "flag"
+flag = "-f"
+default_enabled = false
+
+[[options]]
+key = "core"
+label = "Libretro Core"
+description = "Path to the libretro core (.so / .dll)"
+type = "value"
+flag = "-L {value}"
+
+[[options]]
+key = "config"
+label = "Config File"
+description = "Path to a custom retroarch.cfg"
+type = "value"
+flag = "-c {value}"

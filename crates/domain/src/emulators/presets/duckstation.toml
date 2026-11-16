@@ -1,0 +1,28 @@
+id = "duckstation"
+name = "DuckStation"
+default_program = "duckstation-qt"
+default_arguments = ["--", "{game}"]
+
+[[options]]
+key = "fullscreen"
+label = "Fullscreen"
+description = "Start in fullscreen mode"
+type = "flag"
+flag = "-fullscreen"
+default_enabled = false
+
+[[options]]
+key = "batch"
+label = "Batch Mode"
+description = "Exit immediately when emulation ends"
+type = "flag"
+flag = "-batch"
+default_enabled = true
+
+[[options]]
+key = "fastboot"
+label = "Fast Boot"
+description = "Skip the PlayStation BIOS splash screen"
+type = "flag"
+flag = "-fastboot"
+default_enabled = false

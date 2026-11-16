@@ -9,6 +9,7 @@ use super::handlers;
 
 pub fn router() -> Router<AppState> {
     Router::new()
+        .route("/emulators/definitions", get(handlers::get_emulator_definitions))
         .route(
             "/emulators",
             get(handlers::get_emulators).post(handlers::create_emulator),

@@ -11,16 +11,38 @@ use itonda_database::emulators::{
         insert_emulator, update_emulator as db_update_emulator,
     },
 };
-use itonda_domain::emulators::{errors::EmulatorError, models::Emulator};
+use itonda_domain::emulators::{
+    definitions::load_emulator_definitions,
+    errors::EmulatorError,
+    models::Emulator,
+};
 use tracing::instrument;
 
 use crate::{
     api::{
-        emulators::schemas::{CreateEmulatorPayload, GetEmulatorsResponse, UpdateEmulatorPayload},
+        emulators::schemas::{
+            CreateEmulatorPayload, GetEmulatorDefinitionsResponse, GetEmulatorsResponse,
+            UpdateEmulatorPayload,
+        },
         error::ApiError,
     },
     state::AppState,
 };
+
+#[utoipa::path(
+    get,
+    path = "/emulators/definitions",
+    responses(
+        (status = 200, body = GetEmulatorDefinitionsResponse, description = "List available emulator definition files from config")
+    )
+)]
+#[instrument(skip(state))]
+pub async fn get_emulator_definitions(
+    State(state): State<AppState>,
+) -> Result<Json<GetEmulatorDefinitionsResponse>, ApiError> {
+    let items = load_emulator_definitions(&state.emulators_dir);
+    Ok(Json(GetEmulatorDefinitionsResponse { items }))
+}
 
 #[utoipa::path(
     get,
@@ -62,6 +84,7 @@ pub async fn create_emulator(
     }
 
     let arguments = serde_json::to_string(&payload.arguments).unwrap_or_else(|_| "[]".to_string());
+    let options = serde_json::to_string(&payload.options).unwrap_or_else(|_| "[]".to_string());
     let working_directory = payload
         .working_directory
         .map(|s| s.trim().to_string())
@@ -73,6 +96,7 @@ pub async fn create_emulator(
             name,
             program,
             arguments,
+            options,
             working_directory,
         },
     )
@@ -130,6 +154,11 @@ pub async fn update_emulator(
         None => existing.arguments,
     };
 
+    let options = match payload.options {
+        Some(opts) => serde_json::to_string(&opts).unwrap_or_else(|_| "[]".to_string()),
+        None => existing.options,
+    };
+
     let working_directory = match payload.working_directory {
         Some(wd) => wd.map(|s| s.trim().to_string()).filter(|s| !s.is_empty()),
         None => existing.working_directory,
@@ -142,6 +171,7 @@ pub async fn update_emulator(
             name,
             program,
             arguments,
+            options,
             working_directory,
         },
     )

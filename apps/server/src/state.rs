@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::{
     config::{app::AppConfigManager, secrets::SecretsManager, settings::SettingsManager},
     websocket::AgentManager,
@@ -18,6 +20,7 @@ pub struct AppState {
     pub settings: SettingsManager,
     pub config: AppConfigManager,
     pub secrets: SecretsManager,
+    pub emulators_dir: PathBuf,
     pub storefronts: StorefrontRegistry,
     pub metadata: MetadataRegistry,
     pub agent_manager: AgentManager,

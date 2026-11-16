@@ -98,7 +98,7 @@ describe("Settings Page with Vertical Layout", () => {
     expect(screen.getByText("The Movie Database")).toBeDefined();
     expect(screen.getByText("IGDB")).toBeDefined();
 
-    expect(screen.getAllByText("Game")).toHaveLength(3);
+    expect(screen.getAllByText("Game")).toHaveLength(4);
     expect(screen.getByText("Movie")).toBeDefined();
     expect(screen.getByText("TV Show")).toBeDefined();
 

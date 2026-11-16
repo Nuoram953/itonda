@@ -23,6 +23,7 @@ async fn emulator_crud_lifecycle() {
             name: "Dolphin".to_string(),
             program: "/usr/bin/dolphin-emu".to_string(),
             arguments: r#"["-b","-e","{game}"]"#.to_string(),
+            options: "[]".to_string(),
             working_directory: Some("/games/gc".to_string()),
         },
     )
@@ -44,6 +45,7 @@ async fn emulator_crud_lifecycle() {
             name: "Dolphin Emu".to_string(),
             program: "/opt/dolphin/dolphin-emu".to_string(),
             arguments: r#"["-e","{rom}"]"#.to_string(),
+            options: "[]".to_string(),
             working_directory: None,
         },
     )
