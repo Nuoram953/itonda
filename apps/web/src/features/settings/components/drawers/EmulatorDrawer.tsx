@@ -12,7 +12,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Form } from "@/components/ui/form";
 import { ConfirmDialog } from "@/components/feedback/ConfirmDialog";
+import { SettingRow } from "../cards/SettingRow";
 import { formatArgsString, parseArgsString } from "@/utils/launch-args";
 import {
   useCreateEmulator,
@@ -48,7 +50,7 @@ export function EmulatorDrawer({ open, onOpenChange }: EmulatorDrawerProps) {
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent
         side="right"
-        className="w-full data-[side=right]:sm:max-w-xl bg-surface border-l border-white/10 p-0 flex flex-col justify-between overflow-hidden shadow-2xl"
+        className="w-full data-[side=right]:sm:max-w-2xl data-[side=right]:lg:max-w-3xl bg-surface border-l border-white/10 p-0 flex flex-col justify-between overflow-hidden shadow-2xl"
       >
         {open &&
           (editingEmulator === null ? (
@@ -459,84 +461,127 @@ function EmulatorFormView({
             </div>
           </div>
 
-          {options.map((opt, index) => (
-            <div
-              key={opt.key}
-              className="p-3 rounded-xl border border-white/10 bg-surface-raised/30 space-y-2"
-            >
-              <div className="flex items-center gap-2">
-                <Input
-                  placeholder="Label (e.g. Fullscreen)"
-                  value={opt.label}
-                  onChange={(e) =>
-                    updateOption(index, { label: e.target.value })
-                  }
-                  className="flex-1"
-                />
-                <select
-                  className="flex h-9 rounded-md border border-input bg-background px-2.5 py-1 text-xs text-foreground"
-                  value={opt.type ?? "flag"}
-                  onChange={(e) =>
-                    updateOption(index, {
-                      type: e.target.value as "flag" | "value" | "select",
-                    })
-                  }
-                  aria-label="Option type"
+          <div className="space-y-4">
+            {options.map((opt, index) => {
+              const optionType = opt.type ?? "flag";
+              const labelId = `opt-${opt.key}-label`;
+              const flagId = `opt-${opt.key}-flag`;
+              const choicesId = `opt-${opt.key}-choices`;
+              const defaultId = `opt-${opt.key}-default`;
+
+              return (
+                <div
+                  key={opt.key}
+                  className="p-4 rounded-xl border border-white/10 bg-surface-raised/30 space-y-4"
                 >
-                  <option value="flag">Flag</option>
-                  <option value="value">Value</option>
-                  <option value="select">Select</option>
-                </select>
-                <Input
-                  placeholder="Flag (e.g. -fullscreen)"
-                  value={opt.flag}
-                  onChange={(e) =>
-                    updateOption(index, { flag: e.target.value })
-                  }
-                  className="w-40 font-mono text-xs"
-                />
-                {(opt.type ?? "flag") === "flag" && (
-                  <div
-                    className="flex items-center gap-1.5 px-1"
-                    title="Enabled by default"
-                  >
-                    <Switch
-                      checked={Boolean(opt.default_enabled)}
-                      onCheckedChange={(checked) =>
-                        updateOption(index, { default_enabled: checked })
-                      }
-                      aria-label={`Default enabled for ${opt.label || "option"}`}
-                    />
+                  <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-white/10">
+                    <span className="text-sm font-semibold text-foreground truncate">
+                      {opt.label.trim() || `Option ${index + 1}`}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeOption(index)}
+                      className="h-7 px-2 text-xs text-destructive hover:text-destructive shrink-0"
+                      aria-label="Remove option"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 mr-1" />
+                      Remove
+                    </Button>
                   </div>
-                )}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => removeOption(index)}
-                  className="text-destructive hover:text-destructive shrink-0"
-                  aria-label="Remove option"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-              {(opt.type ?? "flag") === "select" && (
-                <Input
-                  placeholder="Choices (comma-separated, e.g. Vulkan, OGL, Software)"
-                  value={(opt.choices ?? []).join(", ")}
-                  onChange={(e) =>
-                    updateOption(index, {
-                      choices: e.target.value
-                        .split(",")
-                        .map((c) => c.trim())
-                        .filter(Boolean),
-                    })
-                  }
-                  className="text-xs"
-                />
-              )}
-            </div>
-          ))}
+
+                  <Form.Field>
+                    <Form.Label htmlFor={labelId}>Label</Form.Label>
+                    <Form.Input
+                      id={labelId}
+                      placeholder="e.g. Fullscreen"
+                      value={opt.label}
+                      onChange={(e) =>
+                        updateOption(index, { label: e.target.value })
+                      }
+                    />
+                  </Form.Field>
+
+                  <Form.Field>
+                    <Form.Label>Type</Form.Label>
+                    <Form.SelectionGroup className="grid-cols-3">
+                      {(
+                        [
+                          { value: "flag", label: "Flag" },
+                          { value: "value", label: "Value" },
+                          { value: "select", label: "Select" },
+                        ] as const
+                      ).map((item) => (
+                        <Form.Selection
+                          key={item.value}
+                          selected={optionType === item.value}
+                          onClick={() =>
+                            updateOption(index, { type: item.value })
+                          }
+                          className="justify-center"
+                        >
+                          {item.label}
+                        </Form.Selection>
+                      ))}
+                    </Form.SelectionGroup>
+                  </Form.Field>
+
+                  <Form.Field>
+                    <Form.Label htmlFor={flagId}>Flag / Argument</Form.Label>
+                    <Form.Input
+                      id={flagId}
+                      placeholder="e.g. -fullscreen"
+                      value={opt.flag}
+                      onChange={(e) =>
+                        updateOption(index, { flag: e.target.value })
+                      }
+                      className="font-mono text-xs"
+                    />
+                  </Form.Field>
+
+                  {optionType === "select" && (
+                    <Form.Field>
+                      <Form.Label htmlFor={choicesId}>
+                        Choices (comma-separated)
+                      </Form.Label>
+                      <Form.Input
+                        id={choicesId}
+                        placeholder="e.g. Vulkan, OGL, Software"
+                        value={(opt.choices ?? []).join(", ")}
+                        onChange={(e) =>
+                          updateOption(index, {
+                            choices: e.target.value
+                              .split(",")
+                              .map((c) => c.trim())
+                              .filter(Boolean),
+                          })
+                        }
+                      />
+                    </Form.Field>
+                  )}
+
+                  {optionType === "flag" && (
+                    <SettingRow
+                      label="Enabled by default"
+                      description="Automatically enable this flag when adding the emulator to a game."
+                      htmlFor={defaultId}
+                      className="pt-1 pb-0"
+                    >
+                      <Switch
+                        id={defaultId}
+                        checked={Boolean(opt.default_enabled)}
+                        onCheckedChange={(checked) =>
+                          updateOption(index, { default_enabled: checked })
+                        }
+                        aria-label={`Default enabled for ${opt.label || "option"}`}
+                      />
+                    </SettingRow>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </form>
 
