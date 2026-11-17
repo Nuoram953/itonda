@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { ArrowLeft, ChevronDown, ChevronRight, Cpu, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronDown,
+  ChevronRight,
+  Cpu,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -9,9 +17,9 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
 import { Form } from "@/components/ui/form";
 import { ConfirmDialog } from "@/components/feedback/ConfirmDialog";
 import { SettingRow } from "../cards/SettingRow";
@@ -225,7 +233,8 @@ function EmulatorFormView({
     emulator?.options ?? [],
   );
   const [collapsedKeys, setCollapsedKeys] = useState<Record<string, boolean>>(
-    () => Object.fromEntries((emulator?.options ?? []).map((o) => [o.key, true])),
+    () =>
+      Object.fromEntries((emulator?.options ?? []).map((o) => [o.key, true])),
   );
   const [workingDirectory, setWorkingDirectory] = useState(
     emulator?.working_directory ?? "",
@@ -239,9 +248,7 @@ function EmulatorFormView({
     setProgram(def.default_program);
     setArgsText(formatArgsString(def.default_arguments));
     setOptions(def.options);
-    setCollapsedKeys(
-      Object.fromEntries(def.options.map((o) => [o.key, true])),
-    );
+    setCollapsedKeys(Object.fromEntries(def.options.map((o) => [o.key, true])));
   };
 
   const toggleOptionCollapsed = (key: string) => {
@@ -297,7 +304,8 @@ function EmulatorFormView({
     const cleanedOptions = options
       .map((opt) => ({
         ...opt,
-        key: opt.key.trim() || opt.label.trim().toLowerCase().replace(/\s+/g, "_"),
+        key:
+          opt.key.trim() || opt.label.trim().toLowerCase().replace(/\s+/g, "_"),
         label: opt.label.trim(),
         flag: opt.flag.trim(),
       }))
@@ -329,9 +337,7 @@ function EmulatorFormView({
       }
       onBack();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to save emulator.",
-      );
+      setError(err instanceof Error ? err.message : "Failed to save emulator.");
     }
   };
 
@@ -371,89 +377,115 @@ function EmulatorFormView({
         )}
 
         {definitions.length > 0 && (
-          <div className="space-y-2">
-            <Label htmlFor="emulator-preset">
-              {emulator ? "Reload from Definition File" : "Emulator Preset"}
-            </Label>
-            <select
-              id="emulator-preset"
-              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              value={selectedDefId}
-              onChange={(e) => handleDefinitionChange(e.target.value)}
+          <>
+            <SettingRow
+              label={emulator ? "Reload from Definition File" : "Emulator Preset"}
+              description={
+                <>
+                  Loaded from{" "}
+                  <code className="text-foreground">emulators/*.toml</code>{" "}
+                  definition files in your config folder.
+                </>
+              }
+              layout="vertical"
+              htmlFor="emulator-preset"
             >
-              <option value="">
-                {emulator ? "Select a definition to apply..." : "Custom Emulator"}
-              </option>
-              {definitions.map((def) => (
-                <option key={def.id} value={def.id}>
-                  {def.name} ({def.options.length} options)
+              <select
+                id="emulator-preset"
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                value={selectedDefId}
+                onChange={(e) => handleDefinitionChange(e.target.value)}
+              >
+                <option value="">
+                  {emulator
+                    ? "Select a definition to apply..."
+                    : "Custom Emulator"}
                 </option>
-              ))}
-            </select>
-            <p className="text-xs text-text-muted">
-              Loaded from <code className="text-foreground">emulators/*.toml</code>{" "}
-              definition files in your config folder.
-            </p>
-          </div>
+                {definitions.map((def) => (
+                  <option key={def.id} value={def.id}>
+                    {def.name}
+                  </option>
+                ))}
+              </select>
+            </SettingRow>
+
+            <Separator className="bg-white/5" />
+          </>
         )}
 
-        <div className="space-y-2">
-          <Label htmlFor="emulator-name">Name</Label>
-          <Input
-            id="emulator-name"
-            placeholder="e.g. Dolphin, PCSX2, RetroArch"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
+        <div className="space-y-3 pt-2">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-text-muted/70">
+            General Config
+          </h4>
+
+          <SettingRow label="Name" layout="vertical" htmlFor="emulator-name">
+            <Input
+              id="emulator-name"
+              placeholder="e.g. Dolphin, PCSX2, RetroArch"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </SettingRow>
+
+          <SettingRow
+            label="Executable / Program"
+            description="Full path or command available on the target agent machine."
+            layout="vertical"
+            htmlFor="emulator-program"
+          >
+            <Input
+              id="emulator-program"
+              placeholder="e.g. /usr/bin/dolphin-emu or dolphin-emu"
+              value={program}
+              onChange={(e) => setProgram(e.target.value)}
+            />
+          </SettingRow>
+
+          <SettingRow
+            label="Default Arguments"
+            description={
+              <>
+                Use <code className="text-foreground">{"{game}"}</code> or{" "}
+                <code className="text-foreground">{"{rom}"}</code> where the game
+                location should be inserted, and{" "}
+                <code className="text-foreground">{"{args}"}</code> where launch
+                profile arguments should be inserted. If omitted, they are
+                appended at the end.
+              </>
+            }
+            layout="vertical"
+            htmlFor="emulator-args"
+          >
+            <Input
+              id="emulator-args"
+              placeholder="e.g. -b -e {game}"
+              value={argsText}
+              onChange={(e) => setArgsText(e.target.value)}
+            />
+          </SettingRow>
+
+          <SettingRow
+            label="Default Working Directory (Optional)"
+            layout="vertical"
+            htmlFor="emulator-workdir"
+          >
+            <Input
+              id="emulator-workdir"
+              placeholder="e.g. /home/user/emulators/dolphin"
+              value={workingDirectory}
+              onChange={(e) => setWorkingDirectory(e.target.value)}
+            />
+          </SettingRow>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="emulator-program">Executable / Program</Label>
-          <Input
-            id="emulator-program"
-            placeholder="e.g. /usr/bin/dolphin-emu or dolphin-emu"
-            value={program}
-            onChange={(e) => setProgram(e.target.value)}
-          />
-          <p className="text-xs text-text-muted">
-            Full path or command available on the target agent machine.
-          </p>
-        </div>
+        <Separator className="bg-white/5" />
 
-        <div className="space-y-2">
-          <Label htmlFor="emulator-args">Default Arguments</Label>
-          <Input
-            id="emulator-args"
-            placeholder="e.g. -b -e {game}"
-            value={argsText}
-            onChange={(e) => setArgsText(e.target.value)}
-          />
-          <p className="text-xs text-text-muted">
-            Use <code className="text-foreground">{"{game}"}</code> or{" "}
-            <code className="text-foreground">{"{rom}"}</code> where the game
-            location should be inserted, and{" "}
-            <code className="text-foreground">{"{args}"}</code> where launch
-            profile arguments should be inserted. If omitted, they are appended
-            at the end.
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="emulator-workdir">
-            Default Working Directory (Optional)
-          </Label>
-          <Input
-            id="emulator-workdir"
-            placeholder="e.g. /home/user/emulators/dolphin"
-            value={workingDirectory}
-            onChange={(e) => setWorkingDirectory(e.target.value)}
-          />
-        </div>
-
-        <div className="space-y-3 pt-1">
+        <div className="space-y-3 pt-2">
           <div className="flex items-center justify-between gap-2">
-            <div>
-              <Label>Toggleable Options</Label>
+            <div className="space-y-1">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-text-muted/70">
+                Toggleable Options
+              </h4>
               <p className="text-xs text-text-muted">
                 Expose flags as checkboxes when adding this emulator to a game.
               </p>
@@ -552,7 +584,9 @@ function EmulatorFormView({
                       </Form.Field>
 
                       <Form.Field>
-                        <Form.Label htmlFor={flagId}>Flag / Argument</Form.Label>
+                        <Form.Label htmlFor={flagId}>
+                          Flag / Argument
+                        </Form.Label>
                         <Form.Input
                           id={flagId}
                           placeholder="e.g. -fullscreen"
