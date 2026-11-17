@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Cpu, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, Cpu, Pencil, Plus, Trash2 } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -224,6 +224,9 @@ function EmulatorFormView({
   const [options, setOptions] = useState<EmulatorOption[]>(
     emulator?.options ?? [],
   );
+  const [collapsedKeys, setCollapsedKeys] = useState<Record<string, boolean>>(
+    () => Object.fromEntries((emulator?.options ?? []).map((o) => [o.key, true])),
+  );
   const [workingDirectory, setWorkingDirectory] = useState(
     emulator?.working_directory ?? "",
   );
@@ -236,6 +239,13 @@ function EmulatorFormView({
     setProgram(def.default_program);
     setArgsText(formatArgsString(def.default_arguments));
     setOptions(def.options);
+    setCollapsedKeys(
+      Object.fromEntries(def.options.map((o) => [o.key, true])),
+    );
+  };
+
+  const toggleOptionCollapsed = (key: string) => {
+    setCollapsedKeys((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   const handleDefinitionChange = (defId: string) => {
@@ -461,9 +471,10 @@ function EmulatorFormView({
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {options.map((opt, index) => {
               const optionType = opt.type ?? "flag";
+              const isCollapsed = Boolean(collapsedKeys[opt.key]);
               const labelId = `opt-${opt.key}-label`;
               const flagId = `opt-${opt.key}-flag`;
               const choicesId = `opt-${opt.key}-choices`;
@@ -472,111 +483,140 @@ function EmulatorFormView({
               return (
                 <div
                   key={opt.key}
-                  className="p-4 rounded-xl border border-white/10 bg-surface-raised/30 space-y-4"
+                  className="rounded-xl border border-white/10 bg-surface-raised/30 overflow-hidden"
                 >
-                  <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-white/10">
-                    <span className="text-sm font-semibold text-foreground truncate">
-                      {opt.label.trim() || `Option ${index + 1}`}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeOption(index)}
-                      className="h-7 px-2 text-xs text-destructive hover:text-destructive shrink-0"
-                      aria-label="Remove option"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 mr-1" />
-                      Remove
-                    </Button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleOptionCollapsed(opt.key)}
+                    aria-expanded={!isCollapsed}
+                    className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-white/[0.02] transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {isCollapsed ? (
+                        <ChevronRight className="w-4 h-4 text-text-muted shrink-0" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4 text-text-muted shrink-0" />
+                      )}
+                      <span className="text-sm font-semibold text-foreground truncate">
+                        {opt.label.trim() || `Option ${index + 1}`}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {opt.flag.trim() && (
+                        <code className="text-xs font-mono text-text-muted bg-black/20 px-2 py-0.5 rounded max-w-[180px] truncate">
+                          {opt.flag.trim()}
+                        </code>
+                      )}
+                      <span className="text-[11px] uppercase tracking-wider font-medium text-text-muted">
+                        {optionType}
+                      </span>
+                    </div>
+                  </button>
 
-                  <Form.Field>
-                    <Form.Label htmlFor={labelId}>Label</Form.Label>
-                    <Form.Input
-                      id={labelId}
-                      placeholder="e.g. Fullscreen"
-                      value={opt.label}
-                      onChange={(e) =>
-                        updateOption(index, { label: e.target.value })
-                      }
-                    />
-                  </Form.Field>
-
-                  <Form.Field>
-                    <Form.Label>Type</Form.Label>
-                    <Form.SelectionGroup className="grid-cols-3">
-                      {(
-                        [
-                          { value: "flag", label: "Flag" },
-                          { value: "value", label: "Value" },
-                          { value: "select", label: "Select" },
-                        ] as const
-                      ).map((item) => (
-                        <Form.Selection
-                          key={item.value}
-                          selected={optionType === item.value}
-                          onClick={() =>
-                            updateOption(index, { type: item.value })
+                  {!isCollapsed && (
+                    <div className="px-4 pb-4 pt-3 border-t border-white/10 space-y-4">
+                      <Form.Field>
+                        <Form.Label htmlFor={labelId}>Label</Form.Label>
+                        <Form.Input
+                          id={labelId}
+                          placeholder="e.g. Fullscreen"
+                          value={opt.label}
+                          onChange={(e) =>
+                            updateOption(index, { label: e.target.value })
                           }
-                          className="justify-center"
+                        />
+                      </Form.Field>
+
+                      <Form.Field>
+                        <Form.Label>Type</Form.Label>
+                        <Form.SelectionGroup className="grid-cols-3">
+                          {(
+                            [
+                              { value: "flag", label: "Flag" },
+                              { value: "value", label: "Value" },
+                              { value: "select", label: "Select" },
+                            ] as const
+                          ).map((item) => (
+                            <Form.Selection
+                              key={item.value}
+                              selected={optionType === item.value}
+                              onClick={() =>
+                                updateOption(index, { type: item.value })
+                              }
+                              className="justify-center"
+                            >
+                              {item.label}
+                            </Form.Selection>
+                          ))}
+                        </Form.SelectionGroup>
+                      </Form.Field>
+
+                      <Form.Field>
+                        <Form.Label htmlFor={flagId}>Flag / Argument</Form.Label>
+                        <Form.Input
+                          id={flagId}
+                          placeholder="e.g. -fullscreen"
+                          value={opt.flag}
+                          onChange={(e) =>
+                            updateOption(index, { flag: e.target.value })
+                          }
+                          className="font-mono text-xs"
+                        />
+                      </Form.Field>
+
+                      {optionType === "select" && (
+                        <Form.Field>
+                          <Form.Label htmlFor={choicesId}>
+                            Choices (comma-separated)
+                          </Form.Label>
+                          <Form.Input
+                            id={choicesId}
+                            placeholder="e.g. Vulkan, OGL, Software"
+                            value={(opt.choices ?? []).join(", ")}
+                            onChange={(e) =>
+                              updateOption(index, {
+                                choices: e.target.value
+                                  .split(",")
+                                  .map((c) => c.trim())
+                                  .filter(Boolean),
+                              })
+                            }
+                          />
+                        </Form.Field>
+                      )}
+
+                      {optionType === "flag" && (
+                        <SettingRow
+                          label="Enabled by default"
+                          description="Automatically enable this flag when adding the emulator to a game."
+                          htmlFor={defaultId}
+                          className="pt-1 pb-0"
                         >
-                          {item.label}
-                        </Form.Selection>
-                      ))}
-                    </Form.SelectionGroup>
-                  </Form.Field>
+                          <Switch
+                            id={defaultId}
+                            checked={Boolean(opt.default_enabled)}
+                            onCheckedChange={(checked) =>
+                              updateOption(index, { default_enabled: checked })
+                            }
+                            aria-label={`Default enabled for ${opt.label || "option"}`}
+                          />
+                        </SettingRow>
+                      )}
 
-                  <Form.Field>
-                    <Form.Label htmlFor={flagId}>Flag / Argument</Form.Label>
-                    <Form.Input
-                      id={flagId}
-                      placeholder="e.g. -fullscreen"
-                      value={opt.flag}
-                      onChange={(e) =>
-                        updateOption(index, { flag: e.target.value })
-                      }
-                      className="font-mono text-xs"
-                    />
-                  </Form.Field>
-
-                  {optionType === "select" && (
-                    <Form.Field>
-                      <Form.Label htmlFor={choicesId}>
-                        Choices (comma-separated)
-                      </Form.Label>
-                      <Form.Input
-                        id={choicesId}
-                        placeholder="e.g. Vulkan, OGL, Software"
-                        value={(opt.choices ?? []).join(", ")}
-                        onChange={(e) =>
-                          updateOption(index, {
-                            choices: e.target.value
-                              .split(",")
-                              .map((c) => c.trim())
-                              .filter(Boolean),
-                          })
-                        }
-                      />
-                    </Form.Field>
-                  )}
-
-                  {optionType === "flag" && (
-                    <SettingRow
-                      label="Enabled by default"
-                      description="Automatically enable this flag when adding the emulator to a game."
-                      htmlFor={defaultId}
-                      className="pt-1 pb-0"
-                    >
-                      <Switch
-                        id={defaultId}
-                        checked={Boolean(opt.default_enabled)}
-                        onCheckedChange={(checked) =>
-                          updateOption(index, { default_enabled: checked })
-                        }
-                        aria-label={`Default enabled for ${opt.label || "option"}`}
-                      />
-                    </SettingRow>
+                      <div className="flex justify-end pt-3 border-t border-white/10">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeOption(index)}
+                          className="text-xs text-destructive hover:text-destructive"
+                          aria-label="Remove option"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
                   )}
                 </div>
               );
