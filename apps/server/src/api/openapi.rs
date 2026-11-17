@@ -2,20 +2,19 @@ use itonda_domain::{
     agents::models::Agent,
     assets::types::AssetType,
     emulators::models::{Emulator, EmulatorDefinition, EmulatorOption, EmulatorOptionType},
-    media::{
-        models::{
-            Asset, ExternalIdProvider, Launch, Media, MediaDetails, MediaExternalId,
-            MediaGameDetails, MediaInstallation, MediaStorefront, PaginatedMedia,
-        },
-        types::{MediaSortField, MediaSource, MediaStatus, MediaType, SortOrder},
+    media::models::{
+        Asset, ExternalIdProvider, Launch, Media, MediaDetails, MediaExternalId,
+        MediaGameDetails, MediaInstallation, MediaStorefront, PaginatedMedia,
     },
+    media::types::{MediaSortField, MediaSource, MediaStatus, MediaType, SortOrder},
     metadata::models::MediaSearchResult,
+    protocol::DirectoryEntry,
     storefronts::models::StorefrontId,
 };
 use utoipa::OpenApi;
 
 use crate::api::{
-    agents::schemas::GetAgentsResponse,
+    agents::schemas::{AgentDirectoryListingResponse, GetAgentsResponse},
     emulators::schemas::{
         CreateEmulatorPayload, GetEmulatorDefinitionsResponse, GetEmulatorsResponse,
         UpdateEmulatorPayload,
@@ -50,6 +49,7 @@ use crate::api::{
         crate::api::emulators::handlers::delete_emulator,
         crate::api::assets::handlers::get_asset,
         crate::api::agents::handlers::get_connected_agents,
+        crate::api::agents::handlers::list_agent_files,
         crate::api::config::handlers::get_config,
         crate::api::config::handlers::update_config,
         crate::api::auth::handlers::steam_login,
@@ -81,6 +81,8 @@ use crate::api::{
             UpdateEmulatorPayload,
             GetEmulatorDefinitionsResponse,
             GetEmulatorsResponse,
+            AgentDirectoryListingResponse,
+            DirectoryEntry,
             Emulator,
             EmulatorDefinition,
             EmulatorOption,

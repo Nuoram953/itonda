@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { FolderOpen } from "lucide-react";
+import { AgentFileBrowserDialog } from "./AgentFileBrowserDialog";
 import {
   Dialog,
   DialogContent,
@@ -166,6 +168,7 @@ function LaunchProfileFormBody({
   );
   const [agentId, setAgentId] = useState<string>(profile?.agent_id ?? "");
   const [isDefault, setIsDefault] = useState(profile?.is_default ?? false);
+  const [fileBrowserOpen, setFileBrowserOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const selectedEmulator = emulators.find((e) => e.id === emulatorId) ?? null;
@@ -197,11 +200,30 @@ function LaunchProfileFormBody({
     const exe =
       program.trim() || selectedEmulator?.program || "<executable>";
     const extra = parseArgsString(argsText);
-    const base =
-      isEmulatorMode && argumentMode === "append" && !profile
-        ? [...(selectedEmulator?.arguments ?? [])]
-        : [];
-    const allArgs = [...base, ...selectedOptionArgs, ...extra];
+    const launchArgs = [...selectedOptionArgs, ...extra];
+    const allArgs: string[] = [];
+    if (isEmulatorMode && argumentMode === "append" && !profile) {
+      let replacedArgs = false;
+      for (const arg of selectedEmulator?.arguments ?? []) {
+        if (arg === "{args}") {
+          allArgs.push(...launchArgs);
+          replacedArgs = true;
+        } else if (arg.includes("{args}")) {
+          const replaced = arg.replace("{args}", launchArgs.join(" "));
+          if (replaced) {
+            allArgs.push(replaced);
+          }
+          replacedArgs = true;
+        } else {
+          allArgs.push(arg);
+        }
+      }
+      if (!replacedArgs) {
+        allArgs.push(...launchArgs);
+      }
+    } else {
+      allArgs.push(...launchArgs);
+    }
     const loc = gameLocation.trim();
     if (loc) {
       let replaced = false;
@@ -359,12 +381,24 @@ function LaunchProfileFormBody({
           <Label htmlFor="lp-game-location">
             Game Location {isEmulatorMode ? "(Required)" : "(Optional)"}
           </Label>
-          <Input
-            id="lp-game-location"
-            placeholder="e.g. /roms/ps2/Final Fantasy X.iso"
-            value={gameLocation}
-            onChange={(e) => setGameLocation(e.target.value)}
-          />
+          <div className="flex items-center gap-2">
+            <Input
+              id="lp-game-location"
+              placeholder="e.g. /roms/ps2/Final Fantasy X.iso"
+              value={gameLocation}
+              onChange={(e) => setGameLocation(e.target.value)}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              onClick={() => setFileBrowserOpen(true)}
+            >
+              <FolderOpen className="h-4 w-4 mr-1.5" />
+              Browse
+            </Button>
+          </div>
         </div>
 
         {isEmulatorMode && emulatorOptions.length > 0 && (
@@ -620,6 +654,14 @@ function LaunchProfileFormBody({
               : "Add Profile"}
         </Button>
       </DialogFooter>
+
+      <AgentFileBrowserDialog
+        open={fileBrowserOpen}
+        onOpenChange={setFileBrowserOpen}
+        agentId={agentId || undefined}
+        initialPath={gameLocation}
+        onSelect={(path) => setGameLocation(path)}
+      />
     </>
   );
 }

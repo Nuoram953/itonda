@@ -9,6 +9,13 @@ pub enum ServerToAgentMessage {
     Ping,
     Launch(LaunchCommand),
     Scan(ScanCommand),
+    ListDirectory(ListDirectoryCommand),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ListDirectoryCommand {
+    pub request_id: Uuid,
+    pub path: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

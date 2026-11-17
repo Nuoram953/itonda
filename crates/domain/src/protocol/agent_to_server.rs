@@ -11,6 +11,23 @@ pub enum AgentToServerMessage {
     ScanResult(ScanResult),
     MediaStarted(MediaStartedPayload),
     MediaStopped(MediaStoppedPayload),
+    DirectoryListing(DirectoryListingResult),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct DirectoryEntry {
+    pub name: String,
+    pub path: String,
+    pub is_dir: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DirectoryListingResult {
+    pub request_id: Uuid,
+    pub path: String,
+    pub parent: Option<String>,
+    pub entries: Vec<DirectoryEntry>,
+    pub error: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

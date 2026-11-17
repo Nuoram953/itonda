@@ -94,7 +94,16 @@ async fn handle_agent(
         }));
     }
 
-    let result = run_agent_loop(&mut socket, &mut rx, pool, &events, &agent_id, &jobs).await;
+    let result = run_agent_loop(
+        &mut socket,
+        &mut rx,
+        pool,
+        &agent_manager,
+        &events,
+        &agent_id,
+        &jobs,
+    )
+    .await;
 
     let _ = disconnect_agent_connection(pool, agent_id.clone()).await;
     agent_manager.unregister(&agent_id).await;
@@ -112,6 +121,7 @@ async fn run_agent_loop(
     socket: &mut WebSocket,
     rx: &mut mpsc::Receiver<ServerToAgentMessage>,
     pool: &SqlitePool,
+    agent_manager: &AgentManager,
     events: &EventBus,
     agent_id: &str,
     _jobs: &Sender<Job>,
@@ -156,6 +166,9 @@ async fn run_agent_loop(
                                         duration_seconds: payload.duration_seconds.to_string()
                                     }).await?;
 
+                                }
+                                AgentToServerMessage::DirectoryListing(listing) => {
+                                    agent_manager.complete_directory_listing(listing).await;
                                 }
                                 _ => {}
                             }

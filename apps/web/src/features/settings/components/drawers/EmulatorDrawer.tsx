@@ -419,8 +419,10 @@ function EmulatorFormView({
           <p className="text-xs text-text-muted">
             Use <code className="text-foreground">{"{game}"}</code> or{" "}
             <code className="text-foreground">{"{rom}"}</code> where the game
-            location should be inserted. If omitted, the game location is
-            appended at the end.
+            location should be inserted, and{" "}
+            <code className="text-foreground">{"{args}"}</code> where launch
+            profile arguments should be inserted. If omitted, they are appended
+            at the end.
           </p>
         </div>
 

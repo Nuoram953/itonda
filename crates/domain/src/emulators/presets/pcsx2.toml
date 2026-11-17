@@ -1,7 +1,7 @@
 id = "pcsx2"
 name = "PCSX2"
 default_program = "pcsx2"
-default_arguments = ["{args} -- {game}"]
+default_arguments = ["{args}", "--", "{game}"]
 
 [[options]]
 key = "fullscreen"

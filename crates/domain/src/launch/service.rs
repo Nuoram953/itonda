@@ -79,14 +79,39 @@ pub fn resolve_emulator_fields(
     let mut raw_args = if argument_mode == "replace" {
         override_args.to_vec()
     } else {
-        let mut args = emulator_args.to_vec();
-        args.extend(override_args.iter().cloned());
-        args
+        apply_emulator_args(emulator_args, override_args)
     };
 
     apply_game_location(&mut raw_args, game_location);
 
     (program, raw_args, working_directory)
+}
+
+fn apply_emulator_args(emulator_args: &[String], override_args: &[String]) -> Vec<String> {
+    let mut args = Vec::with_capacity(emulator_args.len() + override_args.len());
+    let mut replaced_placeholder = false;
+
+    for arg in emulator_args {
+        if arg == "{args}" {
+            args.extend(override_args.iter().cloned());
+            replaced_placeholder = true;
+        } else if arg.contains("{args}") {
+            let joined = override_args.join(" ");
+            let replaced = arg.replace("{args}", &joined);
+            if !replaced.is_empty() {
+                args.push(replaced);
+            }
+            replaced_placeholder = true;
+        } else {
+            args.push(arg.clone());
+        }
+    }
+
+    if !replaced_placeholder {
+        args.extend(override_args.iter().cloned());
+    }
+
+    args
 }
 
 pub fn derive_working_directory(program: &str, game_location: Option<&str>) -> Option<String> {
@@ -326,6 +351,54 @@ mod tests {
         assert_eq!(cmd.program, "/opt/pcsx2-qt");
         assert_eq!(cmd.args, vec!["--nogui", "/roms/ffx.iso"]);
         assert_eq!(cmd.working_directory.as_deref(), Some("/custom/dir"));
+    }
+
+    #[test]
+    fn resolves_args_placeholder_in_emulator_defaults() {
+        let emu_args = vec![
+            "{args}".to_string(),
+            "--".to_string(),
+            "{game}".to_string(),
+        ];
+
+        let (_, with_overrides, _) = resolve_emulator_fields(
+            "pcsx2",
+            &emu_args,
+            None,
+            "",
+            &["-fullscreen".to_string(), "-nogui".to_string()],
+            "append",
+            None,
+            Some("/roms/ffx.iso"),
+        );
+        assert_eq!(
+            with_overrides,
+            vec!["-fullscreen", "-nogui", "--", "/roms/ffx.iso"]
+        );
+
+        let (_, without_overrides, _) = resolve_emulator_fields(
+            "pcsx2",
+            &emu_args,
+            None,
+            "",
+            &[],
+            "append",
+            None,
+            Some("/roms/ffx.iso"),
+        );
+        assert_eq!(without_overrides, vec!["--", "/roms/ffx.iso"]);
+
+        let (_, replaced_mode, _) = resolve_emulator_fields(
+            "pcsx2",
+            &emu_args,
+            None,
+            "",
+            &["-bigpicture".to_string()],
+            "replace",
+            None,
+            Some("/roms/ffx.iso"),
+        );
+        assert_eq!(replaced_mode, vec!["-bigpicture", "/roms/ffx.iso"]);
     }
 
     #[test]

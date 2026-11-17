@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, trace};
 use uuid::Uuid;
@@ -6,8 +6,8 @@ use uuid::Uuid;
 use itonda_domain::{
     launch::service::launch_program_with_command,
     protocol::{
-        AgentRegistration, AgentToServerMessage, LaunchCommand, ScanCommand, ScanResult,
-        ServerToAgentMessage,
+        AgentRegistration, AgentToServerMessage, DirectoryEntry, DirectoryListingResult,
+        LaunchCommand, ListDirectoryCommand, ScanCommand, ScanResult, ServerToAgentMessage,
     },
     scanner::registry::ScannerRegistry,
 };
@@ -105,6 +105,9 @@ impl Agent {
             ServerToAgentMessage::Scan(cmd) => {
                 self.handle_scan(cmd, agent_id).await?;
             }
+            ServerToAgentMessage::ListDirectory(cmd) => {
+                self.handle_list_directory(cmd).await?;
+            }
         }
         Ok(())
     }
@@ -175,6 +178,62 @@ impl Agent {
             "Sent scan results to server for request_id={}",
             command.request_id
         );
+        Ok(())
+    }
+
+    pub async fn handle_list_directory(
+        &mut self,
+        command: ListDirectoryCommand,
+    ) -> anyhow::Result<()> {
+        let dir = command
+            .path
+            .as_deref()
+            .map(str::trim)
+            .filter(|p| !p.is_empty())
+            .map(PathBuf::from)
+            .unwrap_or_else(|| dirs::home_dir().unwrap_or_else(|| PathBuf::from("/")));
+
+        let path_str = dir.to_string_lossy().into_owned();
+        let parent = dir.parent().map(|p| p.to_string_lossy().into_owned());
+
+        let result = match tokio::fs::read_dir(&dir).await {
+            Ok(mut reader) => {
+                let mut entries = Vec::new();
+                while let Ok(Some(entry)) = reader.next_entry().await {
+                    let entry_path = entry.path();
+                    let name = entry.file_name().to_string_lossy().into_owned();
+                    let is_dir = entry_path.is_dir();
+                    entries.push(DirectoryEntry {
+                        name,
+                        path: entry_path.to_string_lossy().into_owned(),
+                        is_dir,
+                    });
+                }
+                entries.sort_by(|a, b| {
+                    b.is_dir
+                        .cmp(&a.is_dir)
+                        .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
+                });
+                DirectoryListingResult {
+                    request_id: command.request_id,
+                    path: path_str,
+                    parent,
+                    entries,
+                    error: None,
+                }
+            }
+            Err(err) => DirectoryListingResult {
+                request_id: command.request_id,
+                path: path_str,
+                parent,
+                entries: Vec::new(),
+                error: Some(err.to_string()),
+            },
+        };
+
+        self.connection
+            .send(&AgentToServerMessage::DirectoryListing(result))
+            .await?;
         Ok(())
     }
 }
